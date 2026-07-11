@@ -17,11 +17,14 @@ type Store = {
   error: string | null;
   activeMember: Member | null;
   memberBalls: Ball[];
+  memberRetiredBalls: Ball[];
+  memberAllBalls: Ball[];
   memberSessions: ScoreSession[];
   memberMaintenances: SurfaceMaintenance[];
   setActiveMemberId: (id: string) => void;
   upsertBall: (ball: Ball) => Promise<void>;
   deleteBall: (id: string) => Promise<void>;
+  setBallRetired: (id: string, retired: boolean) => Promise<void>;
   upsertSession: (session: ScoreSession) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   addMaintenance: (item: SurfaceMaintenance) => Promise<void>;
@@ -69,6 +72,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   const memberBalls = useMemo(
+    () =>
+      data
+        ? data.balls.filter((b) => b.memberId === data.activeMemberId && !b.retired)
+        : [],
+    [data],
+  );
+
+  const memberRetiredBalls = useMemo(
+    () =>
+      data
+        ? data.balls.filter((b) => b.memberId === data.activeMemberId && b.retired)
+        : [],
+    [data],
+  );
+
+  const memberAllBalls = useMemo(
     () => (data ? data.balls.filter((b) => b.memberId === data.activeMemberId) : []),
     [data],
   );
@@ -99,6 +118,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     error,
     activeMember,
     memberBalls,
+    memberRetiredBalls,
+    memberAllBalls,
     memberSessions,
     memberMaintenances,
     setActiveMemberId: (id) => {
@@ -119,6 +140,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...data,
         balls: data.balls.filter((b) => b.id !== id),
         maintenances: (data.maintenances ?? []).filter((m) => m.ballId !== id),
+      });
+    },
+    setBallRetired: async (id, retired) => {
+      if (!data) return;
+      await persist({
+        ...data,
+        balls: data.balls.map((b) => (b.id === id ? { ...b, retired } : b)),
       });
     },
     upsertSession: async (session) => {

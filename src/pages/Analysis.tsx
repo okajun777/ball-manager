@@ -13,12 +13,12 @@ function pct(part: number, whole: number): string {
 }
 
 export function Analysis() {
-  const { activeMember, memberBalls, memberSessions } = useStore();
+  const { activeMember, memberAllBalls, memberSessions } = useStore();
   const [mode, setMode] = useState<Mode>("all");
 
   const insights = useMemo(
-    () => buildInsights(memberSessions, memberBalls),
-    [memberSessions, memberBalls],
+    () => buildInsights(memberSessions, memberAllBalls),
+    [memberSessions, memberAllBalls],
   );
 
   const filtered = useMemo(() => {
@@ -57,7 +57,7 @@ export function Analysis() {
     }
     return [...map.entries()]
       .map(([ballId, row]) => {
-        const ball = memberBalls.find((b) => b.id === ballId);
+        const ball = memberAllBalls.find((b) => b.id === ballId);
         const marks = summarizeFrames(row.frames);
         return {
           ballId,
@@ -72,7 +72,7 @@ export function Analysis() {
         };
       })
       .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0));
-  }, [filtered, memberBalls]);
+  }, [filtered, memberAllBalls]);
 
   const byShop = useMemo(() => {
     const map = new Map<string, number[]>();
@@ -159,7 +159,7 @@ export function Analysis() {
           onClick={() =>
             downloadScoresCsv(
               memberSessions,
-              memberBalls,
+              memberAllBalls,
               activeMember?.displayName ?? "member",
             )
           }

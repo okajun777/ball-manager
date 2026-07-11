@@ -131,7 +131,7 @@ function FrameSheet({
 }
 
 export function Scores() {
-  const { data, activeMember, memberBalls, upsertSession, memberSessions, deleteSession } =
+  const { data, activeMember, memberBalls, memberAllBalls, upsertSession, memberSessions, deleteSession } =
     useStore();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -151,9 +151,9 @@ export function Scores() {
   const defaultBallId = memberBalls[0]?.id ?? "";
 
   const ballName = useMemo(() => {
-    const map = new Map(memberBalls.map((b) => [b.id, b.name]));
+    const map = new Map(memberAllBalls.map((b) => [b.id, b.name]));
     return (id: string | null) => (id ? map.get(id) ?? "—" : "—");
-  }, [memberBalls]);
+  }, [memberAllBalls]);
 
   const shopSuggestions = useMemo(() => {
     const seen = new Set<string>();
@@ -182,6 +182,19 @@ export function Scores() {
     return list;
   }, [memberSessions]);
 
+  const tournamentSuggestions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const s of memberSessions) {
+      const name = s.tournamentName.trim();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      list.push(name);
+      if (list.length >= 6) break;
+    }
+    return list;
+  }, [memberSessions]);
+
   // 初回ボールIDを埋める
   useEffect(() => {
     if (!defaultBallId) return;
@@ -202,6 +215,31 @@ export function Scores() {
     setMemo("");
     setEntryMode("total");
     setGames([blankGame(defaultBallId), blankGame(defaultBallId), blankGame(defaultBallId)]);
+  }
+
+  function copyLastSession() {
+    const last = memberSessions[0];
+    if (!last) {
+      alert("コピーできる前回記録がありません");
+      return;
+    }
+    setEditingId(null);
+    setPlayedOn(today());
+    setSessionType(last.sessionType);
+    setTournamentName(last.tournamentName);
+    setShopName(last.shopName);
+    setOilNote(last.oilNote || "ハウス");
+    setMemo("");
+    setEntryMode("total");
+    const activeIds = new Set(memberBalls.map((b) => b.id));
+    const copied = last.games.map((g) =>
+      blankGame(g.ballId && activeIds.has(g.ballId) ? g.ballId : defaultBallId),
+    );
+    setGames(
+      copied.length
+        ? copied
+        : [blankGame(defaultBallId), blankGame(defaultBallId), blankGame(defaultBallId)],
+    );
   }
 
   function startEdit(session: ScoreSession) {
@@ -323,6 +361,11 @@ export function Scores() {
           <h1>スコア入力</h1>
           <p>合計点 or フレーム入力。ボールは所持ボールから選択</p>
         </div>
+        {memberSessions.length > 0 && memberBalls.length > 0 ? (
+          <button className="btn secondary" type="button" onClick={copyLastSession}>
+            前回をコピー
+          </button>
+        ) : null}
       </div>
 
       {!memberBalls.length ? (
@@ -383,8 +426,23 @@ export function Scores() {
               <input
                 value={tournamentName}
                 onChange={(e) => setTournamentName(e.target.value)}
+                list="tournament-history"
                 placeholder="○○オープン"
               />
+              <datalist id="tournament-history">
+                {tournamentSuggestions.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              {tournamentSuggestions.length > 0 && (
+                <div className="suggest-chips">
+                  {tournamentSuggestions.map((s) => (
+                    <button key={s} type="button" onClick={() => setTournamentName(s)}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

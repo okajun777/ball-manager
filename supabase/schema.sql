@@ -33,8 +33,12 @@ create table if not exists balls (
   layout_note text default '',
   surface_note text default '',
   memo text default '',
+  retired boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- 既存DB向け
+-- alter table balls add column if not exists retired boolean not null default false;
 
 create table if not exists score_sessions (
   id uuid primary key default gen_random_uuid(),

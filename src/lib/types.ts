@@ -30,6 +30,8 @@ export type Ball = {
   layoutNote: string;
   surfaceNote: string;
   memo: string;
+  /** true のときバッグから外した扱い（スコア選択・攻略から除外） */
+  retired?: boolean;
 };
 
 /** 表面メンテ履歴 */

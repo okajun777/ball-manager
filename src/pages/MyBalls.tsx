@@ -28,8 +28,10 @@ export function MyBalls() {
     data,
     activeMember,
     memberBalls,
+    memberRetiredBalls,
     upsertBall,
     deleteBall,
+    setBallRetired,
     memberMaintenances,
     addMaintenance,
     deleteMaintenance,
@@ -114,6 +116,7 @@ export function MyBalls() {
       layoutNote: form.layoutNote.trim(),
       surfaceNote: form.surfaceNote.trim(),
       memo: form.memo.trim(),
+      retired: editing?.retired ?? false,
     };
     await upsertBall(ball);
     setOpen(false);
@@ -148,7 +151,10 @@ export function MyBalls() {
       <div className="page-title">
         <div>
           <h1>マイボール</h1>
-          <p>{activeMember.displayName} の所持ボール（{memberBalls.length}）</p>
+          <p>
+            {activeMember.displayName} の所持ボール（{memberBalls.length}
+            {memberRetiredBalls.length ? ` / 引退 ${memberRetiredBalls.length}` : ""}）
+          </p>
         </div>
         <button className="btn" type="button" onClick={startCreate}>
           ＋ ボール追加
@@ -382,6 +388,13 @@ export function MyBalls() {
                     編集
                   </button>
                   <button
+                    className="btn secondary"
+                    type="button"
+                    onClick={() => void setBallRetired(b.id, true)}
+                  >
+                    引退
+                  </button>
+                  <button
                     className="btn danger"
                     type="button"
                     onClick={() => {
@@ -394,6 +407,50 @@ export function MyBalls() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {memberRetiredBalls.length > 0 && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <h3 style={{ marginTop: 0 }}>引退したボール</h3>
+          <p style={{ color: "var(--sub)", fontSize: "0.88rem", marginTop: 0 }}>
+            スコア選択・攻略AIの候補からは外れます。過去の記録はそのまま残ります。
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {memberRetiredBalls.map((b) => (
+              <li
+                key={b.id}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  marginBottom: 8,
+                }}
+              >
+                <span>
+                  <strong>{b.name}</strong>
+                  {b.brand ? `（${b.brand}）` : ""}
+                </span>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  onClick={() => void setBallRetired(b.id, false)}
+                >
+                  復帰
+                </button>
+                <button
+                  className="btn danger"
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`${b.name} を完全削除しますか？`)) void deleteBall(b.id);
+                  }}
+                >
+                  削除
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -146,6 +146,10 @@ function normalizeAppData(data: AppData): AppData {
   return {
     ...data,
     members: remapDemoMemberNames(data.members),
+    balls: (data.balls ?? []).map((b) => ({
+      ...b,
+      retired: Boolean(b.retired),
+    })),
     maintenances: Array.isArray(data.maintenances) ? data.maintenances : [],
   };
 }
@@ -242,6 +246,7 @@ export async function saveAppData(data: AppData): Promise<void> {
       layout_note: b.layoutNote,
       surface_note: b.surfaceNote,
       memo: b.memo,
+      retired: Boolean(b.retired),
     })),
   );
 
@@ -401,6 +406,7 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
     layoutNote: b.layout_note ?? "",
     surfaceNote: b.surface_note ?? "",
     memo: b.memo ?? "",
+    retired: Boolean(b.retired),
   }));
 
   const gamesBySession = new Map<string, ScoreGame[]>();
