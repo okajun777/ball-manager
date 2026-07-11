@@ -91,9 +91,7 @@ export function Settings() {
     replaceAppData,
     joinGroup,
     claimAsMember,
-    unlockAdmin,
     setAdminPin,
-    hasAdminPin,
   } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
@@ -108,7 +106,6 @@ export function Settings() {
   );
   const [prefs, setPrefs] = useState<UserPrefs>(() => loadUserPrefs());
   const [adminPinDraft, setAdminPinDraft] = useState("");
-  const [unlockPinDraft, setUnlockPinDraft] = useState("");
   const sharedLlm = hasSharedLlmKey();
   const publicUrl = APP_PUBLIC_URL;
   const inviteLink = data ? appInviteUrl(data.group.inviteCode) : publicUrl;
@@ -227,27 +224,18 @@ export function Settings() {
       <div className="page-title">
         <div>
           <h1>設定・共有</h1>
-          <p>
-            {isAdmin
-              ? "管理者: メンバー追加・全員のプロフィール・バックアップを管理できます"
-              : "自分のプロフィールと、この端末の設定だけ変更できます"}
-          </p>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginTop: 0 }}>この端末</h3>
-        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
-          利用者: <strong>{deviceMember?.displayName ?? "—"}</strong>
-          {isAdmin ? "（管理者）" : " — 自分のデータのみ"}
-        </p>
-        <p style={{ color: "var(--sub)", fontSize: "0.85rem" }}>
-          淳司（管理者）を選ぶだけでは全員データは見えません。管理者はPINでのみ入れます。
+        <h3 style={{ marginTop: 0 }}>表示</h3>
+        <p style={{ marginTop: 0 }}>
+          <strong>{deviceMember?.displayName ?? "—"}</strong>
         </p>
 
         {isAdmin ? (
           <div className="field">
-            <label>管理者PIN（4桁）{hasAdminPin ? "を変更" : "を設定"}</label>
+            <label>PIN（4桁）</label>
             <input
               type="password"
               inputMode="numeric"
@@ -268,28 +256,24 @@ export function Settings() {
                     return;
                   }
                   setAdminPinDraft("");
-                  alert("管理者PINを保存しました");
+                  alert("保存しました");
                 }}
               >
-                PINを保存
+                保存
               </button>
             </div>
             <div className="field" style={{ marginTop: 12 }}>
-              <label>この端末を一般メンバー用にする</label>
+              <label>利用者を切り替え</label>
               <select
                 defaultValue=""
                 onChange={(e) => {
                   const id = e.target.value;
                   if (!id) return;
-                  if (!confirm("この端末では選んだ人のデータだけ見えるようになります。よろしいですか？")) {
-                    e.target.value = "";
-                    return;
-                  }
                   claimAsMember(id);
                   e.target.value = "";
                 }}
               >
-                <option value="">メンバーを選択…</option>
+                <option value="">選択…</option>
                 {data.members
                   .filter((m) => m.id !== findAdminMemberId(data.members))
                   .map((m) => (
@@ -301,51 +285,20 @@ export function Settings() {
             </div>
           </div>
         ) : (
-          <div>
-            <div className="field">
-              <label>利用者を変更（一般メンバーのみ）</label>
-              <select
-                value={deviceMember?.id ?? ""}
-                onChange={(e) => claimAsMember(e.target.value)}
-              >
-                {data.members
-                  .filter((m) => m.id !== findAdminMemberId(data.members))
-                  .map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.displayName}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>管理者で開き直す（PIN）</label>
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={unlockPinDraft}
-                onChange={(e) => setUnlockPinDraft(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                placeholder="••••"
-                autoComplete="off"
-              />
-              <div className="form-actions" style={{ justifyContent: "flex-start" }}>
-                <button
-                  className="btn secondary"
-                  type="button"
-                  onClick={() => {
-                    const res = unlockAdmin(unlockPinDraft);
-                    if (!res.ok) {
-                      alert(res.error || "入れませんでした");
-                      return;
-                    }
-                    setUnlockPinDraft("");
-                    alert("管理者モードで開きました");
-                  }}
-                >
-                  管理者で開く
-                </button>
-              </div>
-            </div>
+          <div className="field">
+            <label>利用者</label>
+            <select
+              value={deviceMember?.id ?? ""}
+              onChange={(e) => claimAsMember(e.target.value)}
+            >
+              {data.members
+                .filter((m) => m.id !== findAdminMemberId(data.members))
+                .map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.displayName}
+                  </option>
+                ))}
+            </select>
           </div>
         )}
       </div>
@@ -405,11 +358,7 @@ export function Settings() {
                 保存
               </button>
             </div>
-          ) : (
-            <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginBottom: 0 }}>
-              グループ名の変更は管理者のみです
-            </p>
-          )}
+          ) : null}
         </form>
 
         <form className="card" onSubmit={saveSupabase}>
@@ -420,7 +369,6 @@ export function Settings() {
               <strong style={{ color: supabaseReady ? "var(--good)" : "var(--warn)" }}>
                 {supabaseReady ? "接続設定あり" : "未設定"}
               </strong>
-              （接続の変更は管理者のみ）
             </p>
           ) : (
             <>
@@ -663,10 +611,7 @@ export function Settings() {
       </div>
       ) : (
       <div className="card" style={{ marginTop: 14 }}>
-        <h3 style={{ marginTop: 0 }}>自分のスコアCSV</h3>
-        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
-          バックアップの読み込み・全データ初期化は管理者のみです。
-        </p>
+        <h3 style={{ marginTop: 0 }}>スコアCSV</h3>
         <div className="form-actions">
           <button
             className="btn secondary"
@@ -679,7 +624,7 @@ export function Settings() {
               )
             }
           >
-            スコアCSVを書き出し
+            書き出し
           </button>
         </div>
       </div>
@@ -737,7 +682,7 @@ export function Settings() {
       <div className="grid two" style={{ marginTop: 14 }}>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>
-            {isAdmin ? "メンバー・プロフィール" : "自分のプロフィール"}
+            {isAdmin ? "メンバー・プロフィール" : "プロフィール"}
           </h3>
           {isAdmin ? (
           <form onSubmit={onAddMember} style={{ marginBottom: 14 }}>
@@ -796,8 +741,8 @@ export function Settings() {
                       style={{ flex: "1 1 120px", minWidth: 0 }}
                       aria-label={`${m.displayName}の表示名`}
                     />
-                    {m.isSelf ? (
-                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>管理者</span>
+                    {m.isSelf && isAdmin ? (
+                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>自分</span>
                     ) : null}
                   </div>
                   <p style={{ margin: "0 0 8px", color: "var(--sub)", fontSize: "0.82rem" }}>
@@ -915,14 +860,7 @@ export function Settings() {
             </button>
           </div>
         </div>
-        ) : (
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>共有について</h3>
-          <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
-            招待リンクの発行・メンバー追加は管理者のみです。自分のボールとスコアだけ入力・確認できます。
-          </p>
-        </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

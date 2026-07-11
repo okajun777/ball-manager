@@ -84,16 +84,15 @@ export function Layout() {
         {!needsIdentity ? (
           <div className="sidebar-member-row">
             <div className="member-switch">
-              <label>この端末</label>
+              <label>表示</label>
               <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                {deviceMember?.displayName ?? "—"}
-                {isAdmin ? "（管理者）" : ""}
+                {deviceMember?.displayName ?? activeMember?.displayName ?? "—"}
               </div>
             </div>
 
             {isAdmin ? (
               <div className="member-switch">
-                <label htmlFor="member">表示メンバー</label>
+                <label htmlFor="member">メンバー</label>
                 <select
                   id="member"
                   value={activeMember?.id ?? ""}
@@ -107,14 +106,7 @@ export function Layout() {
                   ))}
                 </select>
               </div>
-            ) : (
-              <div className="member-switch">
-                <label>表示中</label>
-                <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                  {activeMember?.displayName ?? "—"}
-                </div>
-              </div>
-            )}
+            ) : null}
           </div>
         ) : null}
 
