@@ -385,6 +385,19 @@ export async function saveAppData(data: AppData): Promise<void> {
     }),
   );
 
+  // ローカルで消したメンバーをクラウドからも削除（関連は DB cascade）
+  {
+    const { data: remoteMembers } = await supabase
+      .from("members")
+      .select("id")
+      .eq("group_id", g.id);
+    const keep = new Set(data.members.map((m) => m.id));
+    const gone = (remoteMembers ?? []).map((r) => r.id as string).filter((id) => !keep.has(id));
+    if (gone.length) {
+      await supabase.from("members").delete().in("id", gone);
+    }
+  }
+
   await supabase.from("balls").upsert(
     data.balls.map((b) => ({
       id: b.id,

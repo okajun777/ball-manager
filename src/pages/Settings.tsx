@@ -86,6 +86,7 @@ export function Settings() {
     memberBalls,
     memberSessions,
     addMember,
+    deleteMember,
     updateMemberProfile,
     updateGroupName,
     replaceAppData,
@@ -910,6 +911,30 @@ export function Settings() {
                     >
                       プロフィールを保存
                     </button>
+                    {isAdmin && !m.isSelf ? (
+                      <button
+                        className="btn secondary"
+                        type="button"
+                        onClick={() => {
+                          if (
+                            !confirm(
+                              `${m.displayName} を削除しますか？\nこのメンバーのボール・スコア・メンテ記録も消えます。`,
+                            )
+                          ) {
+                            return;
+                          }
+                          void deleteMember(m.id).then(() => {
+                            setEditingMembers((prev) => {
+                              const next = { ...prev };
+                              delete next[m.id];
+                              return next;
+                            });
+                          });
+                        }}
+                      >
+                        削除
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               );

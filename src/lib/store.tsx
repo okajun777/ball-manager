@@ -64,6 +64,8 @@ type Store = {
   addMaintenance: (item: SurfaceMaintenance) => Promise<void>;
   deleteMaintenance: (id: string) => Promise<void>;
   addMember: (name: string) => Promise<void>;
+  /** オーナーのみ。本人（isSelf）は削除不可。関連ボール・スコアも削除 */
+  deleteMember: (id: string) => Promise<void>;
   updateMemberName: (id: string, name: string) => Promise<void>;
   updateMemberProfile: (
     id: string,
@@ -348,6 +350,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
         isSelf: false,
       });
       await persist({ ...data, members: [...data.members, member] });
+    },
+    deleteMember: async (id) => {
+      if (!data || !isAdmin) return;
+      const target = data.members.find((m) => m.id === id);
+      if (!target || target.isSelf) return;
+      const admin = findAdminMemberId(data.members);
+      const nextActive =
+        data.activeMemberId === id ? admin ?? data.members.find((m) => m.id !== id)?.id ?? "" : data.activeMemberId;
+      await persist({
+        ...data,
+        activeMemberId: nextActive,
+        members: data.members.filter((m) => m.id !== id),
+        balls: data.balls.filter((b) => b.memberId !== id),
+        sessions: data.sessions.filter((s) => s.memberId !== id),
+        maintenances: (data.maintenances ?? []).filter((m) => m.memberId !== id),
+      });
     },
     updateMemberName: async (id, name) => {
       if (!data || !name.trim() || !deviceMemberId) return;
