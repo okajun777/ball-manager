@@ -11,7 +11,7 @@ import { formatSessionShareText } from "../lib/shareSession";
 import { adviseBalls } from "../lib/strategy";
 import { useStore } from "../lib/store";
 import { ROUND1_VIEWER_URL } from "../lib/round1";
-import { avg } from "../lib/types";
+import { avg, today } from "../lib/types";
 
 const catalog = catalogBalls as CatalogBall[];
 const houseOil = OIL_PRESETS.find((p) => p.id === "house") ?? OIL_PRESETS[0];
@@ -27,6 +27,11 @@ export function Dashboard() {
     .filter((s) => s.sessionType === "tournament")
     .flatMap((s) => s.games.map((g) => g.score));
   const recent = memberSessions[0];
+  const todayKey = today();
+  const todaySessions = useMemo(
+    () => memberSessions.filter((s) => s.playedOn === todayKey),
+    [memberSessions, todayKey],
+  );
 
   const reminder = loadMaintReminderSettings();
   const maintDue = useMemo(() => {
@@ -121,6 +126,44 @@ export function Dashboard() {
             スコア入力
           </Link>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginTop: 0 }}>今日（{todayKey}）</h3>
+        {!todaySessions.length ? (
+          <div>
+            <p style={{ color: "var(--sub)", marginTop: 0 }}>まだ今日の記録がありません。</p>
+            <Link className="btn" to="/scores">
+              今日のスコアを入力
+            </Link>
+          </div>
+        ) : (
+          <div>
+            <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+              {todaySessions.map((s) => (
+                <li key={s.id} style={{ marginBottom: 6 }}>
+                  <span className={`badge ${s.sessionType}`}>
+                    {s.sessionType === "practice" ? "練習" : "大会"}
+                  </span>{" "}
+                  {s.games.map((g) => g.score).join(" / ")}
+                  {avg(s.games.map((g) => g.score)) != null
+                    ? `（平均 ${avg(s.games.map((g) => g.score))}）`
+                    : ""}
+                  {s.shopName ? ` · ${s.shopName}` : ""}
+                  {s.laneNote ? ` · L${s.laneNote}` : ""}
+                </li>
+              ))}
+            </ul>
+            <div className="form-actions" style={{ justifyContent: "flex-start", margin: 0 }}>
+              <Link className="btn" to="/scores">
+                追加で入力
+              </Link>
+              <Link className="btn secondary" to="/analysis">
+                分析を見る
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
       {reminder.enabled && maintDue.length > 0 && (

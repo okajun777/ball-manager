@@ -178,6 +178,43 @@ export function Analysis() {
       .sort((a, b) => b.lastDate.localeCompare(a.lastDate));
   }, [periodSessions]);
 
+  const ballCompare = useMemo(() => {
+    const map = new Map<
+      string,
+      { practice: number[]; tournament: number[] }
+    >();
+    for (const s of periodSessions) {
+      for (const g of s.games) {
+        if (!g.ballId) continue;
+        const row = map.get(g.ballId) ?? { practice: [], tournament: [] };
+        if (s.sessionType === "practice") row.practice.push(g.score);
+        else row.tournament.push(g.score);
+        map.set(g.ballId, row);
+      }
+    }
+    return [...map.entries()]
+      .map(([ballId, row]) => {
+        const ball = memberAllBalls.find((b) => b.id === ballId);
+        const pAvg = avg(row.practice);
+        const tAvg = avg(row.tournament);
+        return {
+          ballId,
+          name: ball?.name ?? "不明なボール",
+          brand: ball?.brand ?? "",
+          practiceAvg: pAvg,
+          practiceCount: row.practice.length,
+          tournamentAvg: tAvg,
+          tournamentCount: row.tournament.length,
+          gap:
+            pAvg != null && tAvg != null
+              ? Math.round((pAvg - tAvg) * 10) / 10
+              : null,
+        };
+      })
+      .filter((r) => r.practiceCount > 0 || r.tournamentCount > 0)
+      .sort((a, b) => Math.abs(b.gap ?? 0) - Math.abs(a.gap ?? 0));
+  }, [periodSessions, memberAllBalls]);
+
   return (
     <div>
       <div className="page-title">
@@ -290,36 +327,102 @@ export function Analysis() {
           )}
         </div>
       ) : mode === "compare" ? (
-        <div className="grid stats">
-          <div className="card stat">
-            <div className="label">練習 平均</div>
-            <div className="value">{avg(practiceScores) ?? "—"}</div>
-            <div className="hint">{practiceScores.length} games</div>
-          </div>
-          <div className="card stat">
-            <div className="label">大会 平均</div>
-            <div className="value">{avg(tournamentScores) ?? "—"}</div>
-            <div className="hint">{tournamentScores.length} games</div>
-          </div>
-          <div className="card stat">
-            <div className="label">差（練習−大会）</div>
-            <div className="value">
-              {avg(practiceScores) != null && avg(tournamentScores) != null
-                ? Math.round(
-                    ((avg(practiceScores) as number) - (avg(tournamentScores) as number)) * 10,
-                  ) / 10
-                : "—"}
+        <>
+          <div className="grid stats">
+            <div className="card stat">
+              <div className="label">練習 平均</div>
+              <div className="value">{avg(practiceScores) ?? "—"}</div>
+              <div className="hint">{practiceScores.length} games</div>
+            </div>
+            <div className="card stat">
+              <div className="label">大会 平均</div>
+              <div className="value">{avg(tournamentScores) ?? "—"}</div>
+              <div className="hint">{tournamentScores.length} games</div>
+            </div>
+            <div className="card stat">
+              <div className="label">差（練習−大会）</div>
+              <div className="value">
+                {avg(practiceScores) != null && avg(tournamentScores) != null
+                  ? Math.round(
+                      ((avg(practiceScores) as number) - (avg(tournamentScores) as number)) * 10,
+                    ) / 10
+                  : "—"}
+              </div>
+            </div>
+            <div className="card stat">
+              <div className="label">セッション数</div>
+              <div className="value">
+                {periodSessions.filter((s) => s.sessionType === "practice").length} /{" "}
+                {periodSessions.filter((s) => s.sessionType === "tournament").length}
+              </div>
+              <div className="hint">練習 / 大会</div>
             </div>
           </div>
-          <div className="card stat">
-            <div className="label">セッション数</div>
-            <div className="value">
-              {periodSessions.filter((s) => s.sessionType === "practice").length} /{" "}
-              {periodSessions.filter((s) => s.sessionType === "tournament").length}
-            </div>
-            <div className="hint">練習 / 大会</div>
+
+          <div className="card" style={{ marginTop: 14 }}>
+            <h3 style={{ marginTop: 0 }}>ボール別：練習 vs 大会</h3>
+            <p style={{ color: "var(--sub)", fontSize: "0.88rem", marginTop: 0 }}>
+              差が大きい球ほど、本番で落ちやすい／上がりやすい可能性があります。
+            </p>
+            {!ballCompare.length ? (
+              <div className="empty">比較できるボール記録がありません</div>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>ボール</th>
+                    <th>練習平均</th>
+                    <th>大会平均</th>
+                    <th>差</th>
+                    <th>G数</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ballCompare.map((row) => (
+                    <tr key={row.ballId}>
+                      <td>
+                        <strong>{row.name}</strong>
+                        {row.brand ? (
+                          <div style={{ color: "var(--sub)", fontSize: "0.8rem" }}>{row.brand}</div>
+                        ) : null}
+                      </td>
+                      <td>
+                        {row.practiceAvg ?? "—"}
+                        <div style={{ color: "var(--sub)", fontSize: "0.75rem" }}>
+                          {row.practiceCount}G
+                        </div>
+                      </td>
+                      <td>
+                        {row.tournamentAvg ?? "—"}
+                        <div style={{ color: "var(--sub)", fontSize: "0.75rem" }}>
+                          {row.tournamentCount}G
+                        </div>
+                      </td>
+                      <td
+                        style={{
+                          color:
+                            row.gap == null
+                              ? undefined
+                              : row.gap >= 10
+                                ? "var(--warn)"
+                                : row.gap <= -8
+                                  ? "var(--good)"
+                                  : undefined,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {row.gap == null ? "—" : row.gap > 0 ? `+${row.gap}` : row.gap}
+                      </td>
+                      <td>
+                        {row.practiceCount}/{row.tournamentCount}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-        </div>
+        </>
       ) : (
         <>
           <div className="grid stats">

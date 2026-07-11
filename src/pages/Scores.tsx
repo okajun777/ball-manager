@@ -352,6 +352,25 @@ export function Scores() {
       return;
     }
 
+    if (!editingId) {
+      const sameDay = memberSessions.filter((s) => s.playedOn === playedOn);
+      if (sameDay.length > 0) {
+        const summary = sameDay
+          .map(
+            (s) =>
+              `${s.sessionType === "practice" ? "練習" : "大会"} ${s.games.map((g) => g.score).join("/")}`,
+          )
+          .join("、");
+        if (
+          !confirm(
+            `${playedOn} にはすでに記録があります（${summary}）。\n追加で保存しますか？`,
+          )
+        ) {
+          return;
+        }
+      }
+    }
+
     const sessionId = editingId ?? uid("ses");
     const existingGames = editingId
       ? (memberSessions.find((s) => s.id === editingId)?.games ?? [])
