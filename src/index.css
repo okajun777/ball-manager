@@ -36,6 +36,13 @@ button, input, select, textarea { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 18px;
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
+  z-index: 30;
 }
 
 .brand {
