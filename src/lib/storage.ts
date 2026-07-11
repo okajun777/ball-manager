@@ -355,51 +355,128 @@ export async function loadAppData(): Promise<AppData> {
   return boundLocal;
 }
 
-export async function saveAppData(data: AppData): Promise<void> {
-  // MVP: 常にローカルへ保存。Supabase接続時は設定画面から同期を拡張予定
-  saveLocal(data);
-  const supabase = getSupabase();
-  if (!isSupabaseConfigured() || !supabase) return;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  // 簡易同期: グループが無ければ作成、あればローカル優先で upsert
-  const g = data.group;
-  await supabase.from("groups").upsert({
-    id: g.id,
-    name: g.name,
-    invite_code: g.inviteCode,
-  });
+function isUuid(id: string): boolean {
+  return UUID_RE.test(id);
+}
 
-  await supabase.from("members").upsert(
-    data.members.map((m) => {
-      const n = normalizeMember(m);
-      return {
-        id: n.id,
-        group_id: n.groupId,
-        display_name: n.displayName,
-        is_self: n.isSelf,
-        gender: n.gender ?? "unspecified",
-        hand: n.hand ?? "unspecified",
-        throw_style: n.throwStyle ?? "unspecified",
-        profile_note: n.profileNote ?? "",
-      };
+function mapId(id: string, table: Map<string, string>): string {
+  if (isUuid(id)) return id;
+  const existing = table.get(id);
+  if (existing) return existing;
+  const next = crypto.randomUUID();
+  table.set(id, next);
+  return next;
+}
+
+/** 旧 uid（mem_xxxx 等）を UUID に直して Supabase に載せる */
+function repairInvalidUuids(data: AppData): AppData {
+  const ids = new Map<string, string>();
+  const groupId = mapId(data.group.id, ids);
+  const members = data.members.map((m) =>
+    normalizeMember({
+      ...m,
+      id: mapId(m.id, ids),
+      groupId,
     }),
   );
+  const balls = data.balls.map((b) => ({
+    ...b,
+    id: mapId(b.id, ids),
+    groupId,
+    memberId: mapId(b.memberId, ids),
+  }));
+  const sessions = data.sessions.map((s) => {
+    const sessionId = mapId(s.id, ids);
+    return {
+      ...s,
+      id: sessionId,
+      groupId,
+      memberId: mapId(s.memberId, ids),
+      games: s.games.map((g) => ({
+        ...g,
+        id: mapId(g.id, ids),
+        sessionId,
+        ballId: g.ballId ? mapId(g.ballId, ids) : g.ballId,
+      })),
+    };
+  });
+  const maintenances = (data.maintenances ?? []).map((m) => ({
+    ...m,
+    id: mapId(m.id, ids),
+    groupId,
+    memberId: mapId(m.memberId, ids),
+    ballId: mapId(m.ballId, ids),
+  }));
+  const activeMemberId = data.activeMemberId
+    ? mapId(data.activeMemberId, ids)
+    : data.activeMemberId;
+  return {
+    group: { ...data.group, id: groupId },
+    members,
+    balls,
+    sessions,
+    maintenances,
+    activeMemberId,
+  };
+}
+
+export async function saveAppData(data: AppData): Promise<AppData> {
+  // MVP: 常にローカルへ保存。Supabase接続時は設定画面から同期を拡張予定
+  const fixed = repairInvalidUuids(data);
+  saveLocal(fixed);
+  const supabase = getSupabase();
+  if (!isSupabaseConfigured() || !supabase) return fixed;
+
+  // 簡易同期: グループが無ければ作成、あればローカル優先で upsert
+  const g = fixed.group;
+  {
+    const { error } = await supabase.from("groups").upsert({
+      id: g.id,
+      name: g.name,
+      invite_code: g.inviteCode,
+    });
+    if (error) throw new Error(`グループ同期に失敗: ${error.message}`);
+  }
+
+  {
+    const { error } = await supabase.from("members").upsert(
+      fixed.members.map((m) => {
+        const n = normalizeMember(m);
+        return {
+          id: n.id,
+          group_id: n.groupId,
+          display_name: n.displayName,
+          is_self: n.isSelf,
+          gender: n.gender ?? "unspecified",
+          hand: n.hand ?? "unspecified",
+          throw_style: n.throwStyle ?? "unspecified",
+          profile_note: n.profileNote ?? "",
+        };
+      }),
+    );
+    if (error) throw new Error(`メンバー同期に失敗: ${error.message}`);
+  }
 
   // ローカルで消したメンバーをクラウドからも削除（関連は DB cascade）
   {
-    const { data: remoteMembers } = await supabase
+    const { data: remoteMembers, error } = await supabase
       .from("members")
       .select("id")
       .eq("group_id", g.id);
-    const keep = new Set(data.members.map((m) => m.id));
+    if (error) throw new Error(`メンバー取得に失敗: ${error.message}`);
+    const keep = new Set(fixed.members.map((m) => m.id));
     const gone = (remoteMembers ?? []).map((r) => r.id as string).filter((id) => !keep.has(id));
     if (gone.length) {
-      await supabase.from("members").delete().in("id", gone);
+      const { error: delErr } = await supabase.from("members").delete().in("id", gone);
+      if (delErr) throw new Error(`メンバー削除に失敗: ${delErr.message}`);
     }
   }
 
   await supabase.from("balls").upsert(
-    data.balls.map((b) => ({
+    fixed.balls.map((b) => ({
       id: b.id,
       group_id: b.groupId,
       member_id: b.memberId,
@@ -418,7 +495,7 @@ export async function saveAppData(data: AppData): Promise<void> {
     })),
   );
 
-  for (const s of data.sessions) {
+  for (const s of fixed.sessions) {
     await supabase.from("score_sessions").upsert({
       id: s.id,
       group_id: s.groupId,
@@ -436,21 +513,21 @@ export async function saveAppData(data: AppData): Promise<void> {
     await supabase.from("score_games").delete().eq("session_id", s.id);
     if (s.games.length) {
       await supabase.from("score_games").insert(
-        s.games.map((g) => ({
-          id: g.id,
-          session_id: g.sessionId,
-          game_no: g.gameNo,
-          score: g.score,
-          ball_id: g.ballId,
-          frames: g.frames ?? null,
+        s.games.map((game) => ({
+          id: game.id,
+          session_id: game.sessionId,
+          game_no: game.gameNo,
+          score: game.score,
+          ball_id: game.ballId,
+          frames: game.frames ?? null,
         })),
       );
     }
   }
 
-  if (data.maintenances?.length) {
+  if (fixed.maintenances?.length) {
     await supabase.from("surface_maintenances").upsert(
-      data.maintenances.map((m) => ({
+      fixed.maintenances.map((m) => ({
         id: m.id,
         group_id: m.groupId,
         member_id: m.memberId,
@@ -462,6 +539,8 @@ export async function saveAppData(data: AppData): Promise<void> {
       })),
     );
   }
+
+  return fixed;
 }
 
 export function resetLocalDemo(): AppData {

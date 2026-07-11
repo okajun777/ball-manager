@@ -100,8 +100,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [adminPinReady, setAdminPinReady] = useState(() => hasAdminPin());
 
   const persist = useCallback(async (next: AppData) => {
-    setData(next);
-    await saveAppData(next);
+    const saved = await saveAppData(next);
+    setData(saved);
   }, []);
 
   const refresh = useCallback(async () => {

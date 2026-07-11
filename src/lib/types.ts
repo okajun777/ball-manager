@@ -158,8 +158,9 @@ export const MAINTENANCE_KIND_LABEL: Record<MaintenanceKind, string> = {
   other: "その他",
 };
 
-export function uid(prefix = "id"): string {
-  return `${prefix}_${crypto.randomUUID().slice(0, 8)}`;
+/** Supabase の uuid 列に載せるため、常に UUID を返す（prefix は互換のため残す） */
+export function uid(_prefix = "id"): string {
+  return crypto.randomUUID();
 }
 
 export function today(): string {

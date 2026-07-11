@@ -142,8 +142,14 @@ export function Settings() {
   async function onAddMember(e: FormEvent) {
     e.preventDefault();
     if (!isAdmin) return;
-    await addMember(memberName);
-    setMemberName("");
+    const name = memberName.trim();
+    if (!name) return;
+    try {
+      await addMember(name);
+      setMemberName("");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "メンバー追加に失敗しました");
+    }
   }
 
   async function onJoin(e: FormEvent) {
