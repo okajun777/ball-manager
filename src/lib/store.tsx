@@ -27,6 +27,7 @@ type Store = {
   addMaintenance: (item: SurfaceMaintenance) => Promise<void>;
   deleteMaintenance: (id: string) => Promise<void>;
   addMember: (name: string) => Promise<void>;
+  updateMemberName: (id: string, name: string) => Promise<void>;
   updateGroupName: (name: string) => Promise<void>;
   replaceAppData: (next: AppData) => Promise<void>;
   joinGroup: (inviteCode: string, displayName: string) => Promise<void>;
@@ -177,6 +178,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         isSelf: false,
       };
       await persist({ ...data, members: [...data.members, member] });
+    },
+    updateMemberName: async (id, name) => {
+      if (!data || !name.trim()) return;
+      await persist({
+        ...data,
+        members: data.members.map((m) =>
+          m.id === id ? { ...m, displayName: name.trim() } : m,
+        ),
+      });
     },
     updateGroupName: async (name) => {
       if (!data || !name.trim()) return;

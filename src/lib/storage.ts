@@ -28,8 +28,8 @@ function createDemoData(): AppData {
   };
 
   const members: Member[] = [
-    { id: selfId, groupId, displayName: "自分", isSelf: true },
-    { id: familyId, groupId, displayName: "家族", isSelf: false },
+    { id: selfId, groupId, displayName: "淳司", isSelf: true },
+    { id: familyId, groupId, displayName: "はるみ", isSelf: false },
   ];
 
   const balls: Ball[] = [
@@ -105,9 +105,19 @@ function createDemoData(): AppData {
   return { group, members, balls, sessions, maintenances: [], activeMemberId: selfId };
 }
 
+/** 初期デモのプレースホルダ名を実メンバー名へ寄せる */
+function remapDemoMemberNames(members: Member[]): Member[] {
+  return members.map((m) => {
+    if (m.displayName === "自分") return { ...m, displayName: "淳司" };
+    if (m.displayName === "家族") return { ...m, displayName: "はるみ" };
+    return m;
+  });
+}
+
 function normalizeAppData(data: AppData): AppData {
   return {
     ...data,
+    members: remapDemoMemberNames(data.members),
     maintenances: Array.isArray(data.maintenances) ? data.maintenances : [],
   };
 }
@@ -119,7 +129,13 @@ function loadLocal(): AppData {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(demo));
     return demo;
   }
-  return normalizeAppData(JSON.parse(raw) as AppData);
+  const parsed = JSON.parse(raw) as AppData;
+  const normalized = normalizeAppData(parsed);
+  const renamed = parsed.members.some(
+    (m, i) => m.displayName !== normalized.members[i]?.displayName,
+  );
+  if (renamed) saveLocal(normalized);
+  return normalized;
 }
 
 function saveLocal(data: AppData) {

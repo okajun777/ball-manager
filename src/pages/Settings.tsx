@@ -19,12 +19,14 @@ export function Settings() {
     memberBalls,
     memberSessions,
     addMember,
+    updateMemberName,
     updateGroupName,
     replaceAppData,
     joinGroup,
   } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
+  const [editingNames, setEditingNames] = useState<Record<string, string>>({});
   const [joinCode, setJoinCode] = useState("");
   const [joinName, setJoinName] = useState("");
   const [llm, setLlm] = useState<LlmSettings>(() => loadLlmSettings());
@@ -347,13 +349,49 @@ export function Settings() {
               追加
             </button>
           </div>
-          <ul style={{ marginTop: 12, paddingLeft: 18 }}>
-            {data.members.map((m) => (
-              <li key={m.id}>
-                {m.displayName}
-                {m.isSelf ? "（自分）" : ""}
-              </li>
-            ))}
+          <ul style={{ marginTop: 12, paddingLeft: 0, listStyle: "none" }}>
+            {data.members.map((m) => {
+              const draft = editingNames[m.id] ?? m.displayName;
+              return (
+                <li
+                  key={m.id}
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "center",
+                    marginBottom: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <input
+                    value={draft}
+                    onChange={(e) =>
+                      setEditingNames((prev) => ({ ...prev, [m.id]: e.target.value }))
+                    }
+                    style={{ flex: "1 1 120px", minWidth: 0 }}
+                    aria-label={`${m.displayName}の表示名`}
+                  />
+                  {m.isSelf ? (
+                    <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>自分</span>
+                  ) : null}
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    disabled={!draft.trim() || draft.trim() === m.displayName}
+                    onClick={async () => {
+                      await updateMemberName(m.id, draft);
+                      setEditingNames((prev) => {
+                        const next = { ...prev };
+                        delete next[m.id];
+                        return next;
+                      });
+                    }}
+                  >
+                    名前を保存
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </form>
 
