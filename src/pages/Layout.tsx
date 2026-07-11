@@ -1,4 +1,6 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { APP_PUBLIC_URL, readInviteFromLocation } from "../lib/appUrl";
 import { ROUND1_VIEWER_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
 
@@ -14,6 +16,16 @@ const links = [
 
 export function Layout() {
   const { data, activeMember, setActiveMemberId, loading, error } = useStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const code = readInviteFromLocation();
+    if (!code) return;
+    if (!/\/settings\/?$/.test(location.pathname)) {
+      navigate(`/settings?invite=${encodeURIComponent(code)}`, { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   return (
     <div className="app-shell">
@@ -44,6 +56,9 @@ export function Layout() {
             ))}
           </select>
         </div>
+        <a className="ext-link" href={APP_PUBLIC_URL} target="_blank" rel="noreferrer">
+          公開URLを開く ↗
+        </a>
         <a className="ext-link" href={ROUND1_VIEWER_URL} target="_blank" rel="noreferrer">
           ROUND1 プロショップ ↗
         </a>

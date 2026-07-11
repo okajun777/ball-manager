@@ -1,19 +1,10 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { downloadBackupJson, readBackupFile } from "../lib/backup";
-import { downloadScoresCsv } from "../lib/csvExport";
 import {
-  hasSharedLlmKey,
-  loadLlmSettings,
-  saveLlmSettings,
-  type LlmSettings,
-} from "../lib/llm";
-import {
-  loadMaintReminderSettings,
-  requestNotifyPermission,
-  saveMaintReminderSettings,
-  type MaintReminderSettings,
-} from "../lib/maintReminder";
+  APP_PUBLIC_URL,
+  appEntryUrl,
+  appInviteUrl,
+  clearInviteFromLocation,
+  readInviteFromLocation,
+} from "../lib/appUrl";
 import { createFreshData } from "../lib/storage";
 import {
   clearSupabaseSettings,
@@ -34,6 +25,22 @@ import {
   type MemberHand,
   type MemberThrowStyle,
 } from "../lib/types";
+import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
+import { downloadBackupJson, readBackupFile } from "../lib/backup";
+import { downloadScoresCsv } from "../lib/csvExport";
+import {
+  hasSharedLlmKey,
+  loadLlmSettings,
+  saveLlmSettings,
+  type LlmSettings,
+} from "../lib/llm";
+import {
+  loadMaintReminderSettings,
+  requestNotifyPermission,
+  saveMaintReminderSettings,
+  type MaintReminderSettings,
+} from "../lib/maintReminder";
 
 type MemberDraft = {
   displayName: string;
@@ -94,6 +101,16 @@ export function Settings() {
   );
   const [prefs, setPrefs] = useState<UserPrefs>(() => loadUserPrefs());
   const sharedLlm = hasSharedLlmKey();
+  const publicUrl = APP_PUBLIC_URL;
+  const inviteLink = data ? appInviteUrl(data.group.inviteCode) : publicUrl;
+  const thisDeviceUrl = appEntryUrl();
+
+  useEffect(() => {
+    const code = readInviteFromLocation();
+    if (!code) return;
+    setJoinCode(code);
+    clearInviteFromLocation();
+  }, []);
 
   if (!data) return null;
 
@@ -175,7 +192,20 @@ export function Settings() {
     }
   }
 
-  const inviteText = `Bowling Ball Manager に参加しませんか？\nグループ: ${data.group.name}\n招待コード: ${data.group.inviteCode}\n※Supabase設定後にクラウド共有が有効になります`;
+  const inviteText = `Bowling Ball Manager
+すぐ開く: ${inviteLink}
+グループ: ${data.group.name}
+招待コード: ${data.group.inviteCode}
+（リンクを開いて、表示名を入れて参加してください）`;
+
+  async function copyText(label: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert(`${label}をコピーしました`);
+    } catch {
+      prompt("コピーできない場合は手動でコピーしてください", text);
+    }
+  }
 
   return (
     <div>
@@ -183,6 +213,40 @@ export function Settings() {
         <div>
           <h1>設定・共有</h1>
           <p>家族・知り合いと同じグループでボールとスコアを共有</p>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginTop: 0 }}>アプリをすぐ開くURL</h3>
+        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+          ブックマークやLINE・メールに貼ると、すぐ Ball Manager を開けます。
+        </p>
+        <div className="field">
+          <label>公開版（おすすめ）</label>
+          <input readOnly value={publicUrl} onFocus={(e) => e.currentTarget.select()} />
+        </div>
+        <div className="field">
+          <label>招待リンク（公開版＋招待コード）</label>
+          <input readOnly value={inviteLink} onFocus={(e) => e.currentTarget.select()} />
+        </div>
+        <div className="field">
+          <label>この端末で開いているURL</label>
+          <input readOnly value={thisDeviceUrl} onFocus={(e) => e.currentTarget.select()} />
+        </div>
+        <div className="form-actions">
+          <button className="btn" type="button" onClick={() => void copyText("公開版URL", publicUrl)}>
+            公開版をコピー
+          </button>
+          <button
+            className="btn secondary"
+            type="button"
+            onClick={() => void copyText("招待リンク", inviteLink)}
+          >
+            招待リンクをコピー
+          </button>
+          <a className="btn secondary" href={publicUrl} target="_blank" rel="noreferrer">
+            公開版を開く
+          </a>
         </div>
       </div>
 
@@ -660,10 +724,7 @@ export function Settings() {
             <button
               className="btn secondary"
               type="button"
-              onClick={async () => {
-                await navigator.clipboard.writeText(inviteText);
-                alert("コピーしました");
-              }}
+              onClick={() => void copyText("招待文", inviteText)}
             >
               コピー
             </button>
