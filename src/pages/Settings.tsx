@@ -93,6 +93,7 @@ export function Settings() {
     claimAsMember,
     unlockAdmin,
     setAdminPin,
+    resetIdentity,
   } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
@@ -107,6 +108,9 @@ export function Settings() {
   );
   const [prefs, setPrefs] = useState<UserPrefs>(() => loadUserPrefs());
   const [adminPinDraft, setAdminPinDraft] = useState("");
+  const [switchPin, setSwitchPin] = useState("");
+  const [switchPinError, setSwitchPinError] = useState("");
+  const [pendingOwner, setPendingOwner] = useState(false);
   const sharedLlm = hasSharedLlmKey();
   const publicUrl = APP_PUBLIC_URL;
   const inviteLink = data ? appInviteUrl(data.group.inviteCode) : publicUrl;
@@ -286,31 +290,86 @@ export function Settings() {
                   ))}
               </select>
             </div>
+            <button className="btn secondary" type="button" onClick={() => resetIdentity()}>
+              選び直す
+            </button>
+          </div>
+        ) : pendingOwner ? (
+          <div>
+            <div className="field">
+              <label>ロック番号（4桁）</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={switchPin}
+                onChange={(e) => {
+                  setSwitchPin(e.target.value.replace(/\D/g, "").slice(0, 4));
+                  setSwitchPinError("");
+                }}
+                placeholder="••••"
+                autoComplete="off"
+                autoFocus
+              />
+            </div>
+            {switchPinError ? (
+              <p style={{ color: "#b42318", fontSize: "0.88rem" }}>{switchPinError}</p>
+            ) : null}
+            <div className="form-actions" style={{ justifyContent: "flex-start" }}>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => {
+                  const res = unlockAdmin(switchPin);
+                  if (!res.ok) {
+                    setSwitchPinError(res.error || "違います");
+                    return;
+                  }
+                  setPendingOwner(false);
+                  setSwitchPin("");
+                }}
+              >
+                開く
+              </button>
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={() => {
+                  setPendingOwner(false);
+                  setSwitchPin("");
+                  setSwitchPinError("");
+                }}
+              >
+                戻る
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="field">
-            <label>利用者</label>
-            <select
-              value={deviceMember?.id ?? ""}
-              onChange={(e) => {
-                const id = e.target.value;
-                const owner = findAdminMemberId(data.members);
-                if (owner && id === owner) {
-                  const pin = window.prompt("PIN");
-                  if (pin == null) return;
-                  const res = unlockAdmin(pin);
-                  if (!res.ok) alert(res.error || "違います");
-                  return;
-                }
-                claimAsMember(id);
-              }}
-            >
-              {data.members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName}
-                </option>
-              ))}
-            </select>
+          <div>
+            <div className="field">
+              <label>利用者</label>
+              <select
+                value={deviceMember?.id ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  const owner = findAdminMemberId(data.members);
+                  if (owner && id === owner) {
+                    setPendingOwner(true);
+                    return;
+                  }
+                  claimAsMember(id);
+                }}
+              >
+                {data.members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.displayName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button className="btn secondary" type="button" onClick={() => resetIdentity()}>
+              選び直す
+            </button>
           </div>
         )}
       </div>

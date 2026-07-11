@@ -10,14 +10,17 @@ export function IdentityGate() {
 
   const members = useMemo(() => data?.members ?? [], [data]);
   const ownerId = useMemo(() => findAdminMemberId(members), [members]);
+  const pendingName =
+    members.find((m) => m.id === pendingOwnerId)?.displayName ?? "";
 
   if (!data) return null;
 
   if (pendingOwnerId) {
     return (
       <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
-        <h2 style={{ marginTop: 0 }}>PIN</h2>
+        <h2 style={{ marginTop: 0 }}>{pendingName}</h2>
         <div className="field">
+          <label>ロック番号（4桁）</label>
           <input
             type="password"
             inputMode="numeric"

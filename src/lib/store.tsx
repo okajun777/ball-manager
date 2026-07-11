@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  clearDeviceMemberId,
   findAdminMemberId,
   hasAdminPin,
   loadDeviceMemberId,
@@ -46,12 +47,14 @@ type Store = {
   memberSessions: ScoreSession[];
   memberMaintenances: SurfaceMaintenance[];
   setActiveMemberId: (id: string) => void;
-  /** 一般メンバーとしてこの端末を使う（管理者にはできない） */
+  /** 一般メンバーとしてこの端末を使う（オーナーにはできない） */
   claimAsMember: (memberId: string) => void;
-  /** PINで管理者としてこの端末を使う */
+  /** PINでオーナーとしてこの端末を使う */
   unlockAdmin: (pin: string) => { ok: boolean; error?: string };
-  /** 管理者PINを設定・変更（管理者のみ） */
+  /** ロック番号を設定・変更（オーナーのみ） */
   setAdminPin: (pin: string) => { ok: boolean; error?: string };
+  /** 利用者選択をやり直す */
+  resetIdentity: () => void;
   hasAdminPin: boolean;
   upsertBall: (ball: Ball) => Promise<void>;
   deleteBall: (id: string) => Promise<void>;
@@ -249,6 +252,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         return { ok: false, error: e instanceof Error ? e.message : String(e) };
       }
+    },
+    resetIdentity: () => {
+      clearDeviceMemberId();
+      setDeviceMemberIdState(null);
     },
     hasAdminPin: adminPinReady,
     upsertBall: async (ball) => {
