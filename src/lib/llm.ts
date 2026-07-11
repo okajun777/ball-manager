@@ -25,7 +25,7 @@ function envDefaults(): LlmSettings {
   return {
     apiKey: String(import.meta.env.VITE_LLM_API_KEY ?? "").trim(),
     baseUrl: String(import.meta.env.VITE_LLM_BASE_URL ?? "").trim() || "https://api.openai.com/v1",
-    model: String(import.meta.env.VITE_LLM_MODEL ?? "").trim() || "gpt-4o-mini",
+    model: String(import.meta.env.VITE_LLM_MODEL ?? "").trim() || "gpt-5.6",
   };
 }
 
@@ -42,7 +42,7 @@ export function loadLlmSettings(): LlmSettings {
 export function saveLlmSettings(settings: LlmSettings) {
   localStorage.setItem(KEY_STORAGE, settings.apiKey.trim());
   localStorage.setItem(BASE_STORAGE, settings.baseUrl.trim() || "https://api.openai.com/v1");
-  localStorage.setItem(MODEL_STORAGE, settings.model.trim() || "gpt-4o-mini");
+  localStorage.setItem(MODEL_STORAGE, settings.model.trim() || "gpt-5.6");
 }
 
 export function isLlmConfigured(): boolean {
@@ -53,6 +53,10 @@ export function hasSharedLlmKey(): boolean {
   return Boolean(envDefaults().apiKey);
 }
 
+function isGpt5Family(model: string): boolean {
+  return /^gpt-5/i.test(model.trim());
+}
+
 async function chatCompletion(messages: unknown[], temperature = 0.4): Promise<string> {
   const settings = loadLlmSettings();
   if (!settings.apiKey) {
@@ -60,18 +64,25 @@ async function chatCompletion(messages: unknown[], temperature = 0.4): Promise<s
   }
 
   const endpoint = `${settings.baseUrl.replace(/\/$/, "")}/chat/completions`;
+  const body: Record<string, unknown> = {
+    model: settings.model,
+    messages,
+  };
+  if (isGpt5Family(settings.model)) {
+    // GPT-5系は max_tokens / 任意temperature 非対応
+    body.max_completion_tokens = 4000;
+  } else {
+    body.temperature = temperature;
+    body.max_tokens = 1800;
+  }
+
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${settings.apiKey}`,
     },
-    body: JSON.stringify({
-      model: settings.model,
-      temperature,
-      max_tokens: 1800,
-      messages,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {

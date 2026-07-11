@@ -372,7 +372,7 @@ export function Settings() {
                 <input
                   value={llm.model}
                   onChange={(e) => setLlm({ ...llm, model: e.target.value })}
-                  placeholder="gpt-4o-mini"
+                  placeholder="gpt-5.6"
                 />
               </div>
             </div>
