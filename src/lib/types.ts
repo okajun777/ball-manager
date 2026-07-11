@@ -64,6 +64,8 @@ export type ScoreSession = {
   sessionType: SessionType;
   tournamentName: string;
   shopName: string;
+  /** レーン番号（例: 12 / 12-13） */
+  laneNote: string;
   oilNote: string;
   memo: string;
   games: ScoreGame[];

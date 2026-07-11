@@ -48,10 +48,14 @@ create table if not exists score_sessions (
   session_type text not null check (session_type in ('practice', 'tournament')),
   tournament_name text default '',
   shop_name text default '',
+  lane_note text default '',
   oil_note text default '',
   memo text default '',
   created_at timestamptz not null default now()
 );
+
+-- 既存DB向け
+-- alter table score_sessions add column if not exists lane_note text default '';
 
 create table if not exists score_games (
   id uuid primary key default gen_random_uuid(),

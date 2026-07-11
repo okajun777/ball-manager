@@ -6,32 +6,48 @@ import { useStore } from "../lib/store";
 import { avg } from "../lib/types";
 
 type Mode = "all" | "practice" | "tournament" | "compare" | "events";
+type Period = "all" | "30" | "90" | "365";
 
 function pct(part: number, whole: number): string {
   if (!whole) return "—";
   return `${Math.round((part / whole) * 1000) / 10}%`;
 }
 
+function cutoffDate(period: Period): string | null {
+  if (period === "all") return null;
+  const days = Number(period);
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
 export function Analysis() {
   const { activeMember, memberAllBalls, memberSessions } = useStore();
   const [mode, setMode] = useState<Mode>("all");
+  const [period, setPeriod] = useState<Period>("all");
+
+  const periodSessions = useMemo(() => {
+    const cut = cutoffDate(period);
+    if (!cut) return memberSessions;
+    return memberSessions.filter((s) => s.playedOn >= cut);
+  }, [memberSessions, period]);
 
   const insights = useMemo(
-    () => buildInsights(memberSessions, memberAllBalls),
-    [memberSessions, memberAllBalls],
+    () => buildInsights(periodSessions, memberAllBalls),
+    [periodSessions, memberAllBalls],
   );
 
   const filtered = useMemo(() => {
-    if (mode === "practice") return memberSessions.filter((s) => s.sessionType === "practice");
+    if (mode === "practice") return periodSessions.filter((s) => s.sessionType === "practice");
     if (mode === "tournament")
-      return memberSessions.filter((s) => s.sessionType === "tournament");
-    return memberSessions;
-  }, [memberSessions, mode]);
+      return periodSessions.filter((s) => s.sessionType === "tournament");
+    return periodSessions;
+  }, [periodSessions, mode]);
 
-  const practiceScores = memberSessions
+  const practiceScores = periodSessions
     .filter((s) => s.sessionType === "practice")
     .flatMap((s) => s.games.map((g) => g.score));
-  const tournamentScores = memberSessions
+  const tournamentScores = periodSessions
     .filter((s) => s.sessionType === "tournament")
     .flatMap((s) => s.games.map((g) => g.score));
   const scores = filtered.flatMap((s) => s.games.map((g) => g.score));
@@ -120,7 +136,7 @@ export function Analysis() {
       string,
       { name: string; dates: string[]; scores: number[]; sessions: number; shop: string }
     >();
-    for (const s of memberSessions.filter((x) => x.sessionType === "tournament")) {
+    for (const s of periodSessions.filter((x) => x.sessionType === "tournament")) {
       const name = s.tournamentName.trim() || "（大会名なし）";
       const row = map.get(name) ?? {
         name,
@@ -144,7 +160,7 @@ export function Analysis() {
         lastDate: [...row.dates].sort().at(-1) ?? "",
       }))
       .sort((a, b) => b.lastDate.localeCompare(a.lastDate));
-  }, [memberSessions]);
+  }, [periodSessions]);
 
   return (
     <div>
@@ -158,7 +174,7 @@ export function Analysis() {
           type="button"
           onClick={() =>
             downloadScoresCsv(
-              memberSessions,
+              periodSessions,
               memberAllBalls,
               activeMember?.displayName ?? "member",
             )
@@ -166,6 +182,26 @@ export function Analysis() {
         >
           CSV書き出し
         </button>
+      </div>
+
+      <div className="tabs" style={{ marginBottom: 10 }}>
+        {(
+          [
+            ["all", "全期間"],
+            ["30", "直近30日"],
+            ["90", "直近90日"],
+            ["365", "直近1年"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={`tab ${period === key ? "active" : ""}`}
+            onClick={() => setPeriod(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
@@ -262,8 +298,8 @@ export function Analysis() {
           <div className="card stat">
             <div className="label">セッション数</div>
             <div className="value">
-              {memberSessions.filter((s) => s.sessionType === "practice").length} /{" "}
-              {memberSessions.filter((s) => s.sessionType === "tournament").length}
+              {periodSessions.filter((s) => s.sessionType === "practice").length} /{" "}
+              {periodSessions.filter((s) => s.sessionType === "tournament").length}
             </div>
             <div className="hint">練習 / 大会</div>
           </div>

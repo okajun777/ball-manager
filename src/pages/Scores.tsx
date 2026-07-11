@@ -9,6 +9,7 @@ import {
   scoreGameFromFrames,
   type FrameRolls,
 } from "../lib/bowlingScore";
+import { formatSessionShareText } from "../lib/shareSession";
 import { useStore } from "../lib/store";
 import type { ScoreGame, ScoreSession, SessionType } from "../lib/types";
 import { today, uid } from "../lib/types";
@@ -139,6 +140,7 @@ export function Scores() {
   const [sessionType, setSessionType] = useState<SessionType>("practice");
   const [tournamentName, setTournamentName] = useState("");
   const [shopName, setShopName] = useState("");
+  const [laneNote, setLaneNote] = useState("");
   const [oilNote, setOilNote] = useState("ハウス");
   const [memo, setMemo] = useState("");
   const [entryMode, setEntryMode] = useState<EntryMode>("total");
@@ -211,6 +213,7 @@ export function Scores() {
     setSessionType("practice");
     setTournamentName("");
     setShopName("");
+    setLaneNote("");
     setOilNote("ハウス");
     setMemo("");
     setEntryMode("total");
@@ -228,6 +231,7 @@ export function Scores() {
     setSessionType(last.sessionType);
     setTournamentName(last.tournamentName);
     setShopName(last.shopName);
+    setLaneNote(last.laneNote ?? "");
     setOilNote(last.oilNote || "ハウス");
     setMemo("");
     setEntryMode("total");
@@ -248,6 +252,7 @@ export function Scores() {
     setSessionType(session.sessionType);
     setTournamentName(session.tournamentName);
     setShopName(session.shopName);
+    setLaneNote(session.laneNote ?? "");
     setOilNote(session.oilNote);
     setMemo(session.memo);
 
@@ -344,6 +349,7 @@ export function Scores() {
       sessionType,
       tournamentName: sessionType === "tournament" ? tournamentName.trim() : "",
       shopName: shopName.trim(),
+      laneNote: laneNote.trim(),
       oilNote: oilNote.trim(),
       memo: memo.trim(),
       games: sessionGames,
@@ -417,6 +423,14 @@ export function Scores() {
                   ))}
                 </div>
               )}
+            </div>
+            <div className="field">
+              <label>レーン（任意）</label>
+              <input
+                value={laneNote}
+                onChange={(e) => setLaneNote(e.target.value)}
+                placeholder="12 / 12-13"
+              />
             </div>
           </div>
 
@@ -604,6 +618,21 @@ export function Scores() {
                   </td>
                   <td>
                     <div className="form-actions" style={{ margin: 0 }}>
+                      <button
+                        className="btn secondary"
+                        type="button"
+                        onClick={async () => {
+                          const text = formatSessionShareText(
+                            s,
+                            memberAllBalls,
+                            activeMember.displayName,
+                          );
+                          await navigator.clipboard.writeText(text);
+                          alert("結果テキストをコピーしました");
+                        }}
+                      >
+                        共有
+                      </button>
                       <button
                         className="btn secondary"
                         type="button"

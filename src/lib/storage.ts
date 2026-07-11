@@ -76,6 +76,7 @@ function createDemoData(): AppData {
       sessionType: "practice",
       tournamentName: "",
       shopName: "ラウンドワン",
+      laneNote: "",
       oilNote: "ハウス",
       memo: "デモ: 1ゲーム1ボール",
       games: [
@@ -92,6 +93,7 @@ function createDemoData(): AppData {
       sessionType: "tournament",
       tournamentName: "サンプル杯",
       shopName: "ラウンドワン",
+      laneNote: "",
       oilNote: "ハウス",
       memo: "デモ大会",
       games: [
@@ -149,6 +151,10 @@ function normalizeAppData(data: AppData): AppData {
     balls: (data.balls ?? []).map((b) => ({
       ...b,
       retired: Boolean(b.retired),
+    })),
+    sessions: (data.sessions ?? []).map((s) => ({
+      ...s,
+      laneNote: s.laneNote ?? "",
     })),
     maintenances: Array.isArray(data.maintenances) ? data.maintenances : [],
   };
@@ -259,6 +265,7 @@ export async function saveAppData(data: AppData): Promise<void> {
       session_type: s.sessionType,
       tournament_name: s.tournamentName,
       shop_name: s.shopName,
+      lane_note: s.laneNote ?? "",
       oil_note: s.oilNote,
       memo: s.memo,
     });
@@ -439,6 +446,7 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
     sessionType: s.session_type,
     tournamentName: s.tournament_name ?? "",
     shopName: s.shop_name ?? "",
+    laneNote: s.lane_note ?? "",
     oilNote: s.oil_note ?? "",
     memo: s.memo ?? "",
     games: (gamesBySession.get(s.id) ?? []).sort((a, b) => a.gameNo - b.gameNo),
