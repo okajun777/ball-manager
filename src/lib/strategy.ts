@@ -45,7 +45,7 @@ function inferCoverFromText(...parts: string[]): string {
   return "";
 }
 
-function matchCatalog(owned: Ball, catalog: CatalogBall[]): CatalogBall | null {
+export function findCatalogBall(owned: Ball, catalog: CatalogBall[]): CatalogBall | null {
   const name = owned.name.toLowerCase();
   const brand = owned.brand.toLowerCase();
   const exact = catalog.find(
@@ -77,7 +77,7 @@ type Candidate = {
 
 function toCandidates(owned: Ball[], catalog: CatalogBall[], ownedOnly: boolean): Candidate[] {
   const fromOwned: Candidate[] = owned.map((b) => {
-    const cat = matchCatalog(b, catalog);
+    const cat = findCatalogBall(b, catalog);
     return {
       ballId: b.id,
       name: b.name,

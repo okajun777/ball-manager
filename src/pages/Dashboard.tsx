@@ -7,6 +7,7 @@ import {
   loadMaintReminderSettings,
   maybeNotifyMaintDue,
 } from "../lib/maintReminder";
+import { formatSessionShareText } from "../lib/shareSession";
 import { adviseBalls } from "../lib/strategy";
 import { useStore } from "../lib/store";
 import { ROUND1_VIEWER_URL } from "../lib/round1";
@@ -16,7 +17,8 @@ const catalog = catalogBalls as CatalogBall[];
 const houseOil = OIL_PRESETS.find((p) => p.id === "house") ?? OIL_PRESETS[0];
 
 export function Dashboard() {
-  const { activeMember, memberBalls, memberSessions, memberMaintenances } = useStore();
+  const { activeMember, memberBalls, memberAllBalls, memberSessions, memberMaintenances } =
+    useStore();
 
   const practiceScores = memberSessions
     .filter((s) => s.sessionType === "practice")
@@ -82,7 +84,7 @@ export function Dashboard() {
     }
     return [...map.entries()]
       .map(([ballId, scores]) => {
-        const ball = memberBalls.find((b) => b.id === ballId);
+        const ball = memberAllBalls.find((b) => b.id === ballId);
         return {
           ballId,
           name: ball?.name ?? "不明",
@@ -93,7 +95,7 @@ export function Dashboard() {
       .filter((r) => r.count >= 1)
       .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0))
       .slice(0, 3);
-  }, [memberSessions, memberBalls]);
+  }, [memberSessions, memberAllBalls]);
 
   return (
     <div>
@@ -235,13 +237,39 @@ export function Dashboard() {
                 ))}
               </div>
               {recent && (
-                <p style={{ color: "var(--sub)", fontSize: "0.88rem", marginBottom: 0 }}>
-                  直近: {recent.playedOn}{" "}
-                  <span className={`badge ${recent.sessionType}`}>
-                    {recent.sessionType === "practice" ? "練習" : "大会"}
-                  </span>{" "}
-                  {recent.games.map((g) => g.score).join(" / ")}
-                </p>
+                <div style={{ marginTop: 10 }}>
+                  <p style={{ color: "var(--sub)", fontSize: "0.88rem", marginTop: 0 }}>
+                    直近: {recent.playedOn}{" "}
+                    <span className={`badge ${recent.sessionType}`}>
+                      {recent.sessionType === "practice" ? "練習" : "大会"}
+                    </span>{" "}
+                    {recent.games.map((g) => g.score).join(" / ")}
+                    {recent.laneNote ? ` · L${recent.laneNote}` : ""}
+                    {avg(recent.games.map((g) => g.score)) != null
+                      ? ` · 平均 ${avg(recent.games.map((g) => g.score))}`
+                      : ""}
+                  </p>
+                  <div className="form-actions" style={{ marginTop: 8, justifyContent: "flex-start" }}>
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={async () => {
+                        const text = formatSessionShareText(
+                          recent,
+                          memberAllBalls,
+                          activeMember?.displayName ?? "",
+                        );
+                        await navigator.clipboard.writeText(text);
+                        alert("直近結果をコピーしました");
+                      }}
+                    >
+                      直近を共有
+                    </button>
+                    <Link className="btn secondary" to="/scores">
+                      スコアへ
+                    </Link>
+                  </div>
+                </div>
               )}
             </>
           )}

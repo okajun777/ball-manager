@@ -542,6 +542,23 @@ export function Scores() {
                 <button
                   className="btn secondary"
                   type="button"
+                  onClick={() =>
+                    setGames((prev) => [
+                      ...prev.slice(0, i + 1),
+                      {
+                        score: "",
+                        ballId: g.ballId || defaultBallId,
+                        frames: emptyFrames(),
+                      },
+                      ...prev.slice(i + 1),
+                    ])
+                  }
+                >
+                  複製
+                </button>
+                <button
+                  className="btn secondary"
+                  type="button"
                   onClick={() => setGames((prev) => prev.filter((_, idx) => idx !== i))}
                   disabled={games.length <= 1}
                 >

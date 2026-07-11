@@ -1,13 +1,19 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import catalogBalls from "../data/catalogBalls.json";
 import { useStore } from "../lib/store";
 import {
   buildMaintDueList,
   loadMaintReminderSettings,
 } from "../lib/maintReminder";
+import { publicUrl } from "../lib/paths";
 import { round1SearchUrl } from "../lib/round1";
+import { findCatalogBall } from "../lib/strategy";
+import type { CatalogBall } from "../lib/catalogTypes";
 import type { Ball, MaintenanceKind, SurfaceMaintenance } from "../lib/types";
 import { MAINTENANCE_KIND_LABEL, today, uid } from "../lib/types";
+
+const catalog = catalogBalls as CatalogBall[];
 
 const emptyForm = {
   name: "",
@@ -340,9 +346,27 @@ export function MyBalls() {
           {memberBalls.map((b) => {
             const last = lastMaintFor(b.id);
             const due = dueMap.get(b.id);
+            const cat = findCatalogBall(b, catalog);
+            const img = cat?.imageUrl ? publicUrl(cat.imageUrl) : "";
             return (
               <div className="card" key={b.id}>
-                <div className="ball-brand">{b.brand || "ブランド未設定"}</div>
+                {img ? (
+                  <img
+                    src={img}
+                    alt={b.name}
+                    style={{
+                      width: "100%",
+                      height: 140,
+                      objectFit: "contain",
+                      background: "#f8fafc",
+                      borderRadius: 10,
+                      marginBottom: 10,
+                      border: "1px solid var(--line)",
+                    }}
+                    loading="lazy"
+                  />
+                ) : null}
+                <div className="ball-brand">{b.brand || cat?.brand || "ブランド未設定"}</div>
                 <div className="ball-title">
                   {b.name}
                   {reminder.enabled && due && due.status !== "ok" ? (
