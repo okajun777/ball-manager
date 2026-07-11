@@ -80,6 +80,8 @@ export function Settings() {
   const {
     data,
     activeMember,
+    deviceMember,
+    isAdmin,
     memberBalls,
     memberSessions,
     addMember,
@@ -87,6 +89,7 @@ export function Settings() {
     updateGroupName,
     replaceAppData,
     joinGroup,
+    setDeviceMemberId,
   } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
@@ -116,6 +119,7 @@ export function Settings() {
 
   async function saveGroup(e: FormEvent) {
     e.preventDefault();
+    if (!isAdmin) return;
     await updateGroupName(groupName);
     alert("グループ名を保存しました");
   }
@@ -128,6 +132,7 @@ export function Settings() {
 
   async function onAddMember(e: FormEvent) {
     e.preventDefault();
+    if (!isAdmin) return;
     await addMember(memberName);
     setMemberName("");
   }
@@ -174,7 +179,7 @@ export function Settings() {
   }
 
   async function onImportBackup(file: File | null) {
-    if (!file) return;
+    if (!file || !isAdmin) return;
     if (
       !confirm(
         "バックアップJSONで現在のデータを置き換えます。よろしいですか？（いまの内容は上書きされます）",
@@ -191,6 +196,10 @@ export function Settings() {
       alert(err instanceof Error ? err.message : "読み込みに失敗しました");
     }
   }
+
+  const visibleMembers = isAdmin
+    ? data.members
+    : data.members.filter((m) => m.id === deviceMember?.id);
 
   const inviteText = `Bowling Ball Manager
 すぐ開く: ${inviteLink}
@@ -212,8 +221,36 @@ export function Settings() {
       <div className="page-title">
         <div>
           <h1>設定・共有</h1>
-          <p>家族・知り合いと同じグループでボールとスコアを共有</p>
+          <p>
+            {isAdmin
+              ? "管理者: メンバー追加・全員のプロフィール・バックアップを管理できます"
+              : "自分のプロフィールと、この端末の設定だけ変更できます"}
+          </p>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginTop: 0 }}>この端末の利用者</h3>
+        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+          はるみなど家族の端末では、ここで自分の名前を選んでください。管理者（淳司）以外は自分のデータだけ見えます。
+        </p>
+        <div className="field">
+          <label>利用者</label>
+          <select
+            value={deviceMember?.id ?? ""}
+            onChange={(e) => setDeviceMemberId(e.target.value)}
+          >
+            {data.members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.displayName}
+                {m.isSelf ? "（管理者）" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p style={{ color: "var(--sub)", fontSize: "0.85rem", margin: 0 }}>
+          現在: {isAdmin ? "管理者モード" : "一般（自分のみ）"}
+        </p>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
@@ -255,21 +292,41 @@ export function Settings() {
           <h3 style={{ marginTop: 0 }}>グループ</h3>
           <div className="field">
             <label>グループ名</label>
-            <input value={groupName} onChange={(e) => setGroupName(e.target.value)} />
+            <input
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              disabled={!isAdmin}
+            />
           </div>
           <div className="field">
             <label>招待コード</label>
             <input value={data.group.inviteCode} readOnly />
           </div>
-          <div className="form-actions">
-            <button className="btn" type="submit">
-              保存
-            </button>
-          </div>
+          {isAdmin ? (
+            <div className="form-actions">
+              <button className="btn" type="submit">
+                保存
+              </button>
+            </div>
+          ) : (
+            <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginBottom: 0 }}>
+              グループ名の変更は管理者のみです
+            </p>
+          )}
         </form>
 
         <form className="card" onSubmit={saveSupabase}>
           <h3 style={{ marginTop: 0 }}>クラウド保存（Supabase）</h3>
+          {!isAdmin ? (
+            <p style={{ color: "var(--sub)", fontSize: "0.9rem", margin: 0 }}>
+              状態:{" "}
+              <strong style={{ color: supabaseReady ? "var(--good)" : "var(--warn)" }}>
+                {supabaseReady ? "接続設定あり" : "未設定"}
+              </strong>
+              （接続の変更は管理者のみ）
+            </p>
+          ) : (
+            <>
           <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
             状態:{" "}
             <strong style={{ color: supabaseReady ? "var(--good)" : "var(--warn)" }}>
@@ -315,6 +372,8 @@ export function Settings() {
               接続を削除
             </button>
           </div>
+            </>
+          )}
         </form>
       </div>
 
@@ -443,6 +502,7 @@ export function Settings() {
         </div>
       </form>
 
+      {isAdmin ? (
       <div className="card" style={{ marginTop: 14 }}>
         <h3 style={{ marginTop: 0 }}>バックアップ（JSON / GitHub）</h3>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
@@ -504,6 +564,29 @@ export function Settings() {
           </button>
         </div>
       </div>
+      ) : (
+      <div className="card" style={{ marginTop: 14 }}>
+        <h3 style={{ marginTop: 0 }}>自分のスコアCSV</h3>
+        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+          バックアップの読み込み・全データ初期化は管理者のみです。
+        </p>
+        <div className="form-actions">
+          <button
+            className="btn secondary"
+            type="button"
+            onClick={() =>
+              downloadScoresCsv(
+                memberSessions,
+                memberBalls,
+                activeMember?.displayName ?? "member",
+              )
+            }
+          >
+            スコアCSVを書き出し
+          </button>
+        </div>
+      </div>
+      )}
 
       <div className="card" style={{ marginTop: 14 }}>
         <h3 style={{ marginTop: 0 }}>AI解説・画像読取</h3>
@@ -556,7 +639,10 @@ export function Settings() {
 
       <div className="grid two" style={{ marginTop: 14 }}>
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>メンバー・プロフィール</h3>
+          <h3 style={{ marginTop: 0 }}>
+            {isAdmin ? "メンバー・プロフィール" : "自分のプロフィール"}
+          </h3>
+          {isAdmin ? (
           <form onSubmit={onAddMember} style={{ marginBottom: 14 }}>
             <div className="field">
               <label>表示名を追加</label>
@@ -572,8 +658,9 @@ export function Settings() {
               </button>
             </div>
           </form>
+          ) : null}
           <div style={{ display: "grid", gap: 14 }}>
-            {data.members.map((m) => {
+            {visibleMembers.map((m) => {
               const draft = editingMembers[m.id] ?? draftFromMember(m);
               const saved = draftFromMember(m);
               const dirty =
@@ -613,7 +700,7 @@ export function Settings() {
                       aria-label={`${m.displayName}の表示名`}
                     />
                     {m.isSelf ? (
-                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>自分</span>
+                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>管理者</span>
                     ) : null}
                   </div>
                   <p style={{ margin: "0 0 8px", color: "var(--sub)", fontSize: "0.82rem" }}>
@@ -717,6 +804,7 @@ export function Settings() {
           </div>
         </div>
 
+        {isAdmin ? (
         <div className="card">
           <h3 style={{ marginTop: 0 }}>招待文</h3>
           <textarea readOnly value={inviteText} style={{ minHeight: 140 }} />
@@ -730,6 +818,14 @@ export function Settings() {
             </button>
           </div>
         </div>
+        ) : (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>共有について</h3>
+          <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+            招待リンクの発行・メンバー追加は管理者のみです。自分のボールとスコアだけ入力・確認できます。
+          </p>
+        </div>
+        )}
       </div>
     </div>
   );

@@ -484,7 +484,8 @@ export async function joinByInviteCode(
       id: memberId,
       group_id: groupId,
       display_name: name,
-      is_self: true,
+      // 管理者は既存の is_self のみ。参加メンバーは一般
+      is_self: false,
       gender: "unspecified",
       hand: "unspecified",
       throw_style: "unspecified",
@@ -492,7 +493,6 @@ export async function joinByInviteCode(
     });
     if (memErr) throw memErr;
 
-    // 既存メンバーの is_self は触らない（端末ごとに自分扱い）
     const loaded = await loadAppDataFromGroupId(groupId, memberId);
     saveLocal(loaded);
     return loaded;

@@ -14,7 +14,16 @@ const mainLinks = [
 ];
 
 export function Layout() {
-  const { data, activeMember, setActiveMemberId, loading, error } = useStore();
+  const {
+    data,
+    activeMember,
+    deviceMember,
+    isAdmin,
+    setActiveMemberId,
+    setDeviceMemberId,
+    loading,
+    error,
+  } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -45,21 +54,54 @@ export function Layout() {
             設定・共有
           </NavLink>
         </div>
+
         <div className="member-switch">
-          <label htmlFor="member">表示メンバー</label>
+          <label htmlFor="device-member">この端末の利用者</label>
           <select
-            id="member"
-            value={activeMember?.id ?? ""}
-            onChange={(e) => setActiveMemberId(e.target.value)}
+            id="device-member"
+            value={deviceMember?.id ?? ""}
+            onChange={(e) => setDeviceMemberId(e.target.value)}
             disabled={!data}
           >
             {data?.members.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.displayName}
+                {m.isSelf ? "（管理者）" : ""}
               </option>
             ))}
           </select>
+          <p style={{ margin: "6px 0 0", color: "var(--sub)", fontSize: "0.78rem", lineHeight: 1.4 }}>
+            {isAdmin
+              ? "管理者モード: 全員のデータを表示・管理できます"
+              : "自分のデータだけ表示されます"}
+          </p>
         </div>
+
+        {isAdmin ? (
+          <div className="member-switch">
+            <label htmlFor="member">表示メンバー</label>
+            <select
+              id="member"
+              value={activeMember?.id ?? ""}
+              onChange={(e) => setActiveMemberId(e.target.value)}
+              disabled={!data}
+            >
+              {data?.members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.displayName}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="member-switch">
+            <label>表示中</label>
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+              {activeMember?.displayName ?? "—"}
+            </div>
+          </div>
+        )}
+
         <a className="ext-link" href={APP_PUBLIC_URL} target="_blank" rel="noreferrer">
           公開URLを開く ↗
         </a>
