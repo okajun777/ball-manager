@@ -94,12 +94,82 @@ export async function compressImageForVision(file: File, maxSide = 1280): Promis
   return canvas.toDataURL("image/jpeg", 0.72);
 }
 
+function isPdfFile(file: File): boolean {
+  return file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+}
+
+/** PDFの先頭ページ（最大2ページ）を1枚のJPEG data URLに変換 */
+async function renderPdfForVision(file: File, maxSide = 1280, maxPages = 2): Promise<string> {
+  const pdfjs = await import("pdfjs-dist");
+  const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+
+  const data = new Uint8Array(await file.arrayBuffer());
+  const doc = await pdfjs.getDocument({ data }).promise;
+  if (!doc.numPages) throw new Error("PDFにページがありません");
+
+  const pageCount = Math.min(doc.numPages, maxPages);
+  const pages: HTMLCanvasElement[] = [];
+
+  for (let i = 1; i <= pageCount; i++) {
+    const page = await doc.getPage(i);
+    const base = page.getViewport({ scale: 1 });
+    const scale = Math.min(2.2, maxSide / Math.max(base.width, base.height));
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.ceil(viewport.width));
+    canvas.height = Math.max(1, Math.ceil(viewport.height));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("PDFの描画に失敗しました");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    pages.push(canvas);
+  }
+
+  const width = Math.max(...pages.map((p) => p.width));
+  const height = pages.reduce((sum, p) => sum + p.height, 0);
+  const fit = Math.min(1, maxSide / Math.max(width, height));
+  const out = document.createElement("canvas");
+  out.width = Math.max(1, Math.round(width * fit));
+  out.height = Math.max(1, Math.round(height * fit));
+  const octx = out.getContext("2d");
+  if (!octx) throw new Error("PDFの描画に失敗しました");
+  octx.fillStyle = "#ffffff";
+  octx.fillRect(0, 0, out.width, out.height);
+  let y = 0;
+  for (const page of pages) {
+    const dw = Math.round(page.width * fit);
+    const dh = Math.round(page.height * fit);
+    octx.drawImage(page, 0, y, dw, dh);
+    y += dh;
+  }
+  return out.toDataURL("image/jpeg", 0.72);
+}
+
+/** 画像またはPDFを Vision API 用の data URL に変換 */
+export async function prepareOilPatternFile(file: File): Promise<string> {
+  if (isPdfFile(file)) {
+    try {
+      return await renderPdfForVision(file);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`PDFの読み込みに失敗しました: ${msg}`);
+    }
+  }
+  if (file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) {
+    return compressImageForVision(file);
+  }
+  throw new Error("画像（JPG/PNGなど）またはPDFを選択してください");
+}
+
 export async function analyzeOilPatternImage(imageDataUrl: string): Promise<OilImageAnalysis> {
   const system = `あなたはボウリングのオイルパターン解析アシスタントです。
-画像（パターン図・レーンシート・掲示など）から、攻略用の粗い指標を推定してください。
+画像（パターン図・レーンシート・PDFの印刷物・掲示など）から、攻略用の粗い指標を推定してください。
 必ず次のJSONだけを返してください（説明文やコードフェンス禁止）:
 {"length":1-5,"volume":1-5,"shape":1-5,"label":"短い名前","summary":"日本語1〜2文","confidence":"high|medium|low"}
 length: 1短い〜5長い / volume: 1少ない〜5多い / shape: 1タイト〜5ワイド
+パターン名や距離（ft）が読める場合は label / summary に含める。
 読めない場合は自信を下げ、ハウス寄りの中間値を返す。`;
 
   const content = await chatCompletion(
@@ -110,7 +180,7 @@ length: 1短い〜5長い / volume: 1少ない〜5多い / shape: 1タイト〜5
         content: [
           {
             type: "text",
-            text: "この画像のオイル条件を length / volume / shape で推定してください。",
+            text: "このオイルパターン資料（画像またはPDF）の条件を length / volume / shape で推定してください。",
           },
           { type: "image_url", image_url: { url: imageDataUrl } },
         ],

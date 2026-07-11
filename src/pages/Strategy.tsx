@@ -4,9 +4,9 @@ import catalogBalls from "../data/catalogBalls.json";
 import { OIL_PRESETS, type CatalogBall, type OilPresetId } from "../lib/catalogTypes";
 import {
   analyzeOilPatternImage,
-  compressImageForVision,
   generateStrategyExplanation,
   isLlmConfigured,
+  prepareOilPatternFile,
   type OilImageAnalysis,
 } from "../lib/llm";
 import { adviseBalls, focusLabel, type PerformanceFocus } from "../lib/strategy";
@@ -84,21 +84,20 @@ export function Strategy() {
     setOilScanError("");
     setOilAnalysis(null);
     try {
-      const preview = URL.createObjectURL(file);
-      setOilPreview((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return preview;
-      });
       if (!isLlmConfigured()) {
         setOilScanError(
-          "画像の自動読取には APIキーが必要です。設定・共有で登録するか、スライダーで手動指定してください。",
+          "画像・PDFの自動読取には APIキーが必要です。設定・共有で登録するか、スライダーで手動指定してください。",
         );
         setPresetId("custom");
         resetAdvice();
         return;
       }
       setOilScanLoading(true);
-      const dataUrl = await compressImageForVision(file);
+      const dataUrl = await prepareOilPatternFile(file);
+      setOilPreview((prev) => {
+        if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+        return dataUrl;
+      });
       const result = await analyzeOilPatternImage(dataUrl);
       setOilAnalysis(result);
       setPresetId("custom");
@@ -110,7 +109,7 @@ export function Strategy() {
       }
       resetAdvice();
     } catch (err) {
-      setOilScanError(err instanceof Error ? err.message : "画像の解析に失敗しました");
+      setOilScanError(err instanceof Error ? err.message : "パターン資料の解析に失敗しました");
     } finally {
       setOilScanLoading(false);
     }
@@ -170,14 +169,14 @@ export function Strategy() {
           </p>
 
           <div className="field">
-            <label>パターン画像から読取（任意）</label>
+            <label>パターン画像 / PDF から読取（任意）</label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,.pdf,application/pdf"
               onChange={(e) => void onOilImage(e.target.files?.[0] ?? null)}
             />
             <p style={{ color: "var(--sub)", fontSize: "0.8rem", margin: "6px 0 0" }}>
-              レーンシートやパターン図をアップロード → 長さ・量・形状を推定（要APIキー）
+              レーンシート・パターン図の画像またはPDF → 長さ・量・形状を推定（要APIキー）
             </p>
           </div>
           {oilPreview && (
@@ -196,7 +195,7 @@ export function Strategy() {
             />
           )}
           {oilScanLoading && (
-            <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>画像を解析中…</p>
+            <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>パターン資料を解析中…</p>
           )}
           {oilScanError && (
             <p style={{ color: "#b42318", fontSize: "0.88rem" }}>{oilScanError}</p>
