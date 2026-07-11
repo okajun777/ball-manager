@@ -51,7 +51,7 @@ export function Strategy() {
     [osakaTick],
   );
   const osakaWithOil = useMemo(
-    () => listOsakaEventsForPicker({ onlyWithPattern: true, limit: 50 }),
+    () => listOsakaEventsForPicker({ onlyWithPattern: true, limit: 80 }),
     [osakaTick],
   );
   const selectedOsaka = osakaEventId ? findOsakaEvent(osakaEventId) : undefined;
@@ -260,9 +260,6 @@ export function Strategy() {
                 ))}
               </optgroup>
             </select>
-            <p style={{ color: "var(--sub)", fontSize: "0.8rem", margin: "6px 0 0" }}>
-              大会情報でオイルパターンPDFが公開された大会は「パターンあり」に出ます。未公開なら下にPDFのURLを貼って登録できます。
-            </p>
           </div>
 
           {osakaEventId ? (

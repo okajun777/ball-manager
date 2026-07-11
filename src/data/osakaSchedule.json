@@ -1,5 +1,5 @@
 {
-  "source": "osaka-bowling.web.app",
+  "source": "osaka-bowling / obf-bowling.net Tournament index",
   "updatedAt": "2026-07-11",
   "events": [
     {
@@ -157,6 +157,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-12-20-3509211",
+      "startDate": "2026-12-20",
+      "endDate": "2026-12-20",
+      "name": "大阪府民スポレク2026・ボウリング競技会",
+      "venue": "マグスミノエ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
       "id": "osaka-2026-12-19-5215409",
       "startDate": "2026-12-19",
       "endDate": "2026-12-20",
@@ -255,6 +267,30 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-11-29-2281552",
+      "startDate": "2026-11-29",
+      "endDate": "2026-11-29",
+      "name": "オータム・チャレンジ・スポーツ2026 親子ボウリング大会",
+      "venue": "神崎川ダイドーボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2026-11-29-5365605",
+      "startDate": "2026-11-29",
+      "endDate": "2026-11-29",
+      "name": "大阪トーナメント・チャンピオンシップ",
+      "venue": "神崎川ダイドーボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
       "id": "osaka-2026-11-28-7734269",
       "startDate": "2026-11-28",
       "endDate": "2026-11-30",
@@ -325,6 +361,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-11-08-7899841",
+      "startDate": "2026-11-08",
+      "endDate": "2026-11-08",
+      "name": "第64回全日本選手権・大阪府代表選考会",
+      "venue": "２会場",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
       "id": "osaka-2026-11-07-0654894",
       "startDate": "2026-11-07",
       "endDate": "2026-11-07",
@@ -353,6 +401,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-11-03-9665232",
+      "startDate": "2026-11-03",
+      "endDate": "2026-11-03",
+      "name": "第14回大阪府ダブルス選手権大会",
+      "venue": "ボウルアロー松原店",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
       "id": "osaka-2026-11-01-2368791",
       "startDate": "2026-11-01",
       "endDate": "2026-11-01",
@@ -377,6 +437,18 @@
         "general-men"
       ],
       "mainTournaments": "関西クラブ対抗2/21",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2026-10-25-2917436",
+      "startDate": "2026-10-25",
+      "endDate": "2026-10-25",
+      "name": "OBF TRIO TEAM MATCH（仮称）",
+      "venue": "（会場未定）",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
     },
@@ -546,7 +618,7 @@
       ],
       "mainTournaments": "関西選手権11/14-15・都道府県11/21-23・関西新人10/4",
       "patternPdfUrl": "",
-      "detailPdfUrl": ""
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260809-1/detail.pdf"
     },
     {
       "id": "osaka-2026-08-09-5848397",
@@ -560,7 +632,7 @@
       ],
       "mainTournaments": "関西選手権11/14-15・全日本選手権1/14-17",
       "patternPdfUrl": "",
-      "detailPdfUrl": ""
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260809-2/detail.pdf"
     },
     {
       "id": "osaka-2026-08-01-7571028",
@@ -717,6 +789,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-06-07-1767770",
+      "startDate": "2026-06-07",
+      "endDate": "2026-06-07",
+      "name": "第51回大阪府社会人選手権大会",
+      "venue": "X-BOWL",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260607-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260607-1/detail.pdf"
+    },
+    {
       "id": "osaka-2026-06-06-6804642",
       "startDate": "2026-06-06",
       "endDate": "2026-06-06",
@@ -743,6 +827,18 @@
       "mainTournaments": "全日本クラブ対抗7/3",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2026-05-31-9869841",
+      "startDate": "2026-05-31",
+      "endDate": "2026-05-31",
+      "name": "第23回OBFクラブ対抗競技大会",
+      "venue": "X-BOWL",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260531-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260531-1/detail.pdf"
     },
     {
       "id": "osaka-2026-05-29-9843875",
@@ -815,6 +911,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-05-10-3524212",
+      "startDate": "2026-05-10",
+      "endDate": "2026-05-10",
+      "name": "第58回大阪市長杯競技大会",
+      "venue": "神崎川ダイドーボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260510-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260510-1/detail.pdf"
+    },
+    {
       "id": "osaka-2026-04-29-3307184",
       "startDate": "2026-04-29",
       "endDate": "2026-04-29",
@@ -827,6 +935,30 @@
       "mainTournaments": "近畿ブロック7/18",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2026-04-29-9405232",
+      "startDate": "2026-04-29",
+      "endDate": "2026-04-29",
+      "name": "第80回国民スポーツ大会 大阪府代表選考会（成年）",
+      "venue": "３会場",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260429-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260429-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2026-04-29-6849132",
+      "startDate": "2026-04-29",
+      "endDate": "2026-04-29",
+      "name": "第80回国民スポーツ大会 大阪府代表選考会（少年）",
+      "venue": "２会場",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260429-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260429-2/detail.pdf"
     },
     {
       "id": "osaka-2026-04-26-4031079",
@@ -885,6 +1017,30 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-04-12-0948618",
+      "startDate": "2026-04-12",
+      "endDate": "2026-04-12",
+      "name": "第60回大阪府シニア選手権大会",
+      "venue": "ボウルアロー松原店",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260412-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260412-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2026-04-12-9905571",
+      "startDate": "2026-04-12",
+      "endDate": "2026-04-12",
+      "name": "令和8年度大阪府ジュニアチャンピオン大会",
+      "venue": "ボウルアロー松原店",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260412-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260412-2/detail.pdf"
+    },
+    {
       "id": "osaka-2026-04-05-2073361",
       "startDate": "2026-04-05",
       "endDate": "2026-04-05",
@@ -899,6 +1055,30 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-04-05-1730411",
+      "startDate": "2026-04-05",
+      "endDate": "2026-04-05",
+      "name": "第21回大阪市スポーツ協会会長杯",
+      "venue": "マグスミノエ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260405-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2026/20260405-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2026-03-29-6033680",
+      "startDate": "2026-03-29",
+      "endDate": "2026-03-29",
+      "name": "第55回関西選抜選手権",
+      "venue": "ラピュタボウル彦根",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260329/detail.pdf"
+    },
+    {
       "id": "osaka-2026-03-28-4536321",
       "startDate": "2026-03-28",
       "endDate": "2026-03-29",
@@ -911,6 +1091,18 @@
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2026-03-22-2617919",
+      "startDate": "2026-03-22",
+      "endDate": "2026-03-22",
+      "name": "第63回全日本選手権",
+      "venue": "稲沢グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260322/detail.pdf"
     },
     {
       "id": "osaka-2026-03-19-6104989",
@@ -951,8 +1143,8 @@
         "general-men"
       ],
       "mainTournaments": "",
-      "patternPdfUrl": "",
-      "detailPdfUrl": ""
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260301/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260301/detail.pdf"
     },
     {
       "id": "osaka-2026-02-22-1470141",
@@ -964,6 +1156,18 @@
       "categoryIds": [
         "general-men"
       ],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260222/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260222/detail.pdf"
+    },
+    {
+      "id": "osaka-2026-02-18-6098763",
+      "startDate": "2026-02-18",
+      "endDate": "2026-02-18",
+      "name": "第57回全日本大学個人選手権",
+      "venue": "新狭山グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
@@ -983,6 +1187,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-02-08-5299531",
+      "startDate": "2026-02-08",
+      "endDate": "2026-02-08",
+      "name": "第41回全日本年齢別選手権",
+      "venue": "新狭山グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260208/detail.pdf"
+    },
+    {
       "id": "osaka-2026-02-06-4727941",
       "startDate": "2026-02-06",
       "endDate": "2026-02-08",
@@ -997,6 +1213,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-02-01-2198105",
+      "startDate": "2026-02-01",
+      "endDate": "2026-02-01",
+      "name": "第60回大阪府ボウリング選手権大会",
+      "venue": "ボウルアロー松原店",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260201/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260201/detail.pdf"
+    },
+    {
       "id": "osaka-2026-01-31-9710853",
       "startDate": "2026-01-31",
       "endDate": "2026-02-01",
@@ -1006,6 +1234,18 @@
       "categoryIds": [
         "general-men"
       ],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2026-01-25-4132166",
+      "startDate": "2026-01-25",
+      "endDate": "2026-01-25",
+      "name": "第42回全日本実業団都市対抗選手権",
+      "venue": "ドリームスタジアム太田",
+      "hostType": "osaka",
+      "categoryIds": [],
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
@@ -1025,6 +1265,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2026-01-18-9615832",
+      "startDate": "2026-01-18",
+      "endDate": "2026-01-18",
+      "name": "第54回全日本クラブ対抗選手権",
+      "venue": "浜松毎日ボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260118/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260118/detail.pdf"
+    },
+    {
       "id": "osaka-2026-01-16-2156397",
       "startDate": "2026-01-16",
       "endDate": "2026-01-18",
@@ -1037,6 +1289,18 @@
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2026-01-11-4213879",
+      "startDate": "2026-01-11",
+      "endDate": "2026-01-11",
+      "name": "第22回関西年齢別選手権",
+      "venue": "神戸六甲ボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260111/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20260111/detail.pdf"
     },
     {
       "id": "osaka-2026-01-10-5300124",
@@ -1067,6 +1331,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-12-28-1773967",
+      "startDate": "2025-12-28",
+      "endDate": "2025-12-28",
+      "name": "全日本選手権・大阪府代表選考会",
+      "venue": "２会場",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251228/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251228/detail.pdf"
+    },
+    {
       "id": "osaka-2025-12-27-1653099",
       "startDate": "2025-12-27",
       "endDate": "2025-12-27",
@@ -1081,6 +1357,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-12-23-7320652",
+      "startDate": "2025-12-23",
+      "endDate": "2025-12-23",
+      "name": "第63回全日本大学選手権",
+      "venue": "MKボウル上賀茂",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
       "id": "osaka-2025-12-21-0016323",
       "startDate": "2025-12-21",
       "endDate": "2025-12-23",
@@ -1090,6 +1378,18 @@
       "categoryIds": [
         "junior"
       ],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-12-21-9165497",
+      "startDate": "2025-12-21",
+      "endDate": "2025-12-21",
+      "name": "第31回全国高校対校選手権",
+      "venue": "MKボウル上賀茂",
+      "hostType": "osaka",
+      "categoryIds": [],
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
@@ -1119,8 +1419,20 @@
         "general-men"
       ],
       "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251214-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251214-2/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-12-14-7429826",
+      "startDate": "2025-12-14",
+      "endDate": "2025-12-14",
+      "name": "第37回オールジャパンレディース",
+      "venue": "川崎グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
       "patternPdfUrl": "",
-      "detailPdfUrl": ""
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251214-1/detail.pdf"
     },
     {
       "id": "osaka-2025-12-12-5278152",
@@ -1132,6 +1444,18 @@
       "categoryIds": [
         "general-men"
       ],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-12-07-1778419",
+      "startDate": "2025-12-07",
+      "endDate": "2025-12-07",
+      "name": "第58回全日本実業団選手権",
+      "venue": "神戸六甲ボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
@@ -1165,6 +1489,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-11-30-7160997",
+      "startDate": "2025-11-30",
+      "endDate": "2025-11-30",
+      "name": "大阪府民スポレク2025ボウリング競技会",
+      "venue": "ボウルアロー松原店",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251130/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251130/detail.pdf"
+    },
+    {
       "id": "osaka-2025-11-24-8310442",
       "startDate": "2025-11-24",
       "endDate": "2025-11-24",
@@ -1193,6 +1529,30 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-11-24-6104891",
+      "startDate": "2025-11-24",
+      "endDate": "2025-11-24",
+      "name": "オータム・チャレンジ・スポーツ2025 親子ボウリング大会",
+      "venue": "神崎川ダイドーボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251124-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-11-24-0871646",
+      "startDate": "2025-11-24",
+      "endDate": "2025-11-24",
+      "name": "第7回大阪トーナメントチャンピオンシップ",
+      "venue": "神崎川ダイドーボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251124-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251124-2/detail.pdf"
+    },
+    {
       "id": "osaka-2025-11-16-9706004",
       "startDate": "2025-11-16",
       "endDate": "2025-11-16",
@@ -1207,6 +1567,30 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-11-16-6187492",
+      "startDate": "2025-11-16",
+      "endDate": "2025-11-16",
+      "name": "第57回関西実業団選手権",
+      "venue": "オプトボウルタカダ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251116-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251116-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-11-16-5059019",
+      "startDate": "2025-11-16",
+      "endDate": "2025-11-16",
+      "name": "第7回関西新人競技大会",
+      "venue": "オプトボウルタカダ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251116-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251116-2/detail.pdf"
+    },
+    {
       "id": "osaka-2025-11-08-6549086",
       "startDate": "2025-11-08",
       "endDate": "2025-11-08",
@@ -1216,6 +1600,18 @@
       "categoryIds": [
         "general-men"
       ],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-11-08-2198802",
+      "startDate": "2025-11-08",
+      "endDate": "2025-11-08",
+      "name": "ROUND1 GC Final",
+      "venue": "ラウンドワンスタジアム堺中央環状店",
+      "hostType": "osaka",
+      "categoryIds": [],
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
@@ -1235,6 +1631,30 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-11-02-5609834",
+      "startDate": "2025-11-02",
+      "endDate": "2025-11-02",
+      "name": "第22回OBFクラブ対抗競技大会",
+      "venue": "マグスミノエ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251102/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251102/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-10-26-1647860",
+      "startDate": "2025-10-26",
+      "endDate": "2025-10-26",
+      "name": "第16回西日本シニア選手権",
+      "venue": "宮崎エースレーン",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251026/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251026/detail.pdf"
+    },
+    {
       "id": "osaka-2025-10-24-0145592",
       "startDate": "2025-10-24",
       "endDate": "2025-10-26",
@@ -1244,6 +1664,18 @@
       "categoryIds": [
         "senior"
       ],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-10-19-0732277",
+      "startDate": "2025-10-19",
+      "endDate": "2025-10-19",
+      "name": "第57回全国都道府県対抗選手権",
+      "venue": "青森県",
+      "hostType": "osaka",
+      "categoryIds": [],
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
@@ -1261,6 +1693,18 @@
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-10-12-6285565",
+      "startDate": "2025-10-12",
+      "endDate": "2025-10-12",
+      "name": "第64回関西選手権",
+      "venue": "MKボウル上賀茂",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251012/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251012/detail.pdf"
     },
     {
       "id": "osaka-2025-10-11-5208260",
@@ -1292,6 +1736,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-10-11-6750692",
+      "startDate": "2025-10-11",
+      "endDate": "2025-10-11",
+      "name": "ROUND1 GC JB決勝大会",
+      "venue": "ラウンドワン各店舗",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
       "id": "osaka-2025-10-05-5729543",
       "startDate": "2025-10-05",
       "endDate": "2025-10-05",
@@ -1302,6 +1758,30 @@
         "junior"
       ],
       "mainTournaments": "全国高校対抗12/20-21",
+      "patternPdfUrl": "",
+      "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-10-05-4590751",
+      "startDate": "2025-10-05",
+      "endDate": "2025-10-05",
+      "name": "2025年度OBFジュニア秋季大会",
+      "venue": "関大前フタバボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251005/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20251005/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-10-03-2346516",
+      "startDate": "2025-10-03",
+      "endDate": "2025-10-03",
+      "name": "第79回国民スポーツ大会",
+      "venue": "ラピュタボウル彦根",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
     },
@@ -1318,6 +1798,18 @@
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-09-22-5247596",
+      "startDate": "2025-09-22",
+      "endDate": "2025-09-22",
+      "name": "日本スポーツマスターズ2025",
+      "venue": "キスケKIT",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250922/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250922/detail.pdf"
     },
     {
       "id": "osaka-2025-09-19-2334158",
@@ -1348,6 +1840,30 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-09-07-2912222",
+      "startDate": "2025-09-07",
+      "endDate": "2025-09-07",
+      "name": "第13回大阪府ダブルス選手権大会",
+      "venue": "エックスボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250907-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250907-2/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-09-07-4898368",
+      "startDate": "2025-09-07",
+      "endDate": "2025-09-07",
+      "name": "第58回全日本新人選手権",
+      "venue": "品川プリンスホテルBC",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250907-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250907-1/detail.pdf"
+    },
+    {
       "id": "osaka-2025-09-05-9527595",
       "startDate": "2025-09-05",
       "endDate": "2025-09-07",
@@ -1376,6 +1892,30 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-08-31-7175753",
+      "startDate": "2025-08-31",
+      "endDate": "2025-08-31",
+      "name": "2025年度OBFジュニア夏季大会",
+      "venue": "マグスミノエ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250831-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250831-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-08-31-5502284",
+      "startDate": "2025-08-31",
+      "endDate": "2025-08-31",
+      "name": "関西選手権大会等3大会選考会",
+      "venue": "マグスミノエ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250831-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250831-2/detail.pdf"
+    },
+    {
       "id": "osaka-2025-08-30-4582503",
       "startDate": "2025-08-30",
       "endDate": "2025-08-30",
@@ -1388,6 +1928,18 @@
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-08-24-3260970",
+      "startDate": "2025-08-24",
+      "endDate": "2025-08-24",
+      "name": "第58回関西シニア・第6回関西ミドル選手権",
+      "venue": "紀の川ボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250824/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250824/detail.pdf"
     },
     {
       "id": "osaka-2025-08-23-3557783",
@@ -1414,8 +1966,8 @@
         "general-men"
       ],
       "mainTournaments": "",
-      "patternPdfUrl": "",
-      "detailPdfUrl": ""
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250810/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250810/detail.pdf"
     },
     {
       "id": "osaka-2025-08-09-1376743",
@@ -1432,6 +1984,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-08-03-9080666",
+      "startDate": "2025-08-03",
+      "endDate": "2025-08-03",
+      "name": "第15回全日本小学生競技大会",
+      "venue": "稲沢グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250803/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250803/detail.pdf"
+    },
+    {
       "id": "osaka-2025-08-02-6618587",
       "startDate": "2025-08-02",
       "endDate": "2025-08-03",
@@ -1444,6 +2008,30 @@
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-08-02-8299062",
+      "startDate": "2025-08-02",
+      "endDate": "2025-08-02",
+      "name": "第49回全日本中学選手権",
+      "venue": "稲沢グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250802-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250802-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-08-02-2137442",
+      "startDate": "2025-08-02",
+      "endDate": "2025-08-02",
+      "name": "第49回全日本高校選手権",
+      "venue": "稲沢グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250802-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250802-2/detail.pdf"
     },
     {
       "id": "osaka-2025-07-31-2149314",
@@ -1474,6 +2062,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-07-27-2798625",
+      "startDate": "2025-07-27",
+      "endDate": "2025-07-27",
+      "name": "第79回国民スポーツ大会 近畿ブロック大会",
+      "venue": "オプトボウルタカダ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250727/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250727/detail.pdf"
+    },
+    {
       "id": "osaka-2025-07-26-0532895",
       "startDate": "2025-07-26",
       "endDate": "2025-07-27",
@@ -1486,6 +2086,18 @@
       "mainTournaments": "国民スポーツ大会9/27",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-07-20-3147648",
+      "startDate": "2025-07-20",
+      "endDate": "2025-07-20",
+      "name": "新都市間交流",
+      "venue": "マグスミノエ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250720/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250720/detail.pdf"
     },
     {
       "id": "osaka-2025-07-19-0840945",
@@ -1530,6 +2142,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-07-13-0493586",
+      "startDate": "2025-07-13",
+      "endDate": "2025-07-13",
+      "name": "第57回大阪市長杯競技大会",
+      "venue": "マグスミノエ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250713/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250713/detail.pdf"
+    },
+    {
       "id": "osaka-2025-07-12-9676520",
       "startDate": "2025-07-12",
       "endDate": "2025-07-12",
@@ -1558,6 +2182,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-06-29-0127766",
+      "startDate": "2025-06-29",
+      "endDate": "2025-06-29",
+      "name": "第61回西日本選手権",
+      "venue": "ラピュタボウル彦根",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250629/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250629/detail.pdf"
+    },
+    {
       "id": "osaka-2025-06-27-1593604",
       "startDate": "2025-06-27",
       "endDate": "2025-06-29",
@@ -1570,6 +2206,18 @@
       "mainTournaments": "",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-06-22-0347931",
+      "startDate": "2025-06-22",
+      "endDate": "2025-06-22",
+      "name": "第58回全日本シニア選手権",
+      "venue": "稲沢グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250622/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250622/detail.pdf"
     },
     {
       "id": "osaka-2025-06-20-9520609",
@@ -1610,8 +2258,8 @@
         "senior"
       ],
       "mainTournaments": "",
-      "patternPdfUrl": "",
-      "detailPdfUrl": ""
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250608/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250608/detail.pdf"
     },
     {
       "id": "osaka-2025-06-01-1643509",
@@ -1626,6 +2274,30 @@
       "mainTournaments": "関西シニア8/23-24・西日本シニア10/24-26",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-06-01-8822791",
+      "startDate": "2025-06-01",
+      "endDate": "2025-06-01",
+      "name": "第50回大阪府社会人選手権大会",
+      "venue": "エックスボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250601-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250601-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-06-01-1363354",
+      "startDate": "2025-06-01",
+      "endDate": "2025-06-01",
+      "name": "第50回全日本実業団産業別選手権",
+      "venue": "鈴鹿グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250601-2/detail.pdf"
     },
     {
       "id": "osaka-2025-05-30-2501893",
@@ -1656,6 +2328,30 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-05-25-7499195",
+      "startDate": "2025-05-25",
+      "endDate": "2025-05-25",
+      "name": "第49回関西ジュニア選手権",
+      "venue": "マグスミノエ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250525/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250525/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-05-18-4951404",
+      "startDate": "2025-05-18",
+      "endDate": "2025-05-18",
+      "name": "第58回全日本選抜選手権",
+      "venue": "新狭山グランドボウル",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250518/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250518/detail.pdf"
+    },
+    {
       "id": "osaka-2025-05-16-8078936",
       "startDate": "2025-05-16",
       "endDate": "2025-05-18",
@@ -1684,6 +2380,18 @@
       "detailPdfUrl": ""
     },
     {
+      "id": "osaka-2025-05-03-2787216",
+      "startDate": "2025-05-03",
+      "endDate": "2025-05-03",
+      "name": "第20回大阪市スポーツ協会会長杯",
+      "venue": "マグスミノエ",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250503/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250503/detail.pdf"
+    },
+    {
       "id": "osaka-2025-04-27-4855753",
       "startDate": "2025-04-27",
       "endDate": "2025-04-27",
@@ -1696,6 +2404,30 @@
       "mainTournaments": "近畿ブロック7/26-27",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-04-27-7684726",
+      "startDate": "2025-04-27",
+      "endDate": "2025-04-27",
+      "name": "第79回国民スポーツ大会 大阪府代表選考会（成年）",
+      "venue": "３会場",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250427-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250427-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-04-27-6275288",
+      "startDate": "2025-04-27",
+      "endDate": "2025-04-27",
+      "name": "第79回国民スポーツ大会 大阪府代表選考会（少年）",
+      "venue": "２会場",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250427-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250427-2/detail.pdf"
     },
     {
       "id": "osaka-2025-04-20-4433839",
@@ -1752,6 +2484,30 @@
       "mainTournaments": "全中高7/31・全小8/2",
       "patternPdfUrl": "",
       "detailPdfUrl": ""
+    },
+    {
+      "id": "osaka-2025-04-06-1567944",
+      "startDate": "2025-04-06",
+      "endDate": "2025-04-06",
+      "name": "第59回大阪府シニア選手権大会",
+      "venue": "ボウルアロー松原店",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250406-1/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250406-1/detail.pdf"
+    },
+    {
+      "id": "osaka-2025-04-06-4439628",
+      "startDate": "2025-04-06",
+      "endDate": "2025-04-06",
+      "name": "令和7年度大阪府ジュニアチャンピオン大会",
+      "venue": "ボウルアロー松原店",
+      "hostType": "osaka",
+      "categoryIds": [],
+      "mainTournaments": "",
+      "patternPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250406-2/pattern.pdf",
+      "detailPdfUrl": "https://www.obf-bowling.net/Tournament/2025/20250406-2/detail.pdf"
     }
   ]
 }

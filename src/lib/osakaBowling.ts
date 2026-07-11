@@ -105,11 +105,13 @@ export function listOsakaEventsForPicker(opts?: {
   if (opts?.hostOsakaOnly) list = list.filter((e) => e.hostType === "osaka");
   if (opts?.onlyWithPattern) list = list.filter((e) => Boolean(e.patternPdfUrl?.trim()));
 
-  // 直近90日前〜未来を優先表示
-  const past = new Date();
-  past.setDate(past.getDate() - 90);
-  const pastKey = past.toISOString().slice(0, 10);
-  list = list.filter((e) => e.endDate >= pastKey || e.startDate >= pastKey);
+  // 日程一覧は直近90日〜未来。パターンありは全件（新しい順）
+  if (!opts?.onlyWithPattern) {
+    const past = new Date();
+    past.setDate(past.getDate() - 90);
+    const pastKey = past.toISOString().slice(0, 10);
+    list = list.filter((e) => e.endDate >= pastKey || e.startDate >= pastKey);
+  }
 
   list.sort((a, b) => {
     const aFuture = a.startDate >= today ? 0 : 1;
