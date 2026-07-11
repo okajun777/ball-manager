@@ -10,6 +10,7 @@ import {
   type FrameRolls,
 } from "../lib/bowlingScore";
 import { formatSessionShareText } from "../lib/shareSession";
+import { loadUserPrefs } from "../lib/prefs";
 import { useStore } from "../lib/store";
 import type { ScoreGame, ScoreSession, SessionType } from "../lib/types";
 import { today, uid } from "../lib/types";
@@ -135,13 +136,14 @@ export function Scores() {
   const { data, activeMember, memberBalls, memberAllBalls, upsertSession, memberSessions, deleteSession } =
     useStore();
 
+  const prefs = useMemo(() => loadUserPrefs(), []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [playedOn, setPlayedOn] = useState(today());
   const [sessionType, setSessionType] = useState<SessionType>("practice");
   const [tournamentName, setTournamentName] = useState("");
-  const [shopName, setShopName] = useState("");
+  const [shopName, setShopName] = useState(prefs.defaultShop);
   const [laneNote, setLaneNote] = useState("");
-  const [oilNote, setOilNote] = useState("ハウス");
+  const [oilNote, setOilNote] = useState(prefs.defaultOil || "ハウス");
   const [memo, setMemo] = useState("");
   const [entryMode, setEntryMode] = useState<EntryMode>("total");
   const [games, setGames] = useState<GameDraft[]>([
@@ -160,6 +162,10 @@ export function Scores() {
   const shopSuggestions = useMemo(() => {
     const seen = new Set<string>();
     const list: string[] = [];
+    if (prefs.defaultShop.trim()) {
+      seen.add(prefs.defaultShop.trim());
+      list.push(prefs.defaultShop.trim());
+    }
     for (const s of memberSessions) {
       const name = s.shopName.trim();
       if (!name || seen.has(name)) continue;
@@ -168,12 +174,31 @@ export function Scores() {
       if (list.length >= 6) break;
     }
     return list;
-  }, [memberSessions]);
+  }, [memberSessions, prefs.defaultShop]);
+
+  const laneSuggestions = useMemo(() => {
+    const shop = shopName.trim();
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const s of memberSessions) {
+      const lane = (s.laneNote ?? "").trim();
+      if (!lane || seen.has(lane)) continue;
+      if (shop && s.shopName.trim() && s.shopName.trim() !== shop) continue;
+      seen.add(lane);
+      list.push(lane);
+      if (list.length >= 8) break;
+    }
+    return list;
+  }, [memberSessions, shopName]);
 
   const oilSuggestions = useMemo(() => {
     const defaults = ["ハウス", "ショート", "ミディアム", "ロング"];
     const seen = new Set<string>(defaults);
     const list = [...defaults];
+    if (prefs.defaultOil.trim() && !seen.has(prefs.defaultOil.trim())) {
+      list.unshift(prefs.defaultOil.trim());
+      seen.add(prefs.defaultOil.trim());
+    }
     for (const s of memberSessions) {
       const name = s.oilNote.trim();
       if (!name || seen.has(name)) continue;
@@ -182,7 +207,7 @@ export function Scores() {
       if (list.length >= 8) break;
     }
     return list;
-  }, [memberSessions]);
+  }, [memberSessions, prefs.defaultOil]);
 
   const tournamentSuggestions = useMemo(() => {
     const seen = new Set<string>();
@@ -212,9 +237,9 @@ export function Scores() {
     setPlayedOn(today());
     setSessionType("practice");
     setTournamentName("");
-    setShopName("");
+    setShopName(prefs.defaultShop);
     setLaneNote("");
-    setOilNote("ハウス");
+    setOilNote(prefs.defaultOil || "ハウス");
     setMemo("");
     setEntryMode("total");
     setGames([blankGame(defaultBallId), blankGame(defaultBallId), blankGame(defaultBallId)]);
@@ -429,8 +454,23 @@ export function Scores() {
               <input
                 value={laneNote}
                 onChange={(e) => setLaneNote(e.target.value)}
+                list="lane-history"
                 placeholder="12 / 12-13"
               />
+              <datalist id="lane-history">
+                {laneSuggestions.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              {laneSuggestions.length > 0 && (
+                <div className="suggest-chips">
+                  {laneSuggestions.map((s) => (
+                    <button key={s} type="button" onClick={() => setLaneNote(s)}>
+                      L{s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

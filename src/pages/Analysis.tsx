@@ -116,6 +116,22 @@ export function Analysis() {
       .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0));
   }, [filtered]);
 
+  const byLane = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (const s of filtered) {
+      const lane = (s.laneNote ?? "").trim();
+      if (!lane) continue;
+      const shop = s.shopName.trim();
+      const key = shop ? `${shop} / L${lane}` : `L${lane}`;
+      const list = map.get(key) ?? [];
+      list.push(...s.games.map((g) => g.score));
+      map.set(key, list);
+    }
+    return [...map.entries()]
+      .map(([key, list]) => ({ key, avg: avg(list), count: list.length }))
+      .sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0));
+  }, [filtered]);
+
   const sessionTrend = useMemo(() => {
     return [...filtered]
       .slice()
@@ -447,6 +463,32 @@ export function Analysis() {
                 </table>
               )}
             </div>
+          </div>
+
+          <div className="card" style={{ marginTop: 14 }}>
+            <h3 style={{ marginTop: 0 }}>レーン別平均</h3>
+            {!byLane.length ? (
+              <div className="empty">レーン番号のある記録がありません</div>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>店舗 / レーン</th>
+                    <th>平均</th>
+                    <th>G数</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byLane.map((row) => (
+                    <tr key={row.key}>
+                      <td>{row.key}</td>
+                      <td>{row.avg ?? "—"}</td>
+                      <td>{row.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
           <div className="card" style={{ marginTop: 14 }}>

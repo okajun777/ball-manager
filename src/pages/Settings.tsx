@@ -11,6 +11,7 @@ import {
 } from "../lib/maintReminder";
 import { createFreshData } from "../lib/storage";
 import { isSupabaseConfigured } from "../lib/supabase";
+import { loadUserPrefs, saveUserPrefs, type UserPrefs } from "../lib/prefs";
 import { useStore } from "../lib/store";
 
 export function Settings() {
@@ -34,6 +35,7 @@ export function Settings() {
   const [reminder, setReminder] = useState<MaintReminderSettings>(() =>
     loadMaintReminderSettings(),
   );
+  const [prefs, setPrefs] = useState<UserPrefs>(() => loadUserPrefs());
 
   if (!data) return null;
 
@@ -41,6 +43,12 @@ export function Settings() {
     e.preventDefault();
     await updateGroupName(groupName);
     alert("グループ名を保存しました");
+  }
+
+  function savePrefs(e: FormEvent) {
+    e.preventDefault();
+    saveUserPrefs(prefs);
+    alert("入力の既定値を保存しました（この端末のみ）");
   }
 
   async function onAddMember(e: FormEvent) {
@@ -142,6 +150,36 @@ export function Settings() {
           </ol>
         </div>
       </div>
+
+      <form className="card" style={{ marginTop: 14 }} onSubmit={savePrefs}>
+        <h3 style={{ marginTop: 0 }}>スコア入力の既定値</h3>
+        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+          新規入力時の店舗・オイルの初期値です。この端末のみに保存されます。
+        </p>
+        <div className="grid two">
+          <div className="field">
+            <label>よく使う店舗</label>
+            <input
+              value={prefs.defaultShop}
+              onChange={(e) => setPrefs({ ...prefs, defaultShop: e.target.value })}
+              placeholder="ラウンドワン○○"
+            />
+          </div>
+          <div className="field">
+            <label>よく使うオイル</label>
+            <input
+              value={prefs.defaultOil}
+              onChange={(e) => setPrefs({ ...prefs, defaultOil: e.target.value })}
+              placeholder="ハウス"
+            />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button className="btn" type="submit">
+            既定値を保存
+          </button>
+        </div>
+      </form>
 
       <form className="card" style={{ marginTop: 14 }} onSubmit={saveReminder}>
         <h3 style={{ marginTop: 0 }}>表面メンテのリマインダー</h3>
