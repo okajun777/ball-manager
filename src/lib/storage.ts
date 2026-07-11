@@ -8,7 +8,7 @@ import type {
   SurfaceMaintenance,
 } from "./types";
 import { normalizeMember, today, uid } from "./types";
-import { isSupabaseConfigured, supabase } from "./supabase";
+import { getSupabase, isSupabaseConfigured } from "./supabase";
 
 const LOCAL_KEY = "ball-manager-data-v1";
 
@@ -217,7 +217,8 @@ function saveLocal(data: AppData) {
 }
 
 export async function loadAppData(): Promise<AppData> {
-  if (!isSupabaseConfigured || !supabase) return loadLocal();
+  const supabase = getSupabase();
+  if (!isSupabaseConfigured() || !supabase) return loadLocal();
 
   const local = (() => {
     try {
@@ -253,7 +254,8 @@ export async function loadAppData(): Promise<AppData> {
 export async function saveAppData(data: AppData): Promise<void> {
   // MVP: 常にローカルへ保存。Supabase接続時は設定画面から同期を拡張予定
   saveLocal(data);
-  if (!isSupabaseConfigured || !supabase) return;
+  const supabase = getSupabase();
+  if (!isSupabaseConfigured() || !supabase) return;
 
   // 簡易同期: グループが無ければ作成、あればローカル優先で upsert
   const g = data.group;
@@ -359,7 +361,9 @@ export async function joinByInviteCode(
   if (!code) throw new Error("招待コードを入力してください");
   if (!name) throw new Error("表示名を入力してください");
 
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured()) {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error("Supabase未設定");
     const { data: groups, error } = await supabase
       .from("groups")
       .select("*")
@@ -416,6 +420,7 @@ export async function joinByInviteCode(
 }
 
 async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): Promise<AppData> {
+  const supabase = getSupabase();
   if (!supabase) throw new Error("Supabase未設定");
 
   const [{ data: groupRow }, { data: members }, { data: balls }, { data: sessions }] =

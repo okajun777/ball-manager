@@ -15,7 +15,13 @@ import {
   type MaintReminderSettings,
 } from "../lib/maintReminder";
 import { createFreshData } from "../lib/storage";
-import { isSupabaseConfigured } from "../lib/supabase";
+import {
+  clearSupabaseSettings,
+  isSupabaseConfigured,
+  loadSupabaseSettings,
+  saveSupabaseSettings,
+  type SupabaseSettings,
+} from "../lib/supabase";
 import { loadUserPrefs, saveUserPrefs, type UserPrefs } from "../lib/prefs";
 import { useStore } from "../lib/store";
 import {
@@ -81,6 +87,8 @@ export function Settings() {
   const [joinCode, setJoinCode] = useState("");
   const [joinName, setJoinName] = useState("");
   const [llm, setLlm] = useState<LlmSettings>(() => loadLlmSettings());
+  const [supabaseForm, setSupabaseForm] = useState<SupabaseSettings>(() => loadSupabaseSettings());
+  const [supabaseReady, setSupabaseReady] = useState(() => isSupabaseConfigured());
   const [reminder, setReminder] = useState<MaintReminderSettings>(() =>
     loadMaintReminderSettings(),
   );
@@ -123,6 +131,23 @@ export function Settings() {
     e.preventDefault();
     saveLlmSettings(llm);
     alert("AI解説の設定を保存しました");
+  }
+
+  function saveSupabase(e: FormEvent) {
+    e.preventDefault();
+    const url = supabaseForm.url.trim();
+    const anonKey = supabaseForm.anonKey.trim();
+    if (!url || !anonKey) {
+      alert("Project URL と anon キーの両方を入れてください");
+      return;
+    }
+    if (!/^https:\/\/.+\.supabase\.co\/?$/i.test(url.replace(/\/$/, ""))) {
+      // 緩めに許可（カスタムドメイン等）
+    }
+    saveSupabaseSettings({ url, anonKey });
+    setSupabaseReady(true);
+    alert("クラウド接続を保存しました。ページを再読み込みします。");
+    window.location.reload();
   }
 
   function saveReminder(e: FormEvent) {
@@ -179,26 +204,54 @@ export function Settings() {
           </div>
         </form>
 
-        <div className="card">
+        <form className="card" onSubmit={saveSupabase}>
           <h3 style={{ marginTop: 0 }}>クラウド保存（Supabase）</h3>
-          <p style={{ color: "var(--sub)" }}>
+          <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
             状態:{" "}
-            <strong style={{ color: isSupabaseConfigured ? "var(--good)" : "var(--warn)" }}>
-              {isSupabaseConfigured ? "接続設定あり" : "未設定（今は端末内に保存）"}
+            <strong style={{ color: supabaseReady ? "var(--good)" : "var(--warn)" }}>
+              {supabaseReady ? "接続設定あり" : "未設定（今は端末内に保存）"}
             </strong>
           </p>
-          <ol style={{ color: "var(--sub)", paddingLeft: 18, fontSize: "0.92rem" }}>
-            <li>Supabase でプロジェクト作成</li>
-            <li>
-              <code>supabase/schema.sql</code> を SQL Editor で実行
-            </li>
-            <li>
-              <code>.env</code> に URL と anon key を設定（
-              <code>.env.example</code> 参照）
-            </li>
-            <li>アプリを再起動するとクラウド同期が有効</li>
-          </ol>
-        </div>
+          <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>
+            Edge で Supabase の Bowling を開き、左の歯車 → API にある2つを下に貼って保存してください。
+          </p>
+          <div className="field">
+            <label>Project URL</label>
+            <input
+              value={supabaseForm.url}
+              onChange={(e) => setSupabaseForm({ ...supabaseForm, url: e.target.value })}
+              placeholder="https://xxxx.supabase.co"
+              autoComplete="off"
+            />
+          </div>
+          <div className="field">
+            <label>anon キー（anon public）</label>
+            <input
+              type="password"
+              value={supabaseForm.anonKey}
+              onChange={(e) => setSupabaseForm({ ...supabaseForm, anonKey: e.target.value })}
+              placeholder="eyJ..."
+              autoComplete="off"
+            />
+          </div>
+          <div className="form-actions">
+            <button className="btn" type="submit">
+              クラウド接続を保存
+            </button>
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={() => {
+                clearSupabaseSettings();
+                setSupabaseForm({ url: "", anonKey: "" });
+                setSupabaseReady(false);
+                alert("クラウド接続を削除しました");
+              }}
+            >
+              接続を削除
+            </button>
+          </div>
+        </form>
       </div>
 
       <form className="card" style={{ marginTop: 14 }} onSubmit={savePrefs}>
@@ -297,7 +350,7 @@ export function Settings() {
         <h3 style={{ marginTop: 0 }}>招待コードで参加</h3>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
           家族からもらった招待コードでグループに入ります。
-          {isSupabaseConfigured
+          {isSupabaseConfigured()
             ? "クラウド上のグループを検索して参加します。"
             : "ローカルでは、この端末のグループコードと一致する場合のみメンバー追加できます。別端末は JSON 読み込みか Supabase を使ってください。"}
         </p>
