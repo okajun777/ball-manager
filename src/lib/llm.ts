@@ -1,6 +1,8 @@
 import type { OilPreset } from "./catalogTypes";
 import type { AdviceResult, PerformanceFocus } from "./strategy";
 import { focusLabel } from "./strategy";
+import type { Member } from "./types";
+import { formatMemberProfile, normalizeMember } from "./types";
 
 const KEY_STORAGE = "ball-manager-llm-key";
 const BASE_STORAGE = "ball-manager-llm-base";
@@ -239,6 +241,7 @@ length: 1短い〜5長い / volume: 1少ない〜5多い / shape: 1タイト〜5
 
 export async function generateStrategyExplanation(input: {
   memberName: string;
+  member?: Member | null;
   oil: OilPreset;
   note: string;
   focus: PerformanceFocus;
@@ -246,6 +249,13 @@ export async function generateStrategyExplanation(input: {
   results: AdviceResult[];
 }): Promise<string> {
   const top = input.results.slice(0, 5);
+  const member = input.member ? normalizeMember(input.member) : null;
+  const hand = member?.hand && member.hand !== "unspecified" ? member.hand : "right";
+  const handLabel =
+    hand === "left" ? "左投げ" : hand === "both" ? "両手" : "右投げ";
+  const earlyDir = hand === "left" ? "左" : "右";
+  const lateDir = hand === "left" ? "右" : "左";
+
   const summary = top
     .map((r, i) => {
       const perf = r.performance
@@ -281,9 +291,10 @@ export async function generateStrategyExplanation(input: {
   const system = `あなたはボウリングのレーン攻略コーチです。抽象論ではなく、レーン上で今すぐ使える具体指示を日本語で書いてください。
 
 必須ルール:
-・右投げ基準で「立ち位置○枚目」「アロー○枚目狙い」「ブレイク○枚目付近」を必ず数字で書く
-・左投げの場合は左右反転と一文で添える
-・「反応が早い→右に1〜2枚寄せる」「遅い→左に1〜2枚寄せる」を必ず含める（右投げ基準）
+・このプレイヤーは${handLabel}。立ち位置・狙い・寄せ方は必ず${handLabel}基準で書く（左右を間違えない）
+・「立ち位置○枚目」「アロー○枚目狙い」「ブレイク○枚目付近」を必ず数字で書く
+・「反応が早い→${earlyDir}に1〜2枚寄せる」「遅い→${lateDir}に1〜2枚寄せる」を必ず含める
+・性別・投球スタイル・プロフィールメモがあれば、球速・回転・ボール選択の注意に反映する
 ・第1候補を主に書き、第2・第3は「いつ切り替えるか」と「何枚動かす／どの球へ」まで書く
 ・与えられた具体ライン案の数字を活かし、勝手に大きく外さない（±2枚程度の微調整は可）
 ・「感覚で」「様子を見て」だけで終わらせない。必ず枚数目安を付ける
@@ -297,7 +308,12 @@ export async function generateStrategyExplanation(input: {
 
 800〜1400文字。箇条書きは最小限。`;
 
+  const profileLine = member
+    ? `プロフィール: ${formatMemberProfile(member)}`
+    : "プロフィール: 未設定（右投げ想定）";
+
   const user = `プレイヤー: ${input.memberName}
+${profileLine}
 オイル: ${input.oil.label}（長さ${input.oil.length}/5・量${input.oil.volume}/5・形状${input.oil.shape}/5）
 オイル説明: ${input.oil.description}
 メモ: ${input.note || "なし"}
@@ -306,7 +322,7 @@ export async function generateStrategyExplanation(input: {
 選球結果（上位）:
 ${summary}
 
-上記の具体ライン案を使って、今日の攻め方を「何枚目を狙うか／合わなければ右か左に何枚寄るか」まで詳しく解説してください。`;
+上記の具体ライン案とプロフィールを使って、今日の攻め方を「何枚目を狙うか／合わなければ${earlyDir}か${lateDir}に何枚寄るか」まで詳しく解説してください。`;
 
   return chatCompletion(
     [

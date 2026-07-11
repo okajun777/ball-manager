@@ -72,8 +72,9 @@ export function Dashboard() {
       sessions: memberSessions,
       performanceFocus: "practice",
       usePerformance: true,
+      hand: activeMember?.hand,
     }).slice(0, 3);
-  }, [memberBalls, memberSessions]);
+  }, [memberBalls, memberSessions, activeMember?.hand]);
 
   const trend = useMemo(() => {
     return [...memberSessions]

@@ -11,6 +11,7 @@ import {
 } from "../lib/llm";
 import { adviseBalls, focusLabel, type PerformanceFocus } from "../lib/strategy";
 import { useStore } from "../lib/store";
+import { MEMBER_HAND_LABEL } from "../lib/types";
 
 const catalog = catalogBalls as CatalogBall[];
 
@@ -58,8 +59,19 @@ export function Strategy() {
       sessions: memberSessions,
       performanceFocus,
       usePerformance,
+      hand: activeMember?.hand,
     });
-  }, [ran, memberBalls, oil, ownedOnly, note, memberSessions, performanceFocus, usePerformance]);
+  }, [
+    ran,
+    memberBalls,
+    oil,
+    ownedOnly,
+    note,
+    memberSessions,
+    performanceFocus,
+    usePerformance,
+    activeMember?.hand,
+  ]);
 
   function resetAdvice() {
     setRan(false);
@@ -122,6 +134,7 @@ export function Strategy() {
     try {
       const text = await generateStrategyExplanation({
         memberName: activeMember.displayName,
+        member: activeMember,
         oil,
         note,
         focus: performanceFocus,
@@ -144,7 +157,16 @@ export function Strategy() {
       <div className="page-title">
         <div>
           <h1>攻略AI</h1>
-          <p>オイル条件 ＋ 自分の過去スコアで、おすすめボールを提案します</p>
+          <p>
+            オイル条件 ＋ 自分の過去スコアで、おすすめボールを提案します
+            {activeMember
+              ? `（${activeMember.displayName}${
+                  activeMember.hand && activeMember.hand !== "unspecified"
+                    ? `・${MEMBER_HAND_LABEL[activeMember.hand]}`
+                    : ""
+                }）`
+              : ""}
+          </p>
         </div>
       </div>
 

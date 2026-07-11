@@ -7,7 +7,7 @@ import type {
   ScoreSession,
   SurfaceMaintenance,
 } from "./types";
-import { today, uid } from "./types";
+import { normalizeMember, today, uid } from "./types";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
 const LOCAL_KEY = "ball-manager-data-v1";
@@ -28,8 +28,26 @@ function createDemoData(): AppData {
   };
 
   const members: Member[] = [
-    { id: selfId, groupId, displayName: "淳司", isSelf: true },
-    { id: familyId, groupId, displayName: "はるみ", isSelf: false },
+    {
+      id: selfId,
+      groupId,
+      displayName: "淳司",
+      isSelf: true,
+      gender: "male",
+      hand: "right",
+      throwStyle: "unspecified",
+      profileNote: "",
+    },
+    {
+      id: familyId,
+      groupId,
+      displayName: "はるみ",
+      isSelf: false,
+      gender: "female",
+      hand: "unspecified",
+      throwStyle: "unspecified",
+      profileNote: "",
+    },
   ];
 
   const balls: Ball[] = [
@@ -119,8 +137,26 @@ export function createFreshData(): AppData {
       inviteCode: "family01",
     },
     members: [
-      { id: selfId, groupId, displayName: "淳司", isSelf: true },
-      { id: familyId, groupId, displayName: "はるみ", isSelf: false },
+      {
+        id: selfId,
+        groupId,
+        displayName: "淳司",
+        isSelf: true,
+        gender: "male",
+        hand: "right",
+        throwStyle: "unspecified",
+        profileNote: "",
+      },
+      {
+        id: familyId,
+        groupId,
+        displayName: "はるみ",
+        isSelf: false,
+        gender: "female",
+        hand: "unspecified",
+        throwStyle: "unspecified",
+        profileNote: "",
+      },
     ],
     balls: [],
     sessions: [],
@@ -147,7 +183,7 @@ function remapDemoMemberNames(members: Member[]): Member[] {
 function normalizeAppData(data: AppData): AppData {
   return {
     ...data,
-    members: remapDemoMemberNames(data.members),
+    members: remapDemoMemberNames(data.members).map(normalizeMember),
     balls: (data.balls ?? []).map((b) => ({
       ...b,
       retired: Boolean(b.retired),
@@ -228,12 +264,19 @@ export async function saveAppData(data: AppData): Promise<void> {
   });
 
   await supabase.from("members").upsert(
-    data.members.map((m) => ({
-      id: m.id,
-      group_id: m.groupId,
-      display_name: m.displayName,
-      is_self: m.isSelf,
-    })),
+    data.members.map((m) => {
+      const n = normalizeMember(m);
+      return {
+        id: n.id,
+        group_id: n.groupId,
+        display_name: n.displayName,
+        is_self: n.isSelf,
+        gender: n.gender ?? "unspecified",
+        hand: n.hand ?? "unspecified",
+        throw_style: n.throwStyle ?? "unspecified",
+        profile_note: n.profileNote ?? "",
+      };
+    }),
   );
 
   await supabase.from("balls").upsert(
@@ -334,6 +377,10 @@ export async function joinByInviteCode(
       group_id: groupId,
       display_name: name,
       is_self: true,
+      gender: "unspecified",
+      hand: "unspecified",
+      throw_style: "unspecified",
+      profile_note: "",
     });
     if (memErr) throw memErr;
 
@@ -354,6 +401,10 @@ export async function joinByInviteCode(
     groupId: local.group.id,
     displayName: name,
     isSelf: false,
+    gender: "unspecified",
+    hand: "unspecified",
+    throwStyle: "unspecified",
+    profileNote: "",
   };
   const next: AppData = {
     ...local,
@@ -391,12 +442,18 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
     ? await supabase.from("score_games").select("*").in("session_id", sessionIds)
     : { data: [] as Record<string, unknown>[] };
 
-  const mappedMembers: Member[] = (members ?? []).map((m) => ({
-    id: m.id,
-    groupId: m.group_id,
-    displayName: m.display_name,
-    isSelf: activeMemberId ? m.id === activeMemberId : Boolean(m.is_self),
-  }));
+  const mappedMembers: Member[] = (members ?? []).map((m) =>
+    normalizeMember({
+      id: m.id,
+      groupId: m.group_id,
+      displayName: m.display_name,
+      isSelf: activeMemberId ? m.id === activeMemberId : Boolean(m.is_self),
+      gender: m.gender ?? "unspecified",
+      hand: m.hand ?? "unspecified",
+      throwStyle: m.throw_style ?? "unspecified",
+      profileNote: m.profile_note ?? "",
+    }),
+  );
 
   const mappedBalls: Ball[] = (balls ?? []).map((b) => ({
     id: b.id,

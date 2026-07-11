@@ -1,4 +1,4 @@
-import type { Ball, ScoreSession, SessionType } from "./types";
+import type { Ball, MemberHand, ScoreSession, SessionType } from "./types";
 import { avg } from "./types";
 import type { CatalogBall, OilPreset } from "./catalogTypes";
 
@@ -171,25 +171,38 @@ function scoreCandidate(c: Candidate, oil: OilPreset): { score: number; reasons:
   return { score: Math.round(score), reasons: reasons.slice(0, 3) };
 }
 
-function lineHint(oil: OilPreset): string {
-  // 右投げ基準。左投げは左右反転。
+function lineHint(oil: OilPreset, hand: MemberHand = "right"): string {
+  const left = hand === "left";
+  const both = hand === "both";
+  const label = left ? "左投げ基準" : both ? "両手（右投げ基準で記載・左は反転）" : "右投げ基準";
   if (oil.id === "house" || oil.shape >= 4) {
-    return "右投げ基準: 立ち位置25〜28枚目、アローで10〜13枚目狙い、ブレイクポイントは7〜10枚目付近（外のドライを使う）。左投げは左右反転。";
+    return left
+      ? `${label}: 立ち位置12〜15枚目、アローで27〜30枚目狙い、ブレイクポイントは30〜33枚目付近（外のドライを使う）。`
+      : `${label}: 立ち位置25〜28枚目、アローで10〜13枚目狙い、ブレイクポイントは7〜10枚目付近（外のドライを使う）。`;
   }
   if (oil.length >= 4 || oil.volume >= 4) {
-    return "右投げ基準: 立ち位置20〜24枚目、アローで15〜18枚目狙い、ブレイクは10〜13枚目付近（ストレート寄りに入れて奥で曲げる）。左投げは左右反転。";
+    return left
+      ? `${label}: 立ち位置16〜20枚目、アローで22〜25枚目狙い、ブレイクは27〜30枚目付近（ストレート寄りに入れて奥で曲げる）。`
+      : `${label}: 立ち位置20〜24枚目、アローで15〜18枚目狙い、ブレイクは10〜13枚目付近（ストレート寄りに入れて奥で曲げる）。`;
   }
   if (oil.length <= 2 || oil.volume <= 2) {
-    return "右投げ基準: 立ち位置28〜32枚目、アローで8〜11枚目狙い、ブレイクは5〜8枚目付近（手前の反応を抑える）。左投げは左右反転。";
+    return left
+      ? `${label}: 立ち位置8〜12枚目、アローで29〜32枚目狙い、ブレイクは32〜35枚目付近（手前の反応を抑える）。`
+      : `${label}: 立ち位置28〜32枚目、アローで8〜11枚目狙い、ブレイクは5〜8枚目付近（手前の反応を抑える）。`;
   }
-  return "右投げ基準: 立ち位置23〜27枚目、アローで12〜15枚目狙い、ブレイクは8〜12枚目付近から開始。左投げは左右反転。";
+  return left
+    ? `${label}: 立ち位置13〜17枚目、アローで25〜28枚目狙い、ブレイクは28〜32枚目付近から開始。`
+    : `${label}: 立ち位置23〜27枚目、アローで12〜15枚目狙い、ブレイクは8〜12枚目付近から開始。`;
 }
 
-function adjustHint(oil: OilPreset, topCover: string): string {
+function adjustHint(oil: OilPreset, topCover: string, hand: MemberHand = "right"): string {
   const s = coverStrength(topCover);
+  const left = hand === "left";
+  const earlyDir = left ? "左" : "右";
+  const lateDir = left ? "右" : "左";
   const move =
-    "反応が早い（手前で曲がりすぎ／ハイヒットしすぎ）→ 立ち位置と狙いを右に1〜2枚ずつ寄せる（右投げ。左投げは左へ）。" +
-    "反応が遅い（ピンまで届かない／薄い）→ 左に1〜2枚寄せる、またはスピードを少し落とす。";
+    `反応が早い（手前で曲がりすぎ／ハイヒットしすぎ）→ 立ち位置と狙いを${earlyDir}に1〜2枚ずつ寄せる。` +
+    `反応が遅い（ピンまで届かない／薄い）→ ${lateDir}に1〜2枚寄せる、またはスピードを少し落とす。`;
   if (oil.volume >= 4 && s <= 3) {
     return `${move} それでも奥で足りなければ、表面を少し荒らすか強いカバーへボールアップ。`;
   }
@@ -204,9 +217,10 @@ export function buildBallPlayAdvice(
   oil: OilPreset,
   coverType: string,
   rank: number,
+  hand: MemberHand = "right",
 ): { startBoard: string; targetBoard: string; breakpoint: string; ifEarly: string; ifLate: string } {
   const s = coverStrength(coverType);
-  // 強いカバーほどやや外（右投げなら右寄り）から
+  const left = hand === "left";
   let start = 25;
   let target = 12;
   let brk = 9;
@@ -227,18 +241,31 @@ export function buildBallPlayAdvice(
     target = s >= 4 ? 11 : 14;
     brk = s >= 4 ? 8 : 10;
   }
-  // 第2候補以降は少し内（左）寄りを提案
   if (rank >= 1) {
     start = Math.max(15, start - 2 * rank);
     target = Math.min(20, target + rank);
     brk = Math.min(15, brk + rank);
   }
+  if (left) {
+    start = 40 - start;
+    target = 40 - target;
+    brk = 40 - brk;
+  }
+  const handLabel = left ? "左投げ" : hand === "both" ? "両手（右基準）" : "右投げ";
+  const earlyDir = left ? "左" : "右";
+  const lateDir = left ? "右" : "左";
+  const startLo = Math.min(start, start + 2);
+  const startHi = Math.max(start, start + 2);
+  const targetLo = Math.min(target, target + 2);
+  const targetHi = Math.max(target, target + 2);
+  const brkLo = Math.min(brk, brk + 2);
+  const brkHi = Math.max(brk, brk + 2);
   return {
-    startBoard: `立ち位置 ${start}〜${start + 2}枚目（右投げ）`,
-    targetBoard: `アロー狙い ${target}〜${target + 2}枚目`,
-    breakpoint: `ブレイク目安 ${brk}〜${brk + 2}枚目`,
-    ifEarly: "手前で曲がりすぎ → 立ち位置と狙いを右へ1〜2枚（左投げは左へ）",
-    ifLate: "届かない／薄い → 左へ1〜2枚、またはスピードを少し落とす（左投げは右へ）",
+    startBoard: `立ち位置 ${startLo}〜${startHi}枚目（${handLabel}）`,
+    targetBoard: `アロー狙い ${targetLo}〜${targetHi}枚目`,
+    breakpoint: `ブレイク目安 ${brkLo}〜${brkHi}枚目`,
+    ifEarly: `手前で曲がりすぎ → 立ち位置と狙いを${earlyDir}へ1〜2枚`,
+    ifLate: `届かない／薄い → ${lateDir}へ1〜2枚、またはスピードを少し落とす`,
   };
 }
 
@@ -363,11 +390,13 @@ export function adviseBalls(options: {
   sessions?: ScoreSession[];
   performanceFocus?: PerformanceFocus;
   usePerformance?: boolean;
+  hand?: MemberHand;
 }): AdviceResult[] {
   const candidates = toCandidates(options.owned, options.catalog, options.ownedOnly);
   const note = (options.note || "").toLowerCase();
   const focus = options.performanceFocus ?? "all";
   const usePerformance = options.usePerformance ?? true;
+  const hand = options.hand && options.hand !== "unspecified" ? options.hand : "right";
   const perfMap = buildBallPerformance(options.sessions ?? [], focus, options.oil);
 
   const ranked = candidates
@@ -393,10 +422,10 @@ export function adviseBalls(options: {
         source: c.source,
         score: Math.round(finalScore),
         reasons: allReasons.slice(0, 5),
-        lineHint: lineHint(options.oil),
-        adjustHint: adjustHint(options.oil, c.coverType),
+        lineHint: lineHint(options.oil, hand),
+        adjustHint: adjustHint(options.oil, c.coverType, hand),
         coverType: c.coverType || "不明",
-        playAdvice: buildBallPlayAdvice(options.oil, c.coverType, 0),
+        playAdvice: buildBallPlayAdvice(options.oil, c.coverType, 0, hand),
         performance: perf.performance,
       } satisfies AdviceResult;
     })
@@ -404,8 +433,9 @@ export function adviseBalls(options: {
 
   return ranked.slice(0, 8).map((r, i) => ({
     ...r,
-    playAdvice: buildBallPlayAdvice(options.oil, r.coverType, i),
-    lineHint: i === 0 ? lineHint(options.oil) : r.lineHint,
+    playAdvice: buildBallPlayAdvice(options.oil, r.coverType, i, hand),
+    lineHint: lineHint(options.oil, hand),
+    adjustHint: adjustHint(options.oil, r.coverType, hand),
   }));
 }
 

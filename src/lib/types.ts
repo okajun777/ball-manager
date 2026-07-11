@@ -8,12 +8,65 @@ export type MaintenanceKind =
   | "factory"
   | "other";
 
+export type MemberGender = "male" | "female" | "other" | "unspecified";
+export type MemberHand = "right" | "left" | "both" | "unspecified";
+export type MemberThrowStyle = "one_hand" | "two_hand" | "unspecified";
+
 export type Member = {
   id: string;
   groupId: string;
   displayName: string;
   isSelf: boolean;
+  /** 性別 */
+  gender?: MemberGender;
+  /** 利き手（投球手） */
+  hand?: MemberHand;
+  /** 投球スタイル */
+  throwStyle?: MemberThrowStyle;
+  /** 自由メモ（回転多め、スピード遅めなど） */
+  profileNote?: string;
 };
+
+export const MEMBER_GENDER_LABEL: Record<MemberGender, string> = {
+  male: "男性",
+  female: "女性",
+  other: "その他",
+  unspecified: "未設定",
+};
+
+export const MEMBER_HAND_LABEL: Record<MemberHand, string> = {
+  right: "右投げ",
+  left: "左投げ",
+  both: "両手",
+  unspecified: "未設定",
+};
+
+export const MEMBER_THROW_STYLE_LABEL: Record<MemberThrowStyle, string> = {
+  one_hand: "1ハンド",
+  two_hand: "2ハンド",
+  unspecified: "未設定",
+};
+
+export function normalizeMember(m: Member): Member {
+  return {
+    ...m,
+    gender: m.gender ?? "unspecified",
+    hand: m.hand ?? "unspecified",
+    throwStyle: m.throwStyle ?? "unspecified",
+    profileNote: m.profileNote ?? "",
+  };
+}
+
+export function formatMemberProfile(m: Member): string {
+  const n = normalizeMember(m);
+  const parts = [
+    MEMBER_GENDER_LABEL[n.gender!],
+    MEMBER_HAND_LABEL[n.hand!],
+    MEMBER_THROW_STYLE_LABEL[n.throwStyle!],
+  ];
+  if (n.profileNote?.trim()) parts.push(n.profileNote.trim());
+  return parts.join(" / ");
+}
 
 export type Ball = {
   id: string;

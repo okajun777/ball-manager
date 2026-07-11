@@ -18,6 +18,50 @@ import { createFreshData } from "../lib/storage";
 import { isSupabaseConfigured } from "../lib/supabase";
 import { loadUserPrefs, saveUserPrefs, type UserPrefs } from "../lib/prefs";
 import { useStore } from "../lib/store";
+import {
+  MEMBER_GENDER_LABEL,
+  MEMBER_HAND_LABEL,
+  MEMBER_THROW_STYLE_LABEL,
+  formatMemberProfile,
+  normalizeMember,
+  type MemberGender,
+  type MemberHand,
+  type MemberThrowStyle,
+} from "../lib/types";
+
+type MemberDraft = {
+  displayName: string;
+  gender: MemberGender;
+  hand: MemberHand;
+  throwStyle: MemberThrowStyle;
+  profileNote: string;
+};
+
+function draftFromMember(m: {
+  displayName: string;
+  gender?: MemberGender;
+  hand?: MemberHand;
+  throwStyle?: MemberThrowStyle;
+  profileNote?: string;
+}): MemberDraft {
+  const n = normalizeMember({
+    id: "",
+    groupId: "",
+    displayName: m.displayName,
+    isSelf: false,
+    gender: m.gender,
+    hand: m.hand,
+    throwStyle: m.throwStyle,
+    profileNote: m.profileNote,
+  });
+  return {
+    displayName: n.displayName,
+    gender: n.gender ?? "unspecified",
+    hand: n.hand ?? "unspecified",
+    throwStyle: n.throwStyle ?? "unspecified",
+    profileNote: n.profileNote ?? "",
+  };
+}
 
 export function Settings() {
   const {
@@ -26,14 +70,14 @@ export function Settings() {
     memberBalls,
     memberSessions,
     addMember,
-    updateMemberName,
+    updateMemberProfile,
     updateGroupName,
     replaceAppData,
     joinGroup,
   } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
-  const [editingNames, setEditingNames] = useState<Record<string, string>>({});
+  const [editingMembers, setEditingMembers] = useState<Record<string, MemberDraft>>({});
   const [joinCode, setJoinCode] = useState("");
   const [joinName, setJoinName] = useState("");
   const [llm, setLlm] = useState<LlmSettings>(() => loadLlmSettings());
@@ -394,66 +438,167 @@ export function Settings() {
       </div>
 
       <div className="grid two" style={{ marginTop: 14 }}>
-        <form className="card" onSubmit={onAddMember}>
-          <h3 style={{ marginTop: 0 }}>メンバー追加</h3>
-          <div className="field">
-            <label>表示名</label>
-            <input
-              value={memberName}
-              onChange={(e) => setMemberName(e.target.value)}
-              placeholder="父 / 友人A"
-            />
-          </div>
-          <div className="form-actions">
-            <button className="btn" type="submit">
-              追加
-            </button>
-          </div>
-          <ul style={{ marginTop: 12, paddingLeft: 0, listStyle: "none" }}>
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>メンバー・プロフィール</h3>
+          <form onSubmit={onAddMember} style={{ marginBottom: 14 }}>
+            <div className="field">
+              <label>表示名を追加</label>
+              <input
+                value={memberName}
+                onChange={(e) => setMemberName(e.target.value)}
+                placeholder="父 / 友人A"
+              />
+            </div>
+            <div className="form-actions">
+              <button className="btn" type="submit">
+                追加
+              </button>
+            </div>
+          </form>
+          <div style={{ display: "grid", gap: 14 }}>
             {data.members.map((m) => {
-              const draft = editingNames[m.id] ?? m.displayName;
+              const draft = editingMembers[m.id] ?? draftFromMember(m);
+              const saved = draftFromMember(m);
+              const dirty =
+                draft.displayName.trim() !== saved.displayName ||
+                draft.gender !== saved.gender ||
+                draft.hand !== saved.hand ||
+                draft.throwStyle !== saved.throwStyle ||
+                draft.profileNote.trim() !== saved.profileNote.trim();
               return (
-                <li
+                <div
                   key={m.id}
                   style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    marginBottom: 8,
-                    flexWrap: "wrap",
+                    border: "1px solid var(--line)",
+                    borderRadius: 12,
+                    padding: 12,
+                    background: m.id === activeMember?.id ? "var(--accent-soft)" : "#fff",
                   }}
                 >
-                  <input
-                    value={draft}
-                    onChange={(e) =>
-                      setEditingNames((prev) => ({ ...prev, [m.id]: e.target.value }))
-                    }
-                    style={{ flex: "1 1 120px", minWidth: 0 }}
-                    aria-label={`${m.displayName}の表示名`}
-                  />
-                  {m.isSelf ? (
-                    <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>自分</span>
-                  ) : null}
-                  <button
-                    className="btn secondary"
-                    type="button"
-                    disabled={!draft.trim() || draft.trim() === m.displayName}
-                    onClick={async () => {
-                      await updateMemberName(m.id, draft);
-                      setEditingNames((prev) => {
-                        const next = { ...prev };
-                        delete next[m.id];
-                        return next;
-                      });
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      marginBottom: 8,
+                      flexWrap: "wrap",
                     }}
                   >
-                    名前を保存
-                  </button>
-                </li>
+                    <input
+                      value={draft.displayName}
+                      onChange={(e) =>
+                        setEditingMembers((prev) => ({
+                          ...prev,
+                          [m.id]: { ...draft, displayName: e.target.value },
+                        }))
+                      }
+                      style={{ flex: "1 1 120px", minWidth: 0 }}
+                      aria-label={`${m.displayName}の表示名`}
+                    />
+                    {m.isSelf ? (
+                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>自分</span>
+                    ) : null}
+                  </div>
+                  <p style={{ margin: "0 0 8px", color: "var(--sub)", fontSize: "0.82rem" }}>
+                    現在: {formatMemberProfile(m)}
+                  </p>
+                  <div className="grid two">
+                    <div className="field">
+                      <label>性別</label>
+                      <select
+                        value={draft.gender}
+                        onChange={(e) =>
+                          setEditingMembers((prev) => ({
+                            ...prev,
+                            [m.id]: {
+                              ...draft,
+                              gender: e.target.value as MemberGender,
+                            },
+                          }))
+                        }
+                      >
+                        {(Object.keys(MEMBER_GENDER_LABEL) as MemberGender[]).map((k) => (
+                          <option key={k} value={k}>
+                            {MEMBER_GENDER_LABEL[k]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>利き手</label>
+                      <select
+                        value={draft.hand}
+                        onChange={(e) =>
+                          setEditingMembers((prev) => ({
+                            ...prev,
+                            [m.id]: { ...draft, hand: e.target.value as MemberHand },
+                          }))
+                        }
+                      >
+                        {(Object.keys(MEMBER_HAND_LABEL) as MemberHand[]).map((k) => (
+                          <option key={k} value={k}>
+                            {MEMBER_HAND_LABEL[k]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>投球スタイル</label>
+                    <select
+                      value={draft.throwStyle}
+                      onChange={(e) =>
+                        setEditingMembers((prev) => ({
+                          ...prev,
+                          [m.id]: {
+                            ...draft,
+                            throwStyle: e.target.value as MemberThrowStyle,
+                          },
+                        }))
+                      }
+                    >
+                      {(Object.keys(MEMBER_THROW_STYLE_LABEL) as MemberThrowStyle[]).map((k) => (
+                        <option key={k} value={k}>
+                          {MEMBER_THROW_STYLE_LABEL[k]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>メモ（回転多め・スピード遅めなど）</label>
+                    <input
+                      value={draft.profileNote}
+                      onChange={(e) =>
+                        setEditingMembers((prev) => ({
+                          ...prev,
+                          [m.id]: { ...draft, profileNote: e.target.value },
+                        }))
+                      }
+                      placeholder="例: 回転多め / スピード控えめ"
+                    />
+                  </div>
+                  <div className="form-actions">
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      disabled={!draft.displayName.trim() || !dirty}
+                      onClick={async () => {
+                        await updateMemberProfile(m.id, draft);
+                        setEditingMembers((prev) => {
+                          const next = { ...prev };
+                          delete next[m.id];
+                          return next;
+                        });
+                      }}
+                    >
+                      プロフィールを保存
+                    </button>
+                  </div>
+                </div>
               );
             })}
-          </ul>
-        </form>
+          </div>
+        </div>
 
         <div className="card">
           <h3 style={{ marginTop: 0 }}>招待文</h3>

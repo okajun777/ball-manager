@@ -15,8 +15,18 @@ create table if not exists members (
   group_id uuid not null references groups(id) on delete cascade,
   display_name text not null,
   is_self boolean not null default false,
+  gender text not null default 'unspecified',
+  hand text not null default 'unspecified',
+  throw_style text not null default 'unspecified',
+  profile_note text not null default '',
   created_at timestamptz not null default now()
 );
+
+-- 既存DB向け
+-- alter table members add column if not exists gender text not null default 'unspecified';
+-- alter table members add column if not exists hand text not null default 'unspecified';
+-- alter table members add column if not exists throw_style text not null default 'unspecified';
+-- alter table members add column if not exists profile_note text not null default '';
 
 create table if not exists balls (
   id uuid primary key default gen_random_uuid(),

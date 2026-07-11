@@ -8,8 +8,17 @@ import {
   type ReactNode,
 } from "react";
 import { loadAppData, saveAppData, joinByInviteCode } from "./storage";
-import type { AppData, Ball, Member, ScoreSession, SurfaceMaintenance } from "./types";
-import { MAINTENANCE_KIND_LABEL, uid } from "./types";
+import type {
+  AppData,
+  Ball,
+  Member,
+  MemberGender,
+  MemberHand,
+  MemberThrowStyle,
+  ScoreSession,
+  SurfaceMaintenance,
+} from "./types";
+import { MAINTENANCE_KIND_LABEL, normalizeMember, uid } from "./types";
 
 type Store = {
   data: AppData | null;
@@ -31,6 +40,16 @@ type Store = {
   deleteMaintenance: (id: string) => Promise<void>;
   addMember: (name: string) => Promise<void>;
   updateMemberName: (id: string, name: string) => Promise<void>;
+  updateMemberProfile: (
+    id: string,
+    patch: {
+      displayName?: string;
+      gender?: MemberGender;
+      hand?: MemberHand;
+      throwStyle?: MemberThrowStyle;
+      profileNote?: string;
+    },
+  ) => Promise<void>;
   updateGroupName: (name: string) => Promise<void>;
   replaceAppData: (next: AppData) => Promise<void>;
   joinGroup: (inviteCode: string, displayName: string) => Promise<void>;
@@ -199,12 +218,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     addMember: async (name) => {
       if (!data || !name.trim()) return;
-      const member: Member = {
+      const member: Member = normalizeMember({
         id: uid("mem"),
         groupId: data.group.id,
         displayName: name.trim(),
         isSelf: false,
-      };
+      });
       await persist({ ...data, members: [...data.members, member] });
     },
     updateMemberName: async (id, name) => {
@@ -214,6 +233,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
         members: data.members.map((m) =>
           m.id === id ? { ...m, displayName: name.trim() } : m,
         ),
+      });
+    },
+    updateMemberProfile: async (id, patch) => {
+      if (!data) return;
+      await persist({
+        ...data,
+        members: data.members.map((m) => {
+          if (m.id !== id) return m;
+          return normalizeMember({
+            ...m,
+            displayName: patch.displayName?.trim() || m.displayName,
+            gender: patch.gender ?? m.gender,
+            hand: patch.hand ?? m.hand,
+            throwStyle: patch.throwStyle ?? m.throwStyle,
+            profileNote:
+              patch.profileNote !== undefined ? patch.profileNote : m.profileNote,
+          });
+        }),
       });
     },
     updateGroupName: async (name) => {
