@@ -63,5 +63,13 @@ export default defineConfig({
   server: {
     port: 5180,
     host: "127.0.0.1",
+    proxy: {
+      // ローカル開発で未ミラー時に OBF PDF を取る
+      "/obf-proxy": {
+        target: "https://www.obf-bowling.net",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/obf-proxy/, ""),
+      },
+    },
   },
 });

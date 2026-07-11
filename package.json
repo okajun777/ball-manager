@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "mirror:patterns": "node scripts/mirror-osaka-patterns.mjs",
+    "prebuild": "node scripts/mirror-osaka-patterns.mjs",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"

@@ -177,3 +177,29 @@ export function formatOsakaEventLabel(e: OsakaEvent): string {
   const oil = e.patternPdfUrl?.trim() ? " · オイルあり" : "";
   return `${e.startDate} ${e.name}${e.venue ? `（${e.venue}）` : ""}${oil}`;
 }
+
+/** OBF 直リンクは CORS 不可。ビルド時ミラー or 開発プロキシ経由のURLを返す */
+export function patternFetchCandidates(remotePdfUrl: string): string[] {
+  const remote = remotePdfUrl.trim();
+  if (!remote) return [];
+  const slugMatch = remote.match(/\/Tournament\/\d+\/([^/]+)\/pattern\.pdf/i);
+  const slug = slugMatch?.[1];
+  const base = (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/");
+  const out: string[] = [];
+  if (slug) {
+    out.push(`${base}osaka-patterns/${slug}.pdf`);
+  }
+  // Vite dev proxy
+  if (import.meta.env.DEV) {
+    try {
+      const u = new URL(remote);
+      if (u.hostname.includes("obf-bowling.net")) {
+        out.push(`/obf-proxy${u.pathname}`);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  out.push(remote);
+  return [...new Set(out)];
+}

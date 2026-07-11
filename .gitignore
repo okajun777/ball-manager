@@ -15,6 +15,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# Mirrored OBF pattern PDFs (downloaded at build time)
+public/osaka-patterns/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

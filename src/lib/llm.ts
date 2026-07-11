@@ -127,12 +127,15 @@ function isPdfFile(file: File): boolean {
 }
 
 /** PDFの先頭ページ（最大2ページ）を1枚のJPEG data URLに変換 */
-async function renderPdfForVision(file: File, maxSide = 1280, maxPages = 2): Promise<string> {
+async function renderPdfBytesForVision(
+  data: Uint8Array,
+  maxSide = 1280,
+  maxPages = 2,
+): Promise<string> {
   const pdfjs = await import("pdfjs-dist");
   const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
 
-  const data = new Uint8Array(await file.arrayBuffer());
   const doc = await pdfjs.getDocument({ data }).promise;
   if (!doc.numPages) throw new Error("PDFにページがありません");
 
@@ -175,6 +178,10 @@ async function renderPdfForVision(file: File, maxSide = 1280, maxPages = 2): Pro
   return out.toDataURL("image/jpeg", 0.72);
 }
 
+async function renderPdfForVision(file: File, maxSide = 1280, maxPages = 2): Promise<string> {
+  return renderPdfBytesForVision(new Uint8Array(await file.arrayBuffer()), maxSide, maxPages);
+}
+
 /** 画像またはPDFを Vision API 用の data URL に変換 */
 export async function prepareOilPatternFile(file: File): Promise<string> {
   if (isPdfFile(file)) {
@@ -189,6 +196,63 @@ export async function prepareOilPatternFile(file: File): Promise<string> {
     return compressImageForVision(file);
   }
   throw new Error("画像（JPG/PNGなど）またはPDFを選択してください");
+}
+
+/** リモート／同一オリジンのPDF・画像URLを Vision 用 data URL に */
+export async function prepareOilPatternFromUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`パターン資料の取得に失敗しました (${res.status})`);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const lower = url.toLowerCase();
+  const type = (res.headers.get("content-type") || "").toLowerCase();
+  if (type.includes("pdf") || lower.includes(".pdf") || buf[0] === 0x25 /* %PDF */) {
+    try {
+      return await renderPdfBytesForVision(buf);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`PDFの読み込みに失敗しました: ${msg}`);
+    }
+  }
+  const blob = new Blob([buf], { type: type || "image/jpeg" });
+  const file = new File([blob], "pattern.jpg", { type: blob.type });
+  return compressImageForVision(file);
+}
+
+/** 複数候補URLを順に試し、最初に成功したものを返す */
+export async function prepareOilPatternFromUrlCandidates(urls: string[]): Promise<string> {
+  let lastErr: Error | null = null;
+  for (const url of urls) {
+    try {
+      return await prepareOilPatternFromUrl(url);
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e));
+    }
+  }
+  throw lastErr ?? new Error("パターン資料を取得できませんでした");
+}
+
+const OIL_ANALYSIS_CACHE_KEY = "ball-manager-oil-pdf-analysis-v1";
+
+export function loadCachedOilAnalysis(cacheKey: string): OilImageAnalysis | null {
+  try {
+    const raw = localStorage.getItem(OIL_ANALYSIS_CACHE_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw) as Record<string, OilImageAnalysis>;
+    return map[cacheKey] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCachedOilAnalysis(cacheKey: string, analysis: OilImageAnalysis) {
+  try {
+    const raw = localStorage.getItem(OIL_ANALYSIS_CACHE_KEY);
+    const map = raw ? (JSON.parse(raw) as Record<string, OilImageAnalysis>) : {};
+    map[cacheKey] = analysis;
+    localStorage.setItem(OIL_ANALYSIS_CACHE_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore quota */
+  }
 }
 
 export async function analyzeOilPatternImage(imageDataUrl: string): Promise<OilImageAnalysis> {

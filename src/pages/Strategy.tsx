@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import catalogBalls from "../data/catalogBalls.json";
 import { OIL_PRESETS, type CatalogBall, type OilPresetId } from "../lib/catalogTypes";
@@ -6,7 +6,10 @@ import {
   analyzeOilPatternImage,
   generateStrategyExplanation,
   isLlmConfigured,
+  loadCachedOilAnalysis,
   prepareOilPatternFile,
+  prepareOilPatternFromUrlCandidates,
+  saveCachedOilAnalysis,
   type OilImageAnalysis,
 } from "../lib/llm";
 import {
@@ -14,6 +17,7 @@ import {
   findOsakaEvent,
   formatOsakaEventLabel,
   listOsakaEventsForPicker,
+  patternFetchCandidates,
   setEventPatternPdf,
   type OsakaEvent,
 } from "../lib/osakaBowling";
@@ -44,6 +48,7 @@ export function Strategy() {
   const [osakaEventId, setOsakaEventId] = useState("");
   const [patternPdfDraft, setPatternPdfDraft] = useState("");
   const [osakaTick, setOsakaTick] = useState(0);
+  const oilScanGen = useRef(0);
   const llmReady = isLlmConfigured();
 
   const osakaWithOil = useMemo(
@@ -96,6 +101,55 @@ export function Strategy() {
     setAiError("");
   }
 
+  function applyOilAnalysis(result: OilImageAnalysis, previewDataUrl?: string) {
+    setOilAnalysis(result);
+    setPresetId("custom");
+    setLength(result.length);
+    setVolume(result.volume);
+    setShape(result.shape);
+    if (previewDataUrl) {
+      setOilPreview((prev) => {
+        if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+        return previewDataUrl;
+      });
+    }
+    resetAdvice();
+  }
+
+  async function analyzePatternPdfUrl(remoteUrl: string) {
+    const gen = ++oilScanGen.current;
+    setOilScanError("");
+    const cached = loadCachedOilAnalysis(remoteUrl);
+    if (cached) {
+      applyOilAnalysis(cached);
+      return;
+    }
+    if (!isLlmConfigured()) {
+      setOilScanError(
+        "パターンPDFの自動読取には共有APIキーが必要です。未設定の場合はスライダーで手動指定してください。",
+      );
+      setPresetId("custom");
+      resetAdvice();
+      return;
+    }
+    setOilScanLoading(true);
+    try {
+      const dataUrl = await prepareOilPatternFromUrlCandidates(patternFetchCandidates(remoteUrl));
+      if (gen !== oilScanGen.current) return;
+      const result = await analyzeOilPatternImage(dataUrl);
+      if (gen !== oilScanGen.current) return;
+      saveCachedOilAnalysis(remoteUrl, result);
+      applyOilAnalysis(result, dataUrl);
+    } catch (err) {
+      if (gen !== oilScanGen.current) return;
+      setOilScanError(err instanceof Error ? err.message : "パターンPDFの解析に失敗しました");
+      setPresetId("custom");
+      resetAdvice();
+    } finally {
+      if (gen === oilScanGen.current) setOilScanLoading(false);
+    }
+  }
+
   function applyOsakaEvent(ev: OsakaEvent | undefined) {
     if (!ev) {
       setOsakaEventId("");
@@ -115,10 +169,11 @@ export function Strategy() {
         .join(" / "),
     );
     setPerformanceFocus("tournament");
+    resetAdvice();
     if (ev.patternPdfUrl) {
       setPresetId("custom");
+      void analyzePatternPdfUrl(ev.patternPdfUrl);
     }
-    resetAdvice();
   }
 
   function savePatternUrlToEvent() {
@@ -284,7 +339,12 @@ export function Strategy() {
 
           {selectedOsaka?.patternPdfUrl ? (
             <p style={{ color: "var(--good)", fontSize: "0.88rem" }}>
-              選択中: {selectedOsaka.name}（オイルパターン登録済み）
+              選択中: {selectedOsaka.name}
+              {oilScanLoading
+                ? "（パターンPDFを読み取り中…）"
+                : oilAnalysis
+                  ? "（レーン条件を反映済み）"
+                  : "（オイルパターン登録済み）"}
             </p>
           ) : null}
 
