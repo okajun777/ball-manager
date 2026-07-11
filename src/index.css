@@ -353,20 +353,165 @@ button, input, select, textarea { font: inherit; }
 }
 
 @media (max-width: 960px) {
+  :root {
+    font-size: 14px;
+  }
+
   .app-shell { grid-template-columns: 1fr; }
+
   .sidebar {
     position: sticky;
     top: 0;
     z-index: 20;
+    height: auto;
+    max-height: none;
+    align-self: stretch;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .brand {
+    font-size: 0.92rem;
+    padding: 0 4px;
+  }
+  .brand small {
+    font-size: 0.68rem;
+  }
+
+  .nav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .nav a {
+    white-space: nowrap;
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+  }
+
+  .member-switch {
+    margin-top: 0;
+    padding: 8px;
+    border-radius: 8px;
+  }
+  .member-switch label { font-size: 0.68rem; margin-bottom: 4px; }
+  .member-switch select { padding: 6px 8px; font-size: 0.85rem; }
+
+  .ext-link {
+    margin-top: 0;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    border-radius: 8px;
+  }
+
+  .main { padding: 12px 10px 20px; }
+
+  .page-title { margin-bottom: 12px; gap: 8px; }
+  .page-title h1 { font-size: 1.15rem; }
+  .page-title p { font-size: 0.8rem; }
+
+  .grid { gap: 10px; }
+  .grid.stats, .grid.two, .row, .row.three { grid-template-columns: 1fr 1fr; }
+  .grid.cards { grid-template-columns: 1fr; }
+
+  .card {
+    border-radius: 10px;
     padding: 12px;
   }
-  .nav { display: flex; gap: 6px; overflow-x: auto; }
-  .nav a { white-space: nowrap; margin: 0; }
-  .member-switch { margin-top: 0; }
-  .grid.stats, .grid.two, .row, .row.three { grid-template-columns: 1fr 1fr; }
-  .game-row { grid-template-columns: 1fr 1fr; }
+
+  .stat .label { font-size: 0.72rem; }
+  .stat .value { font-size: 1.25rem; }
+  .stat .hint { font-size: 0.7rem; }
+
+  .btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+  }
+
+  .field { gap: 4px; margin-bottom: 8px; }
+  .field label { font-size: 0.72rem; }
+  .field input, .field select, .field textarea {
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  .field textarea { min-height: 64px; }
+
+  .table { font-size: 0.82rem; }
+  .table th, .table td { padding: 6px 4px; }
+
+  .tabs { gap: 6px; margin-bottom: 10px; }
+  .tab { padding: 6px 10px; font-size: 0.8rem; }
+
+  .empty { padding: 16px 8px; font-size: 0.88rem; }
+
+  .ball-title { font-size: 0.95rem; }
+  .form-actions { gap: 6px; flex-wrap: wrap; }
+
+  .game-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  .frame-sheet { padding: 8px; border-radius: 8px; }
+  .frame-grid {
+    grid-template-columns: repeat(10, minmax(44px, 1fr));
+    gap: 4px;
+    min-width: 480px;
+  }
+
+  .trend-chart { height: 96px; gap: 4px; }
+  .trend-chart.tall { height: 120px; }
+  .trend-col { min-width: 28px; }
+  .trend-bar { max-width: 22px; }
+
+  .suggest-chips button {
+    padding: 3px 8px;
+    font-size: 0.72rem;
+  }
+
+  .dash-rec {
+    grid-template-columns: 28px 1fr;
+    padding: 6px;
+    gap: 6px;
+  }
 }
+
 @media (max-width: 640px) {
-  .main { padding: 14px; }
+  :root {
+    font-size: 13px;
+  }
+
+  .main { padding: 10px 8px 18px; }
+
   .grid.stats, .grid.two, .row, .row.three { grid-template-columns: 1fr; }
+
+  .sidebar {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .nav a {
+    padding: 5px 8px;
+    font-size: 0.78rem;
+  }
+
+  .ext-link { display: none; }
+
+  .page-title h1 { font-size: 1.05rem; }
+
+  .card { padding: 10px; border-radius: 8px; }
+
+  .stat .value { font-size: 1.15rem; }
+
+  .btn {
+    padding: 7px 10px;
+    font-size: 0.84rem;
+  }
+
+  .field input, .field select, .field textarea {
+    padding: 7px 8px;
+  }
 }
