@@ -92,7 +92,6 @@ button, input, select, textarea { font: inherit; }
 }
 
 .member-switch {
-  margin-top: auto;
   padding: 12px;
   background: rgba(255,255,255,0.08);
   border-radius: 12px;
@@ -108,6 +107,13 @@ button, input, select, textarea { font: inherit; }
   border: 0;
   border-radius: 8px;
   padding: 8px 10px;
+}
+
+.sidebar-member-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
 }
 
 .ext-link {
@@ -238,6 +244,21 @@ button, input, select, textarea { font: inherit; }
 .ball-meta { color: var(--sub); font-size: 0.8rem; margin-top: 6px; }
 .ball-title { font-weight: 800; font-size: 1.02rem; }
 .ball-brand { color: var(--accent); font-size: 0.78rem; font-weight: 700; }
+
+.ball-card-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ball-card-img {
+  width: 100%;
+  height: 140px;
+  object-fit: contain;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.ball-card-body { min-width: 0; }
 
 .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 .game-row {
@@ -444,12 +465,17 @@ button, input, select, textarea { font: inherit; }
   }
   .member-switch label { font-size: 0.68rem; margin-bottom: 4px; }
   .member-switch select { padding: 6px 8px; font-size: 0.85rem; }
+  .member-switch p { display: none; }
+
+  .sidebar-member-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 0;
+  }
 
   .ext-link {
-    margin-top: 0;
-    padding: 6px 10px;
-    font-size: 0.75rem;
-    border-radius: 8px;
+    display: none;
   }
 
   .main { padding: 12px 10px 20px; }
@@ -461,6 +487,23 @@ button, input, select, textarea { font: inherit; }
   .grid { gap: 10px; }
   .grid.stats, .grid.two, .row, .row.three { grid-template-columns: 1fr 1fr; }
   .grid.cards { grid-template-columns: 1fr; }
+
+  .ball-card-top {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .ball-card-img {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .ball-meta { margin-top: 4px; font-size: 0.75rem; line-height: 1.35; }
+  .ball-card .form-actions {
+    justify-content: flex-start;
+  }
 
   .card {
     border-radius: 10px;
@@ -547,6 +590,11 @@ button, input, select, textarea { font: inherit; }
   .page-title h1 { font-size: 1.05rem; }
 
   .card { padding: 10px; border-radius: 8px; }
+
+  .ball-card-img {
+    width: 64px;
+    height: 64px;
+  }
 
   .stat .value { font-size: 1.15rem; }
 

@@ -363,59 +363,55 @@ export function MyBalls() {
             const cat = findCatalogBall(b, catalog);
             const img = cat?.imageUrl ? publicUrl(cat.imageUrl) : "";
             return (
-              <div className="card" key={b.id}>
-                {img ? (
-                  <img
-                    src={img}
-                    alt={b.name}
-                    style={{
-                      width: "100%",
-                      height: 140,
-                      objectFit: "contain",
-                      background: "#f8fafc",
-                      borderRadius: 10,
-                      marginBottom: 10,
-                      border: "1px solid var(--line)",
-                    }}
-                    loading="lazy"
-                  />
-                ) : null}
-                <div className="ball-brand">{b.brand || cat?.brand || "ブランド未設定"}</div>
-                <div className="ball-title">
-                  {b.name}
-                  {reminder.enabled && due && due.status !== "ok" ? (
-                    <span
-                      className="badge"
-                      style={{
-                        marginLeft: 8,
-                        background: "#fff1e6",
-                        color: "var(--warn)",
-                        verticalAlign: "middle",
-                      }}
-                    >
-                      {due.status === "never" ? "メンテ未記録" : "要メンテ"}
-                    </span>
+              <div className="card ball-card" key={b.id}>
+                <div className="ball-card-top">
+                  {img ? (
+                    <img
+                      className="ball-card-img"
+                      src={img}
+                      alt={b.name}
+                      loading="lazy"
+                    />
                   ) : null}
-                </div>
-                <div className="ball-meta">
-                  {b.weightLb ? `${b.weightLb}lb` : "重量—"}
-                  {" · "}購入 {b.purchasedOn || "—"}
-                  <br />
-                  ショップ {b.shopName || "—"}
-                  <br />
-                  ドリラー {b.drillerName || "—"}
-                  {b.drilledOn ? `（${b.drilledOn}）` : ""}
-                  <br />
-                  {(() => {
-                    const scores = ballStats.get(b.id) ?? [];
-                    return scores.length
-                      ? `成績: 平均 ${avg(scores)} / 最高 ${Math.max(...scores)}（${scores.length}G）`
-                      : "成績: まだなし";
-                  })()}
-                  <br />
-                  {last
-                    ? `最終メンテ: ${last.doneOn} ${MAINTENANCE_KIND_LABEL[last.kind]}${last.grit ? ` / ${last.grit}` : ""}`
-                    : "最終メンテ: —"}
+                  <div className="ball-card-body">
+                    <div className="ball-brand">{b.brand || cat?.brand || "ブランド未設定"}</div>
+                    <div className="ball-title">
+                      {b.name}
+                      {reminder.enabled && due && due.status !== "ok" ? (
+                        <span
+                          className="badge"
+                          style={{
+                            marginLeft: 8,
+                            background: "#fff1e6",
+                            color: "var(--warn)",
+                            verticalAlign: "middle",
+                          }}
+                        >
+                          {due.status === "never" ? "メンテ未記録" : "要メンテ"}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="ball-meta">
+                      {b.weightLb ? `${b.weightLb}lb` : "重量—"}
+                      {" · "}購入 {b.purchasedOn || "—"}
+                      <br />
+                      ショップ {b.shopName || "—"}
+                      <br />
+                      ドリラー {b.drillerName || "—"}
+                      {b.drilledOn ? `（${b.drilledOn}）` : ""}
+                      <br />
+                      {(() => {
+                        const scores = ballStats.get(b.id) ?? [];
+                        return scores.length
+                          ? `成績: 平均 ${avg(scores)} / 最高 ${Math.max(...scores)}（${scores.length}G）`
+                          : "成績: まだなし";
+                      })()}
+                      <br />
+                      {last
+                        ? `最終メンテ: ${last.doneOn} ${MAINTENANCE_KIND_LABEL[last.kind]}${last.grit ? ` / ${last.grit}` : ""}`
+                        : "最終メンテ: —"}
+                    </div>
+                  </div>
                 </div>
                 <div className="form-actions">
                   <a
@@ -502,7 +498,7 @@ export function MyBalls() {
       <div className="card" style={{ marginTop: 14 }}>
         <h3 style={{ marginTop: 0 }}>最近のメンテ</h3>
         {!memberMaintenances.length ? (
-          <div className="empty">まだありません</div>
+          <p style={{ color: "var(--sub)", fontSize: "0.88rem", margin: 0 }}>まだありません</p>
         ) : (
           <table className="table">
             <thead>
