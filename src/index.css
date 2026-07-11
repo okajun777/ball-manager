@@ -420,7 +420,7 @@ button, input, select, textarea { font: inherit; }
     max-height: none;
     min-height: 0;
     align-self: start;
-    padding: 8px 10px;
+    padding: 6px 8px 0;
     gap: 6px;
     overflow: visible;
   }
@@ -475,11 +475,11 @@ button, input, select, textarea { font: inherit; }
 
   .member-switch {
     margin-top: 0;
-    padding: 8px;
+    padding: 6px 8px;
     border-radius: 8px;
   }
-  .member-switch label { font-size: 0.68rem; margin-bottom: 4px; }
-  .member-switch select { padding: 6px 8px; font-size: 0.85rem; }
+  .member-switch label { font-size: 0.68rem; margin-bottom: 2px; }
+  .member-switch select { padding: 5px 8px; font-size: 0.85rem; }
   .member-switch p { display: none; }
 
   .sidebar-member-row {
@@ -487,6 +487,7 @@ button, input, select, textarea { font: inherit; }
     grid-template-columns: 1fr 1fr;
     gap: 6px;
     margin-top: 0;
+    padding-bottom: 6px;
   }
 
   .ext-link {

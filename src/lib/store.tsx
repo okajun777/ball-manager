@@ -69,7 +69,7 @@ type Store = {
 
 const Ctx = createContext<Store | null>(null);
 
-function ownsMemberId(data: AppData, memberId: string, resourceMemberId: string, isAdmin: boolean) {
+function ownsMemberId(memberId: string, resourceMemberId: string, isAdmin: boolean) {
   if (isAdmin) return true;
   return resourceMemberId === memberId;
 }
@@ -219,7 +219,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     upsertBall: async (ball) => {
       if (!data || !deviceMemberId) return;
-      if (!ownsMemberId(data, deviceMemberId, ball.memberId, isAdmin)) return;
+      if (!ownsMemberId(deviceMemberId, ball.memberId, isAdmin)) return;
       const safeBall = isAdmin ? ball : { ...ball, memberId: deviceMemberId };
       const exists = data.balls.some((b) => b.id === safeBall.id);
       const balls = exists
@@ -230,7 +230,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     deleteBall: async (id) => {
       if (!data || !deviceMemberId) return;
       const ball = data.balls.find((b) => b.id === id);
-      if (!ball || !ownsMemberId(data, deviceMemberId, ball.memberId, isAdmin)) return;
+      if (!ball || !ownsMemberId(deviceMemberId, ball.memberId, isAdmin)) return;
       await persist({
         ...data,
         balls: data.balls.filter((b) => b.id !== id),
@@ -240,7 +240,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setBallRetired: async (id, retired) => {
       if (!data || !deviceMemberId) return;
       const ball = data.balls.find((b) => b.id === id);
-      if (!ball || !ownsMemberId(data, deviceMemberId, ball.memberId, isAdmin)) return;
+      if (!ball || !ownsMemberId(deviceMemberId, ball.memberId, isAdmin)) return;
       await persist({
         ...data,
         balls: data.balls.map((b) => (b.id === id ? { ...b, retired } : b)),
@@ -248,7 +248,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     upsertSession: async (session) => {
       if (!data || !deviceMemberId) return;
-      if (!ownsMemberId(data, deviceMemberId, session.memberId, isAdmin)) return;
+      if (!ownsMemberId(deviceMemberId, session.memberId, isAdmin)) return;
       const safe = isAdmin ? session : { ...session, memberId: deviceMemberId };
       const exists = data.sessions.some((s) => s.id === safe.id);
       const sessions = exists
@@ -259,7 +259,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     deleteSession: async (id) => {
       if (!data || !deviceMemberId) return;
       const session = data.sessions.find((s) => s.id === id);
-      if (!session || !ownsMemberId(data, deviceMemberId, session.memberId, isAdmin)) return;
+      if (!session || !ownsMemberId(deviceMemberId, session.memberId, isAdmin)) return;
       await persist({
         ...data,
         sessions: data.sessions.filter((s) => s.id !== id),
@@ -267,7 +267,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     addMaintenance: async (item) => {
       if (!data || !deviceMemberId) return;
-      if (!ownsMemberId(data, deviceMemberId, item.memberId, isAdmin)) return;
+      if (!ownsMemberId(deviceMemberId, item.memberId, isAdmin)) return;
       const safe = isAdmin ? item : { ...item, memberId: deviceMemberId };
       const ball = data.balls.find((b) => b.id === safe.ballId);
       const balls = ball
@@ -292,7 +292,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     deleteMaintenance: async (id) => {
       if (!data || !deviceMemberId) return;
       const item = (data.maintenances ?? []).find((m) => m.id === id);
-      if (!item || !ownsMemberId(data, deviceMemberId, item.memberId, isAdmin)) return;
+      if (!item || !ownsMemberId(deviceMemberId, item.memberId, isAdmin)) return;
       await persist({
         ...data,
         maintenances: (data.maintenances ?? []).filter((m) => m.id !== id),
