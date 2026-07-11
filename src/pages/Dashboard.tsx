@@ -33,6 +33,18 @@ export function Dashboard() {
     [memberSessions, todayKey],
   );
 
+  const weekSessions = useMemo(() => {
+    const now = new Date();
+    const day = (now.getDay() + 6) % 7; // Mon=0
+    const start = new Date(now);
+    start.setDate(now.getDate() - day);
+    const startKey = start.toISOString().slice(0, 10);
+    return memberSessions.filter((s) => s.playedOn >= startKey && s.playedOn <= todayKey);
+  }, [memberSessions, todayKey]);
+
+  const weekScores = weekSessions.flatMap((s) => s.games.map((g) => g.score));
+  const weekAvg = avg(weekScores);
+
   const reminder = loadMaintReminderSettings();
   const maintDue = useMemo(() => {
     if (!reminder.enabled) return [];
@@ -128,42 +140,85 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginTop: 0 }}>今日（{todayKey}）</h3>
-        {!todaySessions.length ? (
-          <div>
-            <p style={{ color: "var(--sub)", marginTop: 0 }}>まだ今日の記録がありません。</p>
-            <Link className="btn" to="/scores">
-              今日のスコアを入力
-            </Link>
-          </div>
-        ) : (
-          <div>
-            <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
-              {todaySessions.map((s) => (
-                <li key={s.id} style={{ marginBottom: 6 }}>
-                  <span className={`badge ${s.sessionType}`}>
-                    {s.sessionType === "practice" ? "練習" : "大会"}
-                  </span>{" "}
-                  {s.games.map((g) => g.score).join(" / ")}
-                  {avg(s.games.map((g) => g.score)) != null
-                    ? `（平均 ${avg(s.games.map((g) => g.score))}）`
-                    : ""}
-                  {s.shopName ? ` · ${s.shopName}` : ""}
-                  {s.laneNote ? ` · L${s.laneNote}` : ""}
-                </li>
-              ))}
-            </ul>
-            <div className="form-actions" style={{ justifyContent: "flex-start", margin: 0 }}>
+      <div className="grid two" style={{ marginBottom: 14 }}>
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>今日（{todayKey}）</h3>
+          {!todaySessions.length ? (
+            <div>
+              <p style={{ color: "var(--sub)", marginTop: 0 }}>まだ今日の記録がありません。</p>
               <Link className="btn" to="/scores">
-                追加で入力
-              </Link>
-              <Link className="btn secondary" to="/analysis">
-                分析を見る
+                今日のスコアを入力
               </Link>
             </div>
-          </div>
-        )}
+          ) : (
+            <div>
+              <ul style={{ margin: "0 0 10px", paddingLeft: 18 }}>
+                {todaySessions.map((s) => (
+                  <li key={s.id} style={{ marginBottom: 6 }}>
+                    <span className={`badge ${s.sessionType}`}>
+                      {s.sessionType === "practice" ? "練習" : "大会"}
+                    </span>{" "}
+                    {s.games.map((g) => g.score).join(" / ")}
+                    {avg(s.games.map((g) => g.score)) != null
+                      ? `（平均 ${avg(s.games.map((g) => g.score))}）`
+                      : ""}
+                    {s.shopName ? ` · ${s.shopName}` : ""}
+                    {s.laneNote ? ` · L${s.laneNote}` : ""}
+                  </li>
+                ))}
+              </ul>
+              <div className="form-actions" style={{ justifyContent: "flex-start", margin: 0 }}>
+                <Link className="btn" to="/scores">
+                  追加で入力
+                </Link>
+                <Link className="btn secondary" to="/analysis">
+                  分析を見る
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>今週</h3>
+          {!weekScores.length ? (
+            <p style={{ color: "var(--sub)", marginTop: 0 }}>今週の記録はまだありません。</p>
+          ) : (
+            <>
+              <div className="grid stats" style={{ marginBottom: 8 }}>
+                <div className="stat" style={{ padding: 0 }}>
+                  <div className="label">平均</div>
+                  <div className="value" style={{ fontSize: "1.6rem" }}>
+                    {weekAvg ?? "—"}
+                  </div>
+                </div>
+                <div className="stat" style={{ padding: 0 }}>
+                  <div className="label">最高</div>
+                  <div className="value" style={{ fontSize: "1.6rem" }}>
+                    {Math.max(...weekScores)}
+                  </div>
+                </div>
+                <div className="stat" style={{ padding: 0 }}>
+                  <div className="label">ゲーム</div>
+                  <div className="value" style={{ fontSize: "1.6rem" }}>
+                    {weekScores.length}
+                  </div>
+                </div>
+                <div className="stat" style={{ padding: 0 }}>
+                  <div className="label">回数</div>
+                  <div className="value" style={{ fontSize: "1.6rem" }}>
+                    {weekSessions.length}
+                  </div>
+                </div>
+              </div>
+              <p style={{ color: "var(--sub)", fontSize: "0.85rem", margin: 0 }}>
+                月曜始まり。練習{" "}
+                {weekSessions.filter((s) => s.sessionType === "practice").length} / 大会{" "}
+                {weekSessions.filter((s) => s.sessionType === "tournament").length}
+              </p>
+            </>
+          )}
+        </div>
       </div>
 
       {reminder.enabled && maintDue.length > 0 && (

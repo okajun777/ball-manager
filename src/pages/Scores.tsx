@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   emptyFrames,
   formatFrameDisplay,
@@ -135,6 +135,7 @@ function FrameSheet({
 export function Scores() {
   const { data, activeMember, memberBalls, memberAllBalls, upsertSession, memberSessions, deleteSession } =
     useStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const prefs = useMemo(() => loadUserPrefs(), []);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -158,6 +159,22 @@ export function Scores() {
     const map = new Map(memberAllBalls.map((b) => [b.id, b.name]));
     return (id: string | null) => (id ? map.get(id) ?? "—" : "—");
   }, [memberAllBalls]);
+
+  // 攻略AIなどからのディープリンク
+  useEffect(() => {
+    const ball = searchParams.get("ball");
+    const oil = searchParams.get("oil");
+    if (!ball && !oil) return;
+    if (oil?.trim()) setOilNote(oil.trim());
+    if (ball && memberBalls.some((b) => b.id === ball)) {
+      setGames((prev) => {
+        const next = prev.length ? [...prev] : [blankGame(ball)];
+        next[0] = { ...next[0], ballId: ball };
+        return next;
+      });
+    }
+    setSearchParams({}, { replace: true });
+  }, [searchParams, memberBalls, setSearchParams]);
 
   const shopSuggestions = useMemo(() => {
     const seen = new Set<string>();

@@ -233,6 +233,25 @@ export function Analysis() {
       .slice(0, 10);
   }, [filtered, memberAllBalls]);
 
+  const byMonth = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (const s of filtered) {
+      const key = s.playedOn.slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(key)) continue;
+      const list = map.get(key) ?? [];
+      list.push(...s.games.map((g) => g.score));
+      map.set(key, list);
+    }
+    return [...map.entries()]
+      .map(([key, list]) => ({
+        key,
+        avg: avg(list),
+        high: list.length ? Math.max(...list) : null,
+        count: list.length,
+      }))
+      .sort((a, b) => b.key.localeCompare(a.key));
+  }, [filtered]);
+
   return (
     <div>
       <div className="page-title">
@@ -526,6 +545,34 @@ export function Analysis() {
                         {g.shopName || "—"}
                         {g.laneNote ? ` / L${g.laneNote}` : ""}
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="card" style={{ marginTop: 14 }}>
+            <h3 style={{ marginTop: 0 }}>月別平均</h3>
+            {!byMonth.length ? (
+              <div className="empty">データがありません</div>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>月</th>
+                    <th>平均</th>
+                    <th>最高</th>
+                    <th>G数</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byMonth.map((row) => (
+                    <tr key={row.key}>
+                      <td>{row.key}</td>
+                      <td>{row.avg ?? "—"}</td>
+                      <td>{row.high ?? "—"}</td>
+                      <td>{row.count}</td>
                     </tr>
                   ))}
                 </tbody>

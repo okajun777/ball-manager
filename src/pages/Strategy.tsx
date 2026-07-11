@@ -386,6 +386,16 @@ export function Strategy() {
                         </p>
                       </>
                     )}
+                    {r.source === "owned" && (
+                      <div style={{ marginTop: 10 }}>
+                        <Link
+                          className="btn secondary"
+                          to={`/scores?ball=${encodeURIComponent(r.ballId)}&oil=${encodeURIComponent(oil.label)}`}
+                        >
+                          この球でスコア入力
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
