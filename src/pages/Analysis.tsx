@@ -215,6 +215,24 @@ export function Analysis() {
       .sort((a, b) => Math.abs(b.gap ?? 0) - Math.abs(a.gap ?? 0));
   }, [periodSessions, memberAllBalls]);
 
+  const topGames = useMemo(() => {
+    return filtered
+      .flatMap((s) =>
+        s.games.map((g) => ({
+          sessionId: s.id,
+          playedOn: s.playedOn,
+          sessionType: s.sessionType,
+          tournamentName: s.tournamentName,
+          shopName: s.shopName,
+          laneNote: s.laneNote ?? "",
+          score: g.score,
+          ballName: memberAllBalls.find((b) => b.id === g.ballId)?.name ?? "—",
+        })),
+      )
+      .sort((a, b) => b.score - a.score || b.playedOn.localeCompare(a.playedOn))
+      .slice(0, 10);
+  }, [filtered, memberAllBalls]);
+
   return (
     <div>
       <div className="page-title">
@@ -473,6 +491,47 @@ export function Analysis() {
               </div>
             </div>
           )}
+
+          <div className="card" style={{ marginTop: 14 }}>
+            <h3 style={{ marginTop: 0 }}>最高ゲーム（Top 10）</h3>
+            {!topGames.length ? (
+              <div className="empty">データがありません</div>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>日付</th>
+                    <th>スコア</th>
+                    <th>ボール</th>
+                    <th>条件</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topGames.map((g, i) => (
+                    <tr key={`${g.sessionId}-${g.score}-${i}`}>
+                      <td>{i + 1}</td>
+                      <td>
+                        {g.playedOn}
+                        <div style={{ color: "var(--sub)", fontSize: "0.75rem" }}>
+                          {g.sessionType === "practice" ? "練習" : "大会"}
+                          {g.tournamentName ? ` ${g.tournamentName}` : ""}
+                        </div>
+                      </td>
+                      <td>
+                        <strong>{g.score}</strong>
+                      </td>
+                      <td>{g.ballName}</td>
+                      <td style={{ fontSize: "0.85rem", color: "var(--sub)" }}>
+                        {g.shopName || "—"}
+                        {g.laneNote ? ` / L${g.laneNote}` : ""}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </>
       )}
 

@@ -668,6 +668,7 @@ export function Scores() {
               <tr>
                 <th>日付</th>
                 <th>区分</th>
+                <th>店舗 / レーン</th>
                 <th>スコア</th>
                 <th>ボール</th>
                 <th></th>
@@ -682,6 +683,15 @@ export function Scores() {
                       {s.sessionType === "practice" ? "練習" : "大会"}
                     </span>
                     {s.tournamentName ? ` ${s.tournamentName}` : ""}
+                  </td>
+                  <td style={{ fontSize: "0.88rem", color: "var(--sub)" }}>
+                    {s.shopName || "—"}
+                    {s.laneNote ? (
+                      <>
+                        <br />
+                        L{s.laneNote}
+                      </>
+                    ) : null}
                   </td>
                   <td>
                     {s.games.map((g) => g.score).join(" / ")}

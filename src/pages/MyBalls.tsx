@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import catalogBalls from "../data/catalogBalls.json";
 import { useStore } from "../lib/store";
@@ -11,7 +11,7 @@ import { round1SearchUrl } from "../lib/round1";
 import { findCatalogBall } from "../lib/strategy";
 import type { CatalogBall } from "../lib/catalogTypes";
 import type { Ball, MaintenanceKind, SurfaceMaintenance } from "../lib/types";
-import { MAINTENANCE_KIND_LABEL, today, uid } from "../lib/types";
+import { MAINTENANCE_KIND_LABEL, avg, today, uid } from "../lib/types";
 
 const catalog = catalogBalls as CatalogBall[];
 
@@ -35,6 +35,7 @@ export function MyBalls() {
     activeMember,
     memberBalls,
     memberRetiredBalls,
+    memberSessions,
     upsertBall,
     deleteBall,
     setBallRetired,
@@ -52,6 +53,19 @@ export function MyBalls() {
   const [maintKind, setMaintKind] = useState<MaintenanceKind>("clean");
   const [maintGrit, setMaintGrit] = useState("");
   const [maintNote, setMaintNote] = useState("");
+
+  const ballStats = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (const s of memberSessions) {
+      for (const g of s.games) {
+        if (!g.ballId) continue;
+        const list = map.get(g.ballId) ?? [];
+        list.push(g.score);
+        map.set(g.ballId, list);
+      }
+    }
+    return map;
+  }, [memberSessions]);
 
   if (!data || !activeMember) return null;
 
@@ -391,6 +405,13 @@ export function MyBalls() {
                   <br />
                   ドリラー {b.drillerName || "—"}
                   {b.drilledOn ? `（${b.drilledOn}）` : ""}
+                  <br />
+                  {(() => {
+                    const scores = ballStats.get(b.id) ?? [];
+                    return scores.length
+                      ? `成績: 平均 ${avg(scores)} / 最高 ${Math.max(...scores)}（${scores.length}G）`
+                      : "成績: まだなし";
+                  })()}
                   <br />
                   {last
                     ? `最終メンテ: ${last.doneOn} ${MAINTENANCE_KIND_LABEL[last.kind]}${last.grit ? ` / ${last.grit}` : ""}`
