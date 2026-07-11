@@ -86,7 +86,7 @@ export function Strategy() {
     try {
       if (!isLlmConfigured()) {
         setOilScanError(
-          "画像・PDFの自動読取には APIキーが必要です。設定・共有で登録するか、スライダーで手動指定してください。",
+          "画像・PDFの自動読取には共有APIキーが必要です。未設定の場合はスライダーで手動指定してください。",
         );
         setPresetId("custom");
         resetAdvice();
@@ -409,8 +409,7 @@ export function Strategy() {
               >
                 <h4 style={{ margin: "0 0 8px" }}>AI解説（任意）</h4>
                 <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
-                  ルール選球の結果を、文章でわかりやすく解説します。APIキーは
-                  <Link to="/settings">設定・共有</Link>で登録。
+                  ルール選球の結果を、文章でわかりやすく解説します。
                 </p>
                 {!llmReady ? (
                   <p style={{ color: "var(--warn)", fontSize: "0.88rem" }}>

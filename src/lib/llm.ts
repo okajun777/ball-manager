@@ -21,11 +21,21 @@ export type OilImageAnalysis = {
   confidence: "high" | "medium" | "low";
 };
 
-export function loadLlmSettings(): LlmSettings {
+function envDefaults(): LlmSettings {
   return {
-    apiKey: localStorage.getItem(KEY_STORAGE) ?? "",
-    baseUrl: localStorage.getItem(BASE_STORAGE) || "https://api.openai.com/v1",
-    model: localStorage.getItem(MODEL_STORAGE) || "gpt-4o-mini",
+    apiKey: String(import.meta.env.VITE_LLM_API_KEY ?? "").trim(),
+    baseUrl: String(import.meta.env.VITE_LLM_BASE_URL ?? "").trim() || "https://api.openai.com/v1",
+    model: String(import.meta.env.VITE_LLM_MODEL ?? "").trim() || "gpt-4o-mini",
+  };
+}
+
+/** 共有キー（ビルドの VITE_LLM_*）を優先。なければ端末の保存値 */
+export function loadLlmSettings(): LlmSettings {
+  const env = envDefaults();
+  return {
+    apiKey: env.apiKey || localStorage.getItem(KEY_STORAGE) || "",
+    baseUrl: env.apiKey ? env.baseUrl : localStorage.getItem(BASE_STORAGE) || env.baseUrl,
+    model: env.apiKey ? env.model : localStorage.getItem(MODEL_STORAGE) || env.model,
   };
 }
 
@@ -37,6 +47,10 @@ export function saveLlmSettings(settings: LlmSettings) {
 
 export function isLlmConfigured(): boolean {
   return Boolean(loadLlmSettings().apiKey);
+}
+
+export function hasSharedLlmKey(): boolean {
+  return Boolean(envDefaults().apiKey);
 }
 
 async function chatCompletion(messages: unknown[], temperature = 0.4): Promise<string> {

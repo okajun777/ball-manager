@@ -2,7 +2,12 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { downloadBackupJson, readBackupFile } from "../lib/backup";
 import { downloadScoresCsv } from "../lib/csvExport";
-import { loadLlmSettings, saveLlmSettings, type LlmSettings } from "../lib/llm";
+import {
+  hasSharedLlmKey,
+  loadLlmSettings,
+  saveLlmSettings,
+  type LlmSettings,
+} from "../lib/llm";
 import {
   loadMaintReminderSettings,
   requestNotifyPermission,
@@ -36,6 +41,7 @@ export function Settings() {
     loadMaintReminderSettings(),
   );
   const [prefs, setPrefs] = useState<UserPrefs>(() => loadUserPrefs());
+  const sharedLlm = hasSharedLlmKey();
 
   if (!data) return null;
 
@@ -72,7 +78,7 @@ export function Settings() {
   function saveLlm(e: FormEvent) {
     e.preventDefault();
     saveLlmSettings(llm);
-    alert("AI解説の設定を保存しました（この端末のみ）");
+    alert("AI解説の設定を保存しました");
   }
 
   function saveReminder(e: FormEvent) {
@@ -338,58 +344,54 @@ export function Settings() {
         </div>
       </div>
 
-      <form className="card" style={{ marginTop: 14 }} onSubmit={saveLlm}>
-        <h3 style={{ marginTop: 0 }}>AI解説・画像読取（OpenAI互換API）</h3>
-        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
-          攻略AIの文章解説と、オイルパターン画像の読取に使います。キーはこの端末のブラウザにだけ保存されます。
-          未設定でもルールベースの提案はそのまま使えます。
-        </p>
-        <div className="grid two">
-          <div className="field">
-            <label>APIキー</label>
-            <input
-              type="password"
-              value={llm.apiKey}
-              onChange={(e) => setLlm({ ...llm, apiKey: e.target.value })}
-              placeholder="sk-..."
-              autoComplete="off"
-            />
-          </div>
-          <div className="field">
-            <label>モデル</label>
-            <input
-              value={llm.model}
-              onChange={(e) => setLlm({ ...llm, model: e.target.value })}
-              placeholder="gpt-4o-mini"
-            />
-          </div>
-        </div>
-        <div className="field">
-          <label>Base URL（OpenAI / OpenRouter など）</label>
-          <input
-            value={llm.baseUrl}
-            onChange={(e) => setLlm({ ...llm, baseUrl: e.target.value })}
-            placeholder="https://api.openai.com/v1"
-          />
-        </div>
-        <div className="form-actions">
-          <button className="btn" type="submit">
-            AI設定を保存
-          </button>
-          <button
-            className="btn secondary"
-            type="button"
-            onClick={() => {
-              const cleared = { ...llm, apiKey: "" };
-              setLlm(cleared);
-              saveLlmSettings(cleared);
-              alert("APIキーを削除しました");
-            }}
-          >
-            キーを削除
-          </button>
-        </div>
-      </form>
+      <div className="card" style={{ marginTop: 14 }}>
+        <h3 style={{ marginTop: 0 }}>AI解説・画像読取</h3>
+        {sharedLlm ? (
+          <p style={{ color: "var(--sub)", fontSize: "0.9rem", margin: 0 }}>
+            家族共有のAPIキーが有効です。ローカル・公開版・どのブラウザでもそのまま使えます（設定不要）。
+            モデル: {llm.model}
+          </p>
+        ) : (
+          <form onSubmit={saveLlm}>
+            <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+              共有キー未設定です。下に入力して保存するか、デプロイ側の VITE_LLM_API_KEY を設定してください。
+            </p>
+            <div className="grid two">
+              <div className="field">
+                <label>APIキー</label>
+                <input
+                  type="password"
+                  value={llm.apiKey}
+                  onChange={(e) => setLlm({ ...llm, apiKey: e.target.value })}
+                  placeholder="sk-..."
+                  autoComplete="off"
+                />
+              </div>
+              <div className="field">
+                <label>モデル</label>
+                <input
+                  value={llm.model}
+                  onChange={(e) => setLlm({ ...llm, model: e.target.value })}
+                  placeholder="gpt-4o-mini"
+                />
+              </div>
+            </div>
+            <div className="field">
+              <label>Base URL</label>
+              <input
+                value={llm.baseUrl}
+                onChange={(e) => setLlm({ ...llm, baseUrl: e.target.value })}
+                placeholder="https://api.openai.com/v1"
+              />
+            </div>
+            <div className="form-actions">
+              <button className="btn" type="submit">
+                AI設定を保存
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
 
       <div className="grid two" style={{ marginTop: 14 }}>
         <form className="card" onSubmit={onAddMember}>
