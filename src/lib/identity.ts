@@ -36,7 +36,7 @@ export function hasAdminPin(): boolean {
 
 export function saveAdminPin(pin: string) {
   const p = pin.trim();
-  if (!/^\d{4}$/.test(p)) throw new Error("PINは4桁の数字にしてください");
+  if (!/^\d{4}$/.test(p)) throw new Error("4桁の数字にしてください");
   localStorage.setItem(ADMIN_PIN_KEY, p);
 }
 

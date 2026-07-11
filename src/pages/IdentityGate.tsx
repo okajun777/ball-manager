@@ -6,79 +6,86 @@ export function IdentityGate() {
   const { data, claimAsMember, unlockAdmin, hasAdminPin } = useStore();
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
-  const [showPin, setShowPin] = useState(false);
-  const [titleClicks, setTitleClicks] = useState(0);
+  const [pendingOwnerId, setPendingOwnerId] = useState<string | null>(null);
 
   const members = useMemo(() => data?.members ?? [], [data]);
-  const adminId = useMemo(() => findAdminMemberId(members), [members]);
-  const regularMembers = useMemo(
-    () => members.filter((m) => m.id !== adminId),
-    [members, adminId],
-  );
+  const ownerId = useMemo(() => findAdminMemberId(members), [members]);
 
   if (!data) return null;
 
-  return (
-    <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
-      <h2
-        style={{ marginTop: 0, userSelect: "none" }}
-        onClick={() => {
-          const n = titleClicks + 1;
-          setTitleClicks(n);
-          if (n >= 5) {
-            setShowPin(true);
-            setTitleClicks(0);
-          }
-        }}
-      >
-        誰が使いますか？
-      </h2>
-
-      <div style={{ display: "grid", gap: 8 }}>
-        {regularMembers.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            className="btn"
-            onClick={() => claimAsMember(m.id)}
-          >
-            {m.displayName}
-          </button>
-        ))}
-      </div>
-
-      {showPin ? (
-        <div style={{ marginTop: 16 }}>
-          <div className="field">
-            <label>PIN</label>
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={pin}
-              onChange={(e) => {
-                setPin(e.target.value.replace(/\D/g, "").slice(0, 4));
-                setPinError("");
-              }}
-              placeholder="••••"
-              autoComplete="off"
-            />
-          </div>
-          {pinError ? (
-            <p style={{ color: "#b42318", fontSize: "0.88rem" }}>{pinError}</p>
-          ) : null}
+  if (pendingOwnerId) {
+    return (
+      <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
+        <h2 style={{ marginTop: 0 }}>PIN</h2>
+        <div className="field">
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            value={pin}
+            onChange={(e) => {
+              setPin(e.target.value.replace(/\D/g, "").slice(0, 4));
+              setPinError("");
+            }}
+            placeholder="••••"
+            autoComplete="off"
+            autoFocus
+          />
+        </div>
+        {pinError ? (
+          <p style={{ color: "#b42318", fontSize: "0.88rem" }}>{pinError}</p>
+        ) : null}
+        <div className="form-actions" style={{ justifyContent: "flex-start" }}>
           <button
             type="button"
             className="btn"
             onClick={() => {
               const res = unlockAdmin(pin);
-              if (!res.ok) setPinError(res.error || "違います");
+              if (!res.ok) {
+                setPinError(res.error || "違います");
+                return;
+              }
             }}
           >
             {hasAdminPin ? "開く" : "設定して開く"}
           </button>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => {
+              setPendingOwnerId(null);
+              setPin("");
+              setPinError("");
+            }}
+          >
+            戻る
+          </button>
         </div>
-      ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
+      <h2 style={{ marginTop: 0 }}>誰が使いますか？</h2>
+      <div style={{ display: "grid", gap: 8 }}>
+        {members.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            className="btn"
+            onClick={() => {
+              if (ownerId && m.id === ownerId) {
+                setPendingOwnerId(m.id);
+                return;
+              }
+              claimAsMember(m.id);
+            }}
+          >
+            {m.displayName}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -91,6 +91,7 @@ export function Settings() {
     replaceAppData,
     joinGroup,
     claimAsMember,
+    unlockAdmin,
     setAdminPin,
   } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
@@ -234,35 +235,37 @@ export function Settings() {
         </p>
 
         {isAdmin ? (
-          <div className="field">
-            <label>PIN（4桁）</label>
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={adminPinDraft}
-              onChange={(e) => setAdminPinDraft(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              placeholder="••••"
-              autoComplete="off"
-            />
-            <div className="form-actions" style={{ justifyContent: "flex-start" }}>
-              <button
-                className="btn"
-                type="button"
-                onClick={() => {
-                  const res = setAdminPin(adminPinDraft);
-                  if (!res.ok) {
-                    alert(res.error || "設定できませんでした");
-                    return;
-                  }
-                  setAdminPinDraft("");
-                  alert("保存しました");
-                }}
-              >
-                保存
-              </button>
+          <div>
+            <div className="field">
+              <label>ロック番号（4桁）</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={adminPinDraft}
+                onChange={(e) => setAdminPinDraft(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="••••"
+                autoComplete="off"
+              />
+              <div className="form-actions" style={{ justifyContent: "flex-start" }}>
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={() => {
+                    const res = setAdminPin(adminPinDraft);
+                    if (!res.ok) {
+                      alert(res.error || "設定できませんでした");
+                      return;
+                    }
+                    setAdminPinDraft("");
+                    alert("保存しました");
+                  }}
+                >
+                  保存
+                </button>
+              </div>
             </div>
-            <div className="field" style={{ marginTop: 12 }}>
+            <div className="field">
               <label>利用者を切り替え</label>
               <select
                 defaultValue=""
@@ -289,15 +292,24 @@ export function Settings() {
             <label>利用者</label>
             <select
               value={deviceMember?.id ?? ""}
-              onChange={(e) => claimAsMember(e.target.value)}
+              onChange={(e) => {
+                const id = e.target.value;
+                const owner = findAdminMemberId(data.members);
+                if (owner && id === owner) {
+                  const pin = window.prompt("PIN");
+                  if (pin == null) return;
+                  const res = unlockAdmin(pin);
+                  if (!res.ok) alert(res.error || "違います");
+                  return;
+                }
+                claimAsMember(id);
+              }}
             >
-              {data.members
-                .filter((m) => m.id !== findAdminMemberId(data.members))
-                .map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.displayName}
-                  </option>
-                ))}
+              {data.members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.displayName}
+                </option>
+              ))}
             </select>
           </div>
         )}
@@ -741,8 +753,8 @@ export function Settings() {
                       style={{ flex: "1 1 120px", minWidth: 0 }}
                       aria-label={`${m.displayName}の表示名`}
                     />
-                    {m.isSelf && isAdmin ? (
-                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>自分</span>
+                    {m.id === activeMember?.id ? (
+                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>表示中</span>
                     ) : null}
                   </div>
                   <p style={{ margin: "0 0 8px", color: "var(--sub)", fontSize: "0.82rem" }}>

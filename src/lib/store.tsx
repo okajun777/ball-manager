@@ -223,7 +223,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     unlockAdmin: (pin) => {
       if (!data) return { ok: false, error: "データ未読込" };
       const admin = findAdminMemberId(data.members);
-      if (!admin) return { ok: false, error: "管理者が見つかりません" };
+      if (!admin) return { ok: false, error: "開けません" };
 
       if (!hasAdminPin()) {
         try {
@@ -233,7 +233,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           return { ok: false, error: e instanceof Error ? e.message : String(e) };
         }
       } else if (!verifyAdminPin(pin)) {
-        return { ok: false, error: "PINが違います" };
+        return { ok: false, error: "違います" };
       }
 
       saveDeviceMemberId(admin);
@@ -241,7 +241,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return { ok: true };
     },
     setAdminPin: (pin) => {
-      if (!isAdmin) return { ok: false, error: "管理者のみ設定できます" };
+      if (!isAdmin) return { ok: false, error: "できません" };
       try {
         saveAdminPin(pin);
         setAdminPinReady(true);
