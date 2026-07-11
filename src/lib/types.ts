@@ -9,7 +9,7 @@ export type MaintenanceKind =
   | "other";
 
 export type MemberGender = "male" | "female" | "other" | "unspecified";
-export type MemberHand = "right" | "left" | "both" | "unspecified";
+export type MemberHand = "right" | "left" | "unspecified";
 export type MemberThrowStyle = "one_hand" | "two_hand" | "unspecified";
 
 export type Member = {
@@ -19,9 +19,9 @@ export type Member = {
   isSelf: boolean;
   /** 性別 */
   gender?: MemberGender;
-  /** 利き手（投球手） */
+  /** 利き手（投球手）右 / 左 */
   hand?: MemberHand;
-  /** 投球スタイル */
+  /** 投球スタイル（1ハンド / 2ハンド） */
   throwStyle?: MemberThrowStyle;
   /** 自由メモ（回転多め、スピード遅めなど） */
   profileNote?: string;
@@ -37,7 +37,6 @@ export const MEMBER_GENDER_LABEL: Record<MemberGender, string> = {
 export const MEMBER_HAND_LABEL: Record<MemberHand, string> = {
   right: "右投げ",
   left: "左投げ",
-  both: "両手",
   unspecified: "未設定",
 };
 
@@ -48,11 +47,18 @@ export const MEMBER_THROW_STYLE_LABEL: Record<MemberThrowStyle, string> = {
 };
 
 export function normalizeMember(m: Member): Member {
+  // 旧データ: hand=both は利き手ではなく投球スタイル扱いだった
+  const legacyBoth = (m.hand as string | undefined) === "both";
+  const hand: MemberHand =
+    m.hand === "left" || m.hand === "right" ? m.hand : "unspecified";
+  let throwStyle: MemberThrowStyle = m.throwStyle ?? "unspecified";
+  if (legacyBoth && throwStyle === "unspecified") throwStyle = "two_hand";
+
   return {
     ...m,
     gender: m.gender ?? "unspecified",
-    hand: m.hand ?? "unspecified",
-    throwStyle: m.throwStyle ?? "unspecified",
+    hand,
+    throwStyle,
     profileNote: m.profileNote ?? "",
   };
 }

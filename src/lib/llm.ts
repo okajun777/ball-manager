@@ -251,8 +251,7 @@ export async function generateStrategyExplanation(input: {
   const top = input.results.slice(0, 5);
   const member = input.member ? normalizeMember(input.member) : null;
   const hand = member?.hand && member.hand !== "unspecified" ? member.hand : "right";
-  const handLabel =
-    hand === "left" ? "左投げ" : hand === "both" ? "両手" : "右投げ";
+  const handLabel = hand === "left" ? "左投げ" : "右投げ";
   const earlyDir = hand === "left" ? "左" : "右";
   const lateDir = hand === "left" ? "右" : "左";
 

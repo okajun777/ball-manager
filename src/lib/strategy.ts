@@ -173,8 +173,7 @@ function scoreCandidate(c: Candidate, oil: OilPreset): { score: number; reasons:
 
 function lineHint(oil: OilPreset, hand: MemberHand = "right"): string {
   const left = hand === "left";
-  const both = hand === "both";
-  const label = left ? "左投げ基準" : both ? "両手（右投げ基準で記載・左は反転）" : "右投げ基準";
+  const label = left ? "左投げ基準" : "右投げ基準";
   if (oil.id === "house" || oil.shape >= 4) {
     return left
       ? `${label}: 立ち位置12〜15枚目、アローで27〜30枚目狙い、ブレイクポイントは30〜33枚目付近（外のドライを使う）。`
@@ -251,7 +250,7 @@ export function buildBallPlayAdvice(
     target = 40 - target;
     brk = 40 - brk;
   }
-  const handLabel = left ? "左投げ" : hand === "both" ? "両手（右基準）" : "右投げ";
+  const handLabel = left ? "左投げ" : "右投げ";
   const earlyDir = left ? "左" : "右";
   const lateDir = left ? "右" : "左";
   const startLo = Math.min(start, start + 2);

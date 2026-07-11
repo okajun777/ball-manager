@@ -642,7 +642,7 @@ export function Settings() {
                       </select>
                     </div>
                     <div className="field">
-                      <label>利き手</label>
+                      <label>利き手（右 / 左）</label>
                       <select
                         value={draft.hand}
                         onChange={(e) =>
@@ -661,7 +661,7 @@ export function Settings() {
                     </div>
                   </div>
                   <div className="field">
-                    <label>投球スタイル</label>
+                    <label>投球スタイル（1ハンド / 2ハンド）</label>
                     <select
                       value={draft.throwStyle}
                       onChange={(e) =>
