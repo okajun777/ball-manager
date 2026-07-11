@@ -23,6 +23,14 @@ export type AdviceResult = {
   reasons: string[];
   lineHint: string;
   adjustHint: string;
+  coverType: string;
+  playAdvice: {
+    startBoard: string;
+    targetBoard: string;
+    breakpoint: string;
+    ifEarly: string;
+    ifLate: string;
+  };
   performance: BallPerformance | null;
 };
 
@@ -164,23 +172,74 @@ function scoreCandidate(c: Candidate, oil: OilPreset): { score: number; reasons:
 }
 
 function lineHint(oil: OilPreset): string {
+  // 右投げ基準。左投げは左右反転。
   if (oil.id === "house" || oil.shape >= 4) {
-    return "やや内めの立ち位置から、外のドライを使うライン。ターゲットは2〜3枚外を目安に調整。";
+    return "右投げ基準: 立ち位置25〜28枚目、アローで10〜13枚目狙い、ブレイクポイントは7〜10枚目付近（外のドライを使う）。左投げは左右反転。";
   }
-  if (oil.length >= 4) {
-    return "ストレート寄りに入れて、ブレークポイントを深めに設定。スピードを落としすぎない。";
+  if (oil.length >= 4 || oil.volume >= 4) {
+    return "右投げ基準: 立ち位置20〜24枚目、アローで15〜18枚目狙い、ブレイクは10〜13枚目付近（ストレート寄りに入れて奥で曲げる）。左投げは左右反転。";
   }
-  if (oil.length <= 2) {
-    return "開きすぎず、手前の反応を抑えるライン。ボールダウンや表面を滑らかにする選択も有効。";
+  if (oil.length <= 2 || oil.volume <= 2) {
+    return "右投げ基準: 立ち位置28〜32枚目、アローで8〜11枚目狙い、ブレイクは5〜8枚目付近（手前の反応を抑える）。左投げは左右反転。";
   }
-  return "センター寄りの基準ラインから、反応点を見て左右に微調整。";
+  return "右投げ基準: 立ち位置23〜27枚目、アローで12〜15枚目狙い、ブレイクは8〜12枚目付近から開始。左投げは左右反転。";
 }
 
 function adjustHint(oil: OilPreset, topCover: string): string {
   const s = coverStrength(topCover);
-  if (oil.volume >= 4 && s <= 3) return "合わなければ表面を少し荒らす／より強いカバーへボールアップ。";
-  if (oil.volume <= 2 && s >= 4) return "早すぎる場合はポリッシュや弱い球へボールダウン。";
-  return "1ゲーム見て、反応が早い／遅いで立ち位置を1〜2枚ずつ動かす。";
+  const move =
+    "反応が早い（手前で曲がりすぎ／ハイヒットしすぎ）→ 立ち位置と狙いを右に1〜2枚ずつ寄せる（右投げ。左投げは左へ）。" +
+    "反応が遅い（ピンまで届かない／薄い）→ 左に1〜2枚寄せる、またはスピードを少し落とす。";
+  if (oil.volume >= 4 && s <= 3) {
+    return `${move} それでも奥で足りなければ、表面を少し荒らすか強いカバーへボールアップ。`;
+  }
+  if (oil.volume <= 2 && s >= 4) {
+    return `${move} それでも早すぎるなら、ポリッシュや弱い球へボールダウン。`;
+  }
+  return `${move} 1ゲーム見て、1〜2枚単位で動かす。`;
+}
+
+/** ボールごとの具体的な狙い・寄せ方（AI解説用） */
+export function buildBallPlayAdvice(
+  oil: OilPreset,
+  coverType: string,
+  rank: number,
+): { startBoard: string; targetBoard: string; breakpoint: string; ifEarly: string; ifLate: string } {
+  const s = coverStrength(coverType);
+  // 強いカバーほどやや外（右投げなら右寄り）から
+  let start = 25;
+  let target = 12;
+  let brk = 9;
+  if (oil.id === "house" || oil.shape >= 4) {
+    start = s >= 4 ? 27 : 25;
+    target = s >= 4 ? 10 : 12;
+    brk = s >= 4 ? 7 : 9;
+  } else if (oil.length >= 4 || oil.volume >= 4) {
+    start = s >= 4 ? 22 : 20;
+    target = s >= 4 ? 15 : 17;
+    brk = s >= 4 ? 10 : 12;
+  } else if (oil.length <= 2 || oil.volume <= 2) {
+    start = s >= 4 ? 30 : 28;
+    target = s >= 4 ? 8 : 10;
+    brk = s >= 4 ? 5 : 7;
+  } else {
+    start = s >= 4 ? 26 : 24;
+    target = s >= 4 ? 11 : 14;
+    brk = s >= 4 ? 8 : 10;
+  }
+  // 第2候補以降は少し内（左）寄りを提案
+  if (rank >= 1) {
+    start = Math.max(15, start - 2 * rank);
+    target = Math.min(20, target + rank);
+    brk = Math.min(15, brk + rank);
+  }
+  return {
+    startBoard: `立ち位置 ${start}〜${start + 2}枚目（右投げ）`,
+    targetBoard: `アロー狙い ${target}〜${target + 2}枚目`,
+    breakpoint: `ブレイク目安 ${brk}〜${brk + 2}枚目`,
+    ifEarly: "手前で曲がりすぎ → 立ち位置と狙いを右へ1〜2枚（左投げは左へ）",
+    ifLate: "届かない／薄い → 左へ1〜2枚、またはスピードを少し落とす（左投げは右へ）",
+  };
 }
 
 function oilKeywords(oil: OilPreset): string[] {
@@ -336,12 +395,18 @@ export function adviseBalls(options: {
         reasons: allReasons.slice(0, 5),
         lineHint: lineHint(options.oil),
         adjustHint: adjustHint(options.oil, c.coverType),
+        coverType: c.coverType || "不明",
+        playAdvice: buildBallPlayAdvice(options.oil, c.coverType, 0),
         performance: perf.performance,
       } satisfies AdviceResult;
     })
     .sort((a, b) => b.score - a.score);
 
-  return ranked.slice(0, 8);
+  return ranked.slice(0, 8).map((r, i) => ({
+    ...r,
+    playAdvice: buildBallPlayAdvice(options.oil, r.coverType, i),
+    lineHint: i === 0 ? lineHint(options.oil) : r.lineHint,
+  }));
 }
 
 export function focusLabel(focus: PerformanceFocus): string {

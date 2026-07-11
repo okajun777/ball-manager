@@ -381,10 +381,19 @@ export function Strategy() {
                         <p style={{ margin: "8px 0 4px", fontSize: "0.9rem" }}>
                           <strong>ライン案:</strong> {r.lineHint}
                         </p>
+                        <p style={{ margin: "0 0 4px", fontSize: "0.9rem" }}>
+                          <strong>具体:</strong> {r.playAdvice.startBoard} ／ {r.playAdvice.targetBoard}{" "}
+                          ／ {r.playAdvice.breakpoint}
+                        </p>
                         <p style={{ margin: 0, fontSize: "0.9rem" }}>
                           <strong>調整:</strong> {r.adjustHint}
                         </p>
                       </>
+                    )}
+                    {i > 0 && (
+                      <p style={{ margin: "8px 0 0", fontSize: "0.88rem", color: "var(--sub)" }}>
+                        {r.playAdvice.startBoard} ／ {r.playAdvice.targetBoard}
+                      </p>
                     )}
                     {r.source === "owned" && (
                       <div style={{ marginTop: 10 }}>
@@ -409,7 +418,7 @@ export function Strategy() {
               >
                 <h4 style={{ margin: "0 0 8px" }}>AI解説（任意）</h4>
                 <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
-                  レーンの読み・第一候補の使い方・切り替え判断・ゲームの進め方まで詳しく解説します。
+                  レーンの読みに加え、立ち位置・狙い枚目・早い／遅いときの左右寄せまで具体的に出します。
                 </p>
                 {!llmReady ? (
                   <p style={{ color: "var(--warn)", fontSize: "0.88rem" }}>
