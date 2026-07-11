@@ -72,6 +72,25 @@ button, input, select, textarea { font: inherit; }
   color: #fff;
 }
 
+.nav-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-settings {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: rgba(255,255,255,0.82);
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.nav-settings.active, .nav-settings:hover {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
 .member-switch {
   margin-top: auto;
   padding: 12px;
@@ -378,8 +397,17 @@ button, input, select, textarea { font: inherit; }
     font-size: 0.68rem;
   }
 
+  .nav-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
   .nav {
     display: flex;
+    flex: 1;
+    min-width: 0;
     gap: 4px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -391,6 +419,22 @@ button, input, select, textarea { font: inherit; }
     padding: 6px 10px;
     border-radius: 8px;
     font-size: 0.82rem;
+  }
+
+  .nav-settings {
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+  }
+  .nav-settings.active {
+    background: #fff;
+    color: #10233f;
   }
 
   .member-switch {

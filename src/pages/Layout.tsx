@@ -4,14 +4,13 @@ import { APP_PUBLIC_URL, readInviteFromLocation } from "../lib/appUrl";
 import { ROUND1_VIEWER_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
 
-const links = [
+const mainLinks = [
   { to: "/", label: "ダッシュボード", end: true },
   { to: "/balls", label: "マイボール" },
   { to: "/catalog", label: "カタログ" },
   { to: "/scores", label: "スコア入力" },
   { to: "/analysis", label: "分析" },
   { to: "/strategy", label: "攻略AI" },
-  { to: "/settings", label: "設定・共有" },
 ];
 
 export function Layout() {
@@ -34,13 +33,18 @@ export function Layout() {
           Ball Manager
           <small>{data?.group.name ?? "読み込み中…"}</small>
         </div>
-        <nav className="nav">
-          {links.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.end}>
-              {l.label}
-            </NavLink>
-          ))}
-        </nav>
+        <div className="nav-row">
+          <nav className="nav">
+            {mainLinks.map((l) => (
+              <NavLink key={l.to} to={l.to} end={l.end}>
+                {l.label}
+              </NavLink>
+            ))}
+          </nav>
+          <NavLink to="/settings" className="nav-settings">
+            設定・共有
+          </NavLink>
+        </div>
         <div className="member-switch">
           <label htmlFor="member">表示メンバー</label>
           <select
