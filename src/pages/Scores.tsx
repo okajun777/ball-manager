@@ -155,6 +155,33 @@ export function Scores() {
     return (id: string | null) => (id ? map.get(id) ?? "—" : "—");
   }, [memberBalls]);
 
+  const shopSuggestions = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const s of memberSessions) {
+      const name = s.shopName.trim();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      list.push(name);
+      if (list.length >= 6) break;
+    }
+    return list;
+  }, [memberSessions]);
+
+  const oilSuggestions = useMemo(() => {
+    const defaults = ["ハウス", "ショート", "ミディアム", "ロング"];
+    const seen = new Set<string>(defaults);
+    const list = [...defaults];
+    for (const s of memberSessions) {
+      const name = s.oilNote.trim();
+      if (!name || seen.has(name)) continue;
+      seen.add(name);
+      list.push(name);
+      if (list.length >= 8) break;
+    }
+    return list;
+  }, [memberSessions]);
+
   // 初回ボールIDを埋める
   useEffect(() => {
     if (!defaultBallId) return;
@@ -327,7 +354,26 @@ export function Scores() {
             </div>
             <div className="field">
               <label>店舗（任意）</label>
-              <input value={shopName} onChange={(e) => setShopName(e.target.value)} />
+              <input
+                value={shopName}
+                onChange={(e) => setShopName(e.target.value)}
+                list="shop-history"
+                placeholder="ラウンドワン○○"
+              />
+              <datalist id="shop-history">
+                {shopSuggestions.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              {shopSuggestions.length > 0 && (
+                <div className="suggest-chips">
+                  {shopSuggestions.map((s) => (
+                    <button key={s} type="button" onClick={() => setShopName(s)}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -344,7 +390,24 @@ export function Scores() {
 
           <div className="field">
             <label>オイル条件（任意）</label>
-            <input value={oilNote} onChange={(e) => setOilNote(e.target.value)} />
+            <input
+              value={oilNote}
+              onChange={(e) => setOilNote(e.target.value)}
+              list="oil-history"
+              placeholder="ハウス"
+            />
+            <datalist id="oil-history">
+              {oilSuggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+            <div className="suggest-chips">
+              {oilSuggestions.map((s) => (
+                <button key={s} type="button" onClick={() => setOilNote(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="field">

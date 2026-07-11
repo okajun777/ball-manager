@@ -105,6 +105,34 @@ function createDemoData(): AppData {
   return { group, members, balls, sessions, maintenances: [], activeMemberId: selfId };
 }
 
+/** 淳司・はるみの空データ（デモスコアなし） */
+export function createFreshData(): AppData {
+  const groupId = uid("grp");
+  const selfId = uid("mem");
+  const familyId = uid("mem");
+  return {
+    group: {
+      id: groupId,
+      name: "うちのボウリング部",
+      inviteCode: "family01",
+    },
+    members: [
+      { id: selfId, groupId, displayName: "淳司", isSelf: true },
+      { id: familyId, groupId, displayName: "はるみ", isSelf: false },
+    ],
+    balls: [],
+    sessions: [],
+    maintenances: [],
+    activeMemberId: selfId,
+  };
+}
+
+export function resetToFreshData(): AppData {
+  const fresh = createFreshData();
+  saveLocal(fresh);
+  return fresh;
+}
+
 /** 初期デモのプレースホルダ名を実メンバー名へ寄せる */
 function remapDemoMemberNames(members: Member[]): Member[] {
   return members.map((m) => {

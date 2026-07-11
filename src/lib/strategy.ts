@@ -156,7 +156,6 @@ function scoreCandidate(c: Candidate, oil: OilPreset): { score: number; reasons:
 
   if (c.source === "owned") {
     score += 12;
-    reasons.unshift("所持ボールのためすぐ投入できる");
   }
 
   if (!reasons.length) reasons.push("スペック情報は限定的だが候補として検討可");

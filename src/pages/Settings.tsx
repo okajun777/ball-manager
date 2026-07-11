@@ -9,6 +9,7 @@ import {
   saveMaintReminderSettings,
   type MaintReminderSettings,
 } from "../lib/maintReminder";
+import { createFreshData } from "../lib/storage";
 import { isSupabaseConfigured } from "../lib/supabase";
 import { useStore } from "../lib/store";
 
@@ -276,6 +277,25 @@ export function Settings() {
             }
           >
             スコアCSV（選択中メンバー）
+          </button>
+          <button
+            className="btn secondary"
+            type="button"
+            onClick={async () => {
+              if (
+                !confirm(
+                  "デモ／既存データを消して、淳司・はるみだけの空データにします。よろしいですか？（先にJSON書き出し推奨）",
+                )
+              ) {
+                return;
+              }
+              const fresh = createFreshData();
+              await replaceAppData(fresh);
+              setGroupName(fresh.group.name);
+              alert("空データで開始しました。マイボールから登録してください。");
+            }}
+          >
+            空データでやり直す
           </button>
         </div>
       </div>
