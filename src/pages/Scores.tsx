@@ -10,6 +10,14 @@ import {
   type FrameRolls,
 } from "../lib/bowlingScore";
 import { formatSessionShareText } from "../lib/shareSession";
+import {
+  OSAKA_BOWLING_URL,
+  findOsakaEvent,
+  formatOsakaEventLabel,
+  listOsakaEventsForPicker,
+  setEventPatternPdf,
+  type OsakaEvent,
+} from "../lib/osakaBowling";
 import { loadUserPrefs } from "../lib/prefs";
 import { useStore } from "../lib/store";
 import type { ScoreGame, ScoreSession, SessionType } from "../lib/types";
@@ -146,6 +154,9 @@ export function Scores() {
   const [laneNote, setLaneNote] = useState("");
   const [oilNote, setOilNote] = useState(prefs.defaultOil || "ハウス");
   const [memo, setMemo] = useState("");
+  const [osakaEventId, setOsakaEventId] = useState("");
+  const [patternPdfUrl, setPatternPdfUrl] = useState("");
+  const [osakaTick, setOsakaTick] = useState(0);
   const [entryMode, setEntryMode] = useState<EntryMode>("total");
   const [games, setGames] = useState<GameDraft[]>([
     blankGame(""),
@@ -154,6 +165,10 @@ export function Scores() {
   ]);
 
   const defaultBallId = memberBalls[0]?.id ?? "";
+  const osakaEvents = useMemo(
+    () => listOsakaEventsForPicker({ limit: 100 }),
+    [osakaTick],
+  );
 
   const ballName = useMemo(() => {
     const map = new Map(memberAllBalls.map((b) => [b.id, b.name]));
@@ -164,7 +179,10 @@ export function Scores() {
   useEffect(() => {
     const ball = searchParams.get("ball");
     const oil = searchParams.get("oil");
-    if (!ball && !oil) return;
+    const asTournament = searchParams.get("tournament") === "1";
+    const osakaId = searchParams.get("osakaEvent")?.trim() || "";
+    if (!ball && !oil && !asTournament && !osakaId) return;
+    if (asTournament) setSessionType("tournament");
     if (oil?.trim()) setOilNote(oil.trim());
     if (ball && memberBalls.some((b) => b.id === ball)) {
       setGames((prev) => {
@@ -173,8 +191,24 @@ export function Scores() {
         return next;
       });
     }
+    if (osakaId) {
+      const ev = findOsakaEvent(osakaId);
+      if (ev) applyOsakaEvent(ev);
+    }
     setSearchParams({}, { replace: true });
   }, [searchParams, memberBalls, setSearchParams]);
+
+  function applyOsakaEvent(ev: OsakaEvent) {
+    setSessionType("tournament");
+    setOsakaEventId(ev.id);
+    setTournamentName(ev.name);
+    setPlayedOn(ev.startDate);
+    setShopName(ev.venue || shopName);
+    setPatternPdfUrl(ev.patternPdfUrl || "");
+    if (ev.patternPdfUrl) {
+      setOilNote(`大会オイル: ${ev.name}`);
+    }
+  }
 
   const shopSuggestions = useMemo(() => {
     const seen = new Set<string>();
@@ -258,6 +292,8 @@ export function Scores() {
     setLaneNote("");
     setOilNote(prefs.defaultOil || "ハウス");
     setMemo("");
+    setOsakaEventId("");
+    setPatternPdfUrl("");
     setEntryMode("total");
     setGames([blankGame(defaultBallId), blankGame(defaultBallId), blankGame(defaultBallId)]);
   }
@@ -276,6 +312,8 @@ export function Scores() {
     setLaneNote(last.laneNote ?? "");
     setOilNote(last.oilNote || "ハウス");
     setMemo("");
+    setOsakaEventId(last.osakaEventId ?? "");
+    setPatternPdfUrl(last.patternPdfUrl ?? "");
     setEntryMode("total");
     const activeIds = new Set(memberBalls.map((b) => b.id));
     const copied = last.games.map((g) =>
@@ -297,6 +335,8 @@ export function Scores() {
     setLaneNote(session.laneNote ?? "");
     setOilNote(session.oilNote);
     setMemo(session.memo);
+    setOsakaEventId(session.osakaEventId ?? "");
+    setPatternPdfUrl(session.patternPdfUrl ?? "");
 
     const hasFrames = session.games.some((g) => g.frames && g.frames.length > 0);
     setEntryMode(hasFrames ? "frames" : "total");
@@ -414,6 +454,8 @@ export function Scores() {
       oilNote: oilNote.trim(),
       memo: memo.trim(),
       games: sessionGames,
+      osakaEventId: sessionType === "tournament" ? osakaEventId || undefined : undefined,
+      patternPdfUrl: sessionType === "tournament" ? patternPdfUrl.trim() || undefined : undefined,
     };
     const wasEditing = Boolean(editingId);
     await upsertSession(session);
@@ -511,29 +553,103 @@ export function Scores() {
           </div>
 
           {sessionType === "tournament" && (
-            <div className="field">
-              <label>大会名</label>
-              <input
-                value={tournamentName}
-                onChange={(e) => setTournamentName(e.target.value)}
-                list="tournament-history"
-                placeholder="○○オープン"
-              />
-              <datalist id="tournament-history">
-                {tournamentSuggestions.map((s) => (
-                  <option key={s} value={s} />
-                ))}
-              </datalist>
-              {tournamentSuggestions.length > 0 && (
-                <div className="suggest-chips">
-                  {tournamentSuggestions.map((s) => (
-                    <button key={s} type="button" onClick={() => setTournamentName(s)}>
-                      {s}
-                    </button>
+            <>
+              <div className="field">
+                <label>大会情報から選ぶ</label>
+                <select
+                  value={osakaEventId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (!id) {
+                      setOsakaEventId("");
+                      return;
+                    }
+                    const ev = findOsakaEvent(id);
+                    if (ev) applyOsakaEvent(ev);
+                  }}
+                >
+                  <option value="">手入力する</option>
+                  {osakaEvents.map((ev) => (
+                    <option key={ev.id} value={ev.id}>
+                      {formatOsakaEventLabel(ev)}
+                    </option>
                   ))}
+                </select>
+                <p style={{ color: "var(--sub)", fontSize: "0.8rem", margin: "6px 0 0" }}>
+                  <a href={OSAKA_BOWLING_URL} target="_blank" rel="noreferrer">
+                    大阪府大会情報
+                  </a>
+                  の日程から選べます。オイルパターンPDFがあれば下にURLを残せます。
+                </p>
+              </div>
+              <div className="field">
+                <label>大会名</label>
+                <input
+                  value={tournamentName}
+                  onChange={(e) => setTournamentName(e.target.value)}
+                  list="tournament-history"
+                  placeholder="○○オープン"
+                />
+                <datalist id="tournament-history">
+                  {tournamentSuggestions.map((s) => (
+                    <option key={s} value={s} />
+                  ))}
+                </datalist>
+                {tournamentSuggestions.length > 0 && (
+                  <div className="suggest-chips">
+                    {tournamentSuggestions.map((s) => (
+                      <button key={s} type="button" onClick={() => setTournamentName(s)}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="field">
+                <label>オイルパターンPDF（任意）</label>
+                <input
+                  value={patternPdfUrl}
+                  onChange={(e) => setPatternPdfUrl(e.target.value)}
+                  placeholder="https://.../pattern.pdf"
+                />
+                <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                  {osakaEventId && patternPdfUrl.trim() ? (
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      onClick={() => {
+                        setEventPatternPdf(osakaEventId, patternPdfUrl.trim());
+                        setOsakaTick((n) => n + 1);
+                        alert("大会情報キャッシュにパターンを登録しました");
+                      }}
+                    >
+                      大会一覧にパターンを登録
+                    </button>
+                  ) : null}
+                  {patternPdfUrl.trim() ? (
+                    <a
+                      className="btn secondary"
+                      href={patternPdfUrl.trim()}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      PDFを開く
+                    </a>
+                  ) : null}
+                  {osakaEventId ? (
+                    <Link
+                      className="btn secondary"
+                      to={`/strategy`}
+                      onClick={() => {
+                        /* strategy reads from cache via same event id selection manually */
+                      }}
+                    >
+                      この大会で攻略AI
+                    </Link>
+                  ) : null}
                 </div>
-              )}
-            </div>
+              </div>
+            </>
           )}
 
           <div className="field">

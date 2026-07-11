@@ -417,6 +417,8 @@ export async function saveAppData(data: AppData): Promise<void> {
       lane_note: s.laneNote ?? "",
       oil_note: s.oilNote,
       memo: s.memo,
+      osaka_event_id: s.osakaEventId ?? "",
+      pattern_pdf_url: s.patternPdfUrl ?? "",
     });
     await supabase.from("score_games").delete().eq("session_id", s.id);
     if (s.games.length) {
@@ -616,6 +618,8 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
     oilNote: s.oil_note ?? "",
     memo: s.memo ?? "",
     games: (gamesBySession.get(s.id) ?? []).sort((a, b) => a.gameNo - b.gameNo),
+    osakaEventId: (s.osaka_event_id as string | undefined) ?? "",
+    patternPdfUrl: (s.pattern_pdf_url as string | undefined) ?? "",
   }));
 
   const mappedMaints: SurfaceMaintenance[] = (maints ?? []).map((m) => ({

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { APP_PUBLIC_URL, readInviteFromLocation } from "../lib/appUrl";
+import { consumeOsakaDeepLink } from "../lib/osakaBowling";
 import { ROUND1_VIEWER_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
 
@@ -34,6 +35,30 @@ export function Layout() {
       navigate(`/settings?invite=${encodeURIComponent(code)}`, { replace: true });
     }
   }, [location.pathname, navigate]);
+
+  useEffect(() => {
+    const linked = consumeOsakaDeepLink(location.search);
+    if (!linked) return;
+    const params = new URLSearchParams(location.search);
+    ["osaka", "name", "osakaName", "date", "osakaDate", "venue", "osakaVenue", "patternPdf", "detailPdf", "goto", "id"].forEach(
+      (k) => params.delete(k),
+    );
+    const qs = params.toString();
+    const path =
+      linked.goto === "scores"
+        ? `/scores?tournament=1`
+        : linked.goto === "strategy"
+          ? "/strategy"
+          : `${location.pathname}${qs ? `?${qs}` : ""}`;
+    navigate(path, { replace: true });
+    if (linked.patternPdf || linked.name) {
+      alert(
+        `大会情報を取り込みました: ${linked.name || "大会"}${
+          linked.patternPdf ? "（オイルパターンあり）" : ""
+        }`,
+      );
+    }
+  }, [location.search, location.pathname, navigate]);
 
   return (
     <div className="app-shell">

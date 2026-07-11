@@ -9,6 +9,14 @@ import {
   prepareOilPatternFile,
   type OilImageAnalysis,
 } from "../lib/llm";
+import {
+  OSAKA_BOWLING_URL,
+  findOsakaEvent,
+  formatOsakaEventLabel,
+  listOsakaEventsForPicker,
+  setEventPatternPdf,
+  type OsakaEvent,
+} from "../lib/osakaBowling";
 import { adviseBalls, focusLabel, type PerformanceFocus } from "../lib/strategy";
 import { useStore } from "../lib/store";
 import { MEMBER_HAND_LABEL } from "../lib/types";
@@ -33,7 +41,20 @@ export function Strategy() {
   const [oilAnalysis, setOilAnalysis] = useState<OilImageAnalysis | null>(null);
   const [oilScanLoading, setOilScanLoading] = useState(false);
   const [oilScanError, setOilScanError] = useState("");
+  const [osakaEventId, setOsakaEventId] = useState("");
+  const [patternPdfDraft, setPatternPdfDraft] = useState("");
+  const [osakaTick, setOsakaTick] = useState(0);
   const llmReady = isLlmConfigured();
+
+  const osakaEvents = useMemo(
+    () => listOsakaEventsForPicker({ hostOsakaOnly: false, limit: 100 }),
+    [osakaTick],
+  );
+  const osakaWithOil = useMemo(
+    () => listOsakaEventsForPicker({ onlyWithPattern: true, limit: 50 }),
+    [osakaTick],
+  );
+  const selectedOsaka = osakaEventId ? findOsakaEvent(osakaEventId) : undefined;
 
   const oil = useMemo(() => {
     const base = OIL_PRESETS.find((p) => p.id === presetId) ?? OIL_PRESETS[0];
@@ -77,6 +98,40 @@ export function Strategy() {
     setRan(false);
     setAiText("");
     setAiError("");
+  }
+
+  function applyOsakaEvent(ev: OsakaEvent | undefined) {
+    if (!ev) {
+      setOsakaEventId("");
+      return;
+    }
+    setOsakaEventId(ev.id);
+    setPatternPdfDraft(ev.patternPdfUrl || "");
+    const oilLabel = ev.patternPdfUrl ? `オイルパターンあり` : "オイル未公開";
+    setNote(
+      [
+        `【大会情報】${ev.name}`,
+        ev.venue ? `会場: ${ev.venue}` : "",
+        `日程: ${ev.startDate}${ev.endDate !== ev.startDate ? `〜${ev.endDate}` : ""}`,
+        oilLabel,
+      ]
+        .filter(Boolean)
+        .join(" / "),
+    );
+    setPerformanceFocus("tournament");
+    if (ev.patternPdfUrl) {
+      setPresetId("custom");
+    }
+    resetAdvice();
+  }
+
+  function savePatternUrlToEvent() {
+    if (!osakaEventId || !patternPdfDraft.trim()) return;
+    setEventPatternPdf(osakaEventId, patternPdfDraft.trim());
+    setOsakaTick((n) => n + 1);
+    const ev = findOsakaEvent(osakaEventId);
+    if (ev) applyOsakaEvent({ ...ev, patternPdfUrl: patternPdfDraft.trim() });
+    alert("この大会にオイルパターンPDFを登録しました。次回から「パターンあり」で選べます。");
   }
 
   function onPresetChange(id: OilPresetId) {
@@ -173,6 +228,84 @@ export function Strategy() {
       <div className="grid two">
         <div className="card">
           <h3 style={{ marginTop: 0 }}>オイルパターン</h3>
+
+          <div className="field">
+            <label>大会情報から選ぶ（大阪府ボウリング大会情報）</label>
+            <select
+              value={osakaEventId}
+              onChange={(e) => {
+                const id = e.target.value;
+                if (!id) {
+                  setOsakaEventId("");
+                  return;
+                }
+                applyOsakaEvent(findOsakaEvent(id));
+              }}
+            >
+              <option value="">選択しない</option>
+              {osakaWithOil.length > 0 && (
+                <optgroup label="オイルパターンあり">
+                  {osakaWithOil.map((ev) => (
+                    <option key={`oil-${ev.id}`} value={ev.id}>
+                      {formatOsakaEventLabel(ev)}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="日程一覧">
+                {osakaEvents.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {formatOsakaEventLabel(ev)}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <p style={{ color: "var(--sub)", fontSize: "0.8rem", margin: "6px 0 0" }}>
+              大会情報でオイルパターンPDFが公開された大会は「パターンあり」に出ます。未公開なら下にPDFのURLを貼って登録できます。
+            </p>
+          </div>
+
+          {osakaEventId ? (
+            <div className="field">
+              <label>オイルパターンPDFのURL</label>
+              <input
+                value={patternPdfDraft}
+                onChange={(e) => setPatternPdfDraft(e.target.value)}
+                placeholder="https://.../pattern.pdf"
+              />
+              <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                <button className="btn secondary" type="button" onClick={savePatternUrlToEvent}>
+                  この大会にパターンを登録
+                </button>
+                {patternPdfDraft.trim() ? (
+                  <a
+                    className="btn secondary"
+                    href={patternPdfDraft.trim()}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    PDFを開く
+                  </a>
+                ) : null}
+                <a className="btn secondary" href={OSAKA_BOWLING_URL} target="_blank" rel="noreferrer">
+                  大会情報を開く
+                </a>
+              </div>
+            </div>
+          ) : (
+            <p style={{ marginTop: 0 }}>
+              <a className="btn secondary" href={OSAKA_BOWLING_URL} target="_blank" rel="noreferrer">
+                大会情報アプリを開く
+              </a>
+            </p>
+          )}
+
+          {selectedOsaka?.patternPdfUrl ? (
+            <p style={{ color: "var(--good)", fontSize: "0.88rem" }}>
+              選択中: {selectedOsaka.name}（オイルパターン登録済み）
+            </p>
+          ) : null}
+
           <div className="field">
             <label>プリセット</label>
             <select

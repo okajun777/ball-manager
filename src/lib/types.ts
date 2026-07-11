@@ -128,6 +128,10 @@ export type ScoreSession = {
   oilNote: string;
   memo: string;
   games: ScoreGame[];
+  /** 大阪府大会情報アプリのイベントID */
+  osakaEventId?: string;
+  /** 大会オイルパターンPDF URL */
+  patternPdfUrl?: string;
 };
 
 export type Group = {

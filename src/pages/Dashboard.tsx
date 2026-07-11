@@ -11,6 +11,10 @@ import { formatSessionShareText } from "../lib/shareSession";
 import { adviseBalls } from "../lib/strategy";
 import { useStore } from "../lib/store";
 import { ROUND1_VIEWER_URL } from "../lib/round1";
+import {
+  OSAKA_BOWLING_URL,
+  eventsWithOilPattern,
+} from "../lib/osakaBowling";
 import { avg, today } from "../lib/types";
 
 const catalog = catalogBalls as CatalogBall[];
@@ -115,6 +119,8 @@ export function Dashboard() {
       .slice(0, 3);
   }, [memberSessions, memberAllBalls]);
 
+  const oilEvents = useMemo(() => eventsWithOilPattern().slice(0, 5), []);
+
   return (
     <div>
       <div className="page-title">
@@ -123,6 +129,9 @@ export function Dashboard() {
           <p>{activeMember?.displayName} の概要</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a className="btn secondary" href={OSAKA_BOWLING_URL} target="_blank" rel="noreferrer">
+            大阪府大会情報
+          </a>
           <a className="btn secondary" href={ROUND1_VIEWER_URL} target="_blank" rel="noreferrer">
             ROUND1商品
           </a>
@@ -137,6 +146,38 @@ export function Dashboard() {
           </Link>
           <Link className="btn" to="/scores">
             スコア入力
+          </Link>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginTop: 0 }}>大阪府ボウリング大会情報</h3>
+        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+          日程・会場・開催要項・オイルパターンは大会情報アプリで確認できます。パターン公開後は攻略AIで選択、スコア入力にも大会を紐づけられます。
+        </p>
+        {oilEvents.length > 0 ? (
+          <ul style={{ margin: "0 0 10px", paddingLeft: 18, fontSize: "0.9rem" }}>
+            {oilEvents.map((e) => (
+              <li key={e.id} style={{ marginBottom: 4 }}>
+                {e.startDate} {e.name}
+                {e.venue ? `（${e.venue}）` : ""}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>
+            いま端末に「オイルパターン付き」の大会はまだありません。大会情報でPDFが公開されたら、攻略AI／スコア入力から選べます。
+          </p>
+        )}
+        <div className="form-actions" style={{ justifyContent: "flex-start", margin: 0, flexWrap: "wrap" }}>
+          <a className="btn" href={OSAKA_BOWLING_URL} target="_blank" rel="noreferrer">
+            大会情報アプリを開く
+          </a>
+          <Link className="btn secondary" to="/strategy">
+            攻略AIでパターン選択
+          </Link>
+          <Link className="btn secondary" to="/scores?tournament=1">
+            大会スコアを入力
           </Link>
         </div>
       </div>

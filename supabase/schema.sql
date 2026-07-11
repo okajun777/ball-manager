@@ -66,6 +66,11 @@ create table if not exists score_sessions (
 
 -- 既存DB向け
 -- alter table score_sessions add column if not exists lane_note text default '';
+-- alter table score_sessions add column if not exists osaka_event_id text default '';
+-- alter table score_sessions add column if not exists pattern_pdf_url text default '';
+
+alter table score_sessions add column if not exists osaka_event_id text default '';
+alter table score_sessions add column if not exists pattern_pdf_url text default '';
 
 create table if not exists score_games (
   id uuid primary key default gen_random_uuid(),
