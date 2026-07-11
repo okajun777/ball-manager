@@ -46,10 +46,6 @@ export function Strategy() {
   const [osakaTick, setOsakaTick] = useState(0);
   const llmReady = isLlmConfigured();
 
-  const osakaEvents = useMemo(
-    () => listOsakaEventsForPicker({ hostOsakaOnly: false, limit: 100 }),
-    [osakaTick],
-  );
   const osakaWithOil = useMemo(
     () => listOsakaEventsForPicker({ onlyWithPattern: true, limit: 80 }),
     [osakaTick],
@@ -243,22 +239,11 @@ export function Strategy() {
               }}
             >
               <option value="">選択しない</option>
-              {osakaWithOil.length > 0 && (
-                <optgroup label="オイルパターンあり">
-                  {osakaWithOil.map((ev) => (
-                    <option key={`oil-${ev.id}`} value={ev.id}>
-                      {formatOsakaEventLabel(ev)}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              <optgroup label="日程一覧">
-                {osakaEvents.map((ev) => (
-                  <option key={ev.id} value={ev.id}>
-                    {formatOsakaEventLabel(ev)}
-                  </option>
-                ))}
-              </optgroup>
+              {osakaWithOil.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {formatOsakaEventLabel(ev)}
+                </option>
+              ))}
             </select>
           </div>
 
