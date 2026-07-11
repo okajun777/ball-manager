@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { summarizeFrames, type FrameRolls } from "../lib/bowlingScore";
+import { downloadScoresCsv } from "../lib/csvExport";
+import { buildInsights } from "../lib/insights";
 import { useStore } from "../lib/store";
 import { avg } from "../lib/types";
 
@@ -13,6 +15,11 @@ function pct(part: number, whole: number): string {
 export function Analysis() {
   const { activeMember, memberBalls, memberSessions } = useStore();
   const [mode, setMode] = useState<Mode>("all");
+
+  const insights = useMemo(
+    () => buildInsights(memberSessions, memberBalls),
+    [memberSessions, memberBalls],
+  );
 
   const filtered = useMemo(() => {
     if (mode === "practice") return memberSessions.filter((s) => s.sessionType === "practice");
@@ -146,6 +153,28 @@ export function Analysis() {
           <h1>分析</h1>
           <p>{activeMember?.displayName} の練習 / 大会を分けて確認</p>
         </div>
+        <button
+          className="btn secondary"
+          type="button"
+          onClick={() =>
+            downloadScoresCsv(
+              memberSessions,
+              memberBalls,
+              activeMember?.displayName ?? "member",
+            )
+          }
+        >
+          CSV書き出し
+        </button>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginTop: 0 }}>気づき</h3>
+        <ul style={{ margin: 0, paddingLeft: 18, color: "var(--sub)", lineHeight: 1.55 }}>
+          {insights.map((tip) => (
+            <li key={tip}>{tip}</li>
+          ))}
+        </ul>
       </div>
 
       <div className="tabs">

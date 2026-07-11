@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { downloadBackupJson, readBackupFile } from "../lib/backup";
+import { downloadScoresCsv } from "../lib/csvExport";
 import { loadLlmSettings, saveLlmSettings, type LlmSettings } from "../lib/llm";
 import {
   loadMaintReminderSettings,
@@ -12,7 +13,16 @@ import { isSupabaseConfigured } from "../lib/supabase";
 import { useStore } from "../lib/store";
 
 export function Settings() {
-  const { data, addMember, updateGroupName, replaceAppData, joinGroup } = useStore();
+  const {
+    data,
+    activeMember,
+    memberBalls,
+    memberSessions,
+    addMember,
+    updateGroupName,
+    replaceAppData,
+    joinGroup,
+  } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -236,7 +246,7 @@ export function Settings() {
           <li>GitHub Desktop などでプライベートリポジトリにコミット・プッシュ</li>
           <li>別端末では「JSONを読み込み」で復元</li>
         </ol>
-        <div className="form-actions" style={{ justifyContent: "flex-start" }}>
+        <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
           <button className="btn" type="button" onClick={() => downloadBackupJson(data)}>
             JSONを書き出し
           </button>
@@ -252,6 +262,19 @@ export function Settings() {
               }}
             />
           </label>
+          <button
+            className="btn secondary"
+            type="button"
+            onClick={() =>
+              downloadScoresCsv(
+                memberSessions,
+                memberBalls,
+                activeMember?.displayName ?? "member",
+              )
+            }
+          >
+            スコアCSV（選択中メンバー）
+          </button>
         </div>
       </div>
 
