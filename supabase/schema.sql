@@ -54,13 +54,30 @@ create table if not exists score_games (
   session_id uuid not null references score_sessions(id) on delete cascade,
   game_no integer not null,
   score integer not null check (score >= 0 and score <= 300),
-  ball_id uuid references balls(id) on delete set null
+  ball_id uuid references balls(id) on delete set null,
+  frames jsonb
+);
+
+-- 既存DB向け: frames 列が無い場合に追加
+alter table score_games add column if not exists frames jsonb;
+
+create table if not exists surface_maintenances (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references groups(id) on delete cascade,
+  member_id uuid not null references members(id) on delete cascade,
+  ball_id uuid not null references balls(id) on delete cascade,
+  done_on date,
+  kind text not null check (kind in ('clean', 'polish', 'sand', 'compound', 'factory', 'other')),
+  grit text default '',
+  note text default '',
+  created_at timestamptz not null default now()
 );
 
 create index if not exists idx_members_group on members(group_id);
 create index if not exists idx_balls_member on balls(member_id);
 create index if not exists idx_sessions_member on score_sessions(member_id);
 create index if not exists idx_sessions_played_on on score_sessions(played_on);
+create index if not exists idx_maintenances_ball on surface_maintenances(ball_id);
 
 -- まずは家族利用向けに anon から読み書き可能（後で認証付きに強化可能）
 alter table groups enable row level security;
@@ -68,9 +85,11 @@ alter table members enable row level security;
 alter table balls enable row level security;
 alter table score_sessions enable row level security;
 alter table score_games enable row level security;
+alter table surface_maintenances enable row level security;
 
 create policy "groups_all" on groups for all using (true) with check (true);
 create policy "members_all" on members for all using (true) with check (true);
 create policy "balls_all" on balls for all using (true) with check (true);
 create policy "sessions_all" on score_sessions for all using (true) with check (true);
 create policy "games_all" on score_games for all using (true) with check (true);
+create policy "maintenances_all" on surface_maintenances for all using (true) with check (true);

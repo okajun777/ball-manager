@@ -1,8 +1,13 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useStore } from "../lib/store";
-import type { Ball } from "../lib/types";
-import { today, uid } from "../lib/types";
+import {
+  buildMaintDueList,
+  loadMaintReminderSettings,
+} from "../lib/maintReminder";
+import { round1SearchUrl } from "../lib/round1";
+import type { Ball, MaintenanceKind, SurfaceMaintenance } from "../lib/types";
+import { MAINTENANCE_KIND_LABEL, today, uid } from "../lib/types";
 
 const emptyForm = {
   name: "",
@@ -19,12 +24,37 @@ const emptyForm = {
 };
 
 export function MyBalls() {
-  const { data, activeMember, memberBalls, upsertBall, deleteBall } = useStore();
+  const {
+    data,
+    activeMember,
+    memberBalls,
+    upsertBall,
+    deleteBall,
+    memberMaintenances,
+    addMaintenance,
+    deleteMaintenance,
+  } = useStore();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ball | null>(null);
   const [form, setForm] = useState(emptyForm);
 
+  const [maintOpen, setMaintOpen] = useState(false);
+  const [maintBallId, setMaintBallId] = useState("");
+  const [maintDoneOn, setMaintDoneOn] = useState(today());
+  const [maintKind, setMaintKind] = useState<MaintenanceKind>("clean");
+  const [maintGrit, setMaintGrit] = useState("");
+  const [maintNote, setMaintNote] = useState("");
+
   if (!data || !activeMember) return null;
+
+  const reminder = loadMaintReminderSettings();
+  const dueMap = new Map(
+    buildMaintDueList({
+      balls: memberBalls,
+      maintenances: memberMaintenances,
+      intervalDays: reminder.intervalDays,
+    }).map((d) => [d.ballId, d]),
+  );
 
   function startCreate() {
     setEditing(null);
@@ -50,6 +80,22 @@ export function MyBalls() {
     setOpen(true);
   }
 
+  function openMaint(ballId: string) {
+    setMaintBallId(ballId);
+    setMaintDoneOn(today());
+    setMaintKind("clean");
+    setMaintGrit("");
+    setMaintNote("");
+    setMaintOpen(true);
+  }
+
+  function lastMaintFor(ballId: string): SurfaceMaintenance | undefined {
+    return memberMaintenances
+      .filter((m) => m.ballId === ballId)
+      .slice()
+      .sort((a, b) => b.doneOn.localeCompare(a.doneOn))[0];
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) return;
@@ -72,6 +118,30 @@ export function MyBalls() {
     await upsertBall(ball);
     setOpen(false);
   }
+
+  async function onMaintSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!maintBallId) {
+      alert("ボールを選択してください");
+      return;
+    }
+    const item: SurfaceMaintenance = {
+      id: uid("mnt"),
+      groupId: data!.group.id,
+      memberId: activeMember!.id,
+      ballId: maintBallId,
+      doneOn: maintDoneOn,
+      kind: maintKind,
+      grit: maintGrit.trim(),
+      note: maintNote.trim(),
+    };
+    await addMaintenance(item);
+    setMaintOpen(false);
+    setMaintGrit("");
+    setMaintNote("");
+  }
+
+  const ballName = (id: string) => memberBalls.find((b) => b.id === id)?.name ?? "—";
 
   return (
     <div>
@@ -188,41 +258,186 @@ export function MyBalls() {
         </form>
       )}
 
+      {maintOpen && (
+        <form className="card" onSubmit={onMaintSubmit} style={{ marginBottom: 14 }}>
+          <h3 style={{ marginTop: 0 }}>表面メンテ記録</h3>
+          <div className="row three">
+            <div className="field">
+              <label>日付 *</label>
+              <input
+                type="date"
+                value={maintDoneOn}
+                onChange={(e) => setMaintDoneOn(e.target.value)}
+                required
+              />
+            </div>
+            <div className="field">
+              <label>ボール *</label>
+              <select
+                value={maintBallId}
+                onChange={(e) => setMaintBallId(e.target.value)}
+                required
+              >
+                {memberBalls.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>種類 *</label>
+              <select
+                value={maintKind}
+                onChange={(e) => setMaintKind(e.target.value as MaintenanceKind)}
+              >
+                {(Object.keys(MAINTENANCE_KIND_LABEL) as MaintenanceKind[]).map((k) => (
+                  <option key={k} value={k}>
+                    {MAINTENANCE_KIND_LABEL[k]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="row">
+            <div className="field">
+              <label>番手 / 仕上げ</label>
+              <input
+                value={maintGrit}
+                onChange={(e) => setMaintGrit(e.target.value)}
+                placeholder="1000 / 工場仕上げ"
+              />
+            </div>
+            <div className="field">
+              <label>メモ</label>
+              <input
+                value={maintNote}
+                onChange={(e) => setMaintNote(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="form-actions">
+            <button className="btn secondary" type="button" onClick={() => setMaintOpen(false)}>
+              キャンセル
+            </button>
+            <button className="btn" type="submit">
+              保存
+            </button>
+          </div>
+        </form>
+      )}
+
       {!memberBalls.length ? (
         <div className="card empty">まだボールがありません。追加してください。</div>
       ) : (
         <div className="grid cards">
-          {memberBalls.map((b) => (
-            <div className="card" key={b.id}>
-              <div className="ball-brand">{b.brand || "ブランド未設定"}</div>
-              <div className="ball-title">{b.name}</div>
-              <div className="ball-meta">
-                {b.weightLb ? `${b.weightLb}lb` : "重量—"}
-                {" · "}購入 {b.purchasedOn || "—"}
-                <br />
-                ショップ {b.shopName || "—"}
-                <br />
-                ドリラー {b.drillerName || "—"}
-                {b.drilledOn ? `（${b.drilledOn}）` : ""}
+          {memberBalls.map((b) => {
+            const last = lastMaintFor(b.id);
+            const due = dueMap.get(b.id);
+            return (
+              <div className="card" key={b.id}>
+                <div className="ball-brand">{b.brand || "ブランド未設定"}</div>
+                <div className="ball-title">
+                  {b.name}
+                  {reminder.enabled && due && due.status !== "ok" ? (
+                    <span
+                      className="badge"
+                      style={{
+                        marginLeft: 8,
+                        background: "#fff1e6",
+                        color: "var(--warn)",
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      {due.status === "never" ? "メンテ未記録" : "要メンテ"}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="ball-meta">
+                  {b.weightLb ? `${b.weightLb}lb` : "重量—"}
+                  {" · "}購入 {b.purchasedOn || "—"}
+                  <br />
+                  ショップ {b.shopName || "—"}
+                  <br />
+                  ドリラー {b.drillerName || "—"}
+                  {b.drilledOn ? `（${b.drilledOn}）` : ""}
+                  <br />
+                  {last
+                    ? `最終メンテ: ${last.doneOn} ${MAINTENANCE_KIND_LABEL[last.kind]}${last.grit ? ` / ${last.grit}` : ""}`
+                    : "最終メンテ: —"}
+                </div>
+                <div className="form-actions">
+                  <a
+                    className="btn secondary"
+                    href={round1SearchUrl(b.name)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    ROUND1
+                  </a>
+                  <button className="btn secondary" type="button" onClick={() => openMaint(b.id)}>
+                    メンテ記録
+                  </button>
+                  <button className="btn secondary" type="button" onClick={() => startEdit(b)}>
+                    編集
+                  </button>
+                  <button
+                    className="btn danger"
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`${b.name} を削除しますか？`)) void deleteBall(b.id);
+                    }}
+                  >
+                    削除
+                  </button>
+                </div>
               </div>
-              <div className="form-actions">
-                <button className="btn secondary" type="button" onClick={() => startEdit(b)}>
-                  編集
-                </button>
-                <button
-                  className="btn danger"
-                  type="button"
-                  onClick={() => {
-                    if (confirm(`${b.name} を削除しますか？`)) void deleteBall(b.id);
-                  }}
-                >
-                  削除
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      <div className="card" style={{ marginTop: 14 }}>
+        <h3 style={{ marginTop: 0 }}>最近のメンテ</h3>
+        {!memberMaintenances.length ? (
+          <div className="empty">まだありません</div>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>ボール</th>
+                <th>種類</th>
+                <th>番手</th>
+                <th>メモ</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {memberMaintenances.slice(0, 30).map((m) => (
+                <tr key={m.id}>
+                  <td>{m.doneOn}</td>
+                  <td>{ballName(m.ballId)}</td>
+                  <td>{MAINTENANCE_KIND_LABEL[m.kind]}</td>
+                  <td>{m.grit || "—"}</td>
+                  <td>{m.note || "—"}</td>
+                  <td>
+                    <button
+                      className="btn danger"
+                      type="button"
+                      onClick={() => {
+                        if (confirm("このメンテ記録を削除しますか？")) void deleteMaintenance(m.id);
+                      }}
+                    >
+                      削除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

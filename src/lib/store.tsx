@@ -7,9 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { loadAppData, saveAppData } from "./storage";
-import type { AppData, Ball, Member, ScoreSession } from "./types";
-import { uid } from "./types";
+import { loadAppData, saveAppData, joinByInviteCode } from "./storage";
+import type { AppData, Ball, Member, ScoreSession, SurfaceMaintenance } from "./types";
+import { MAINTENANCE_KIND_LABEL, uid } from "./types";
 
 type Store = {
   data: AppData | null;
@@ -18,13 +18,18 @@ type Store = {
   activeMember: Member | null;
   memberBalls: Ball[];
   memberSessions: ScoreSession[];
+  memberMaintenances: SurfaceMaintenance[];
   setActiveMemberId: (id: string) => void;
   upsertBall: (ball: Ball) => Promise<void>;
   deleteBall: (id: string) => Promise<void>;
-  addSession: (session: ScoreSession) => Promise<void>;
+  upsertSession: (session: ScoreSession) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
+  addMaintenance: (item: SurfaceMaintenance) => Promise<void>;
+  deleteMaintenance: (id: string) => Promise<void>;
   addMember: (name: string) => Promise<void>;
   updateGroupName: (name: string) => Promise<void>;
+  replaceAppData: (next: AppData) => Promise<void>;
+  joinGroup: (inviteCode: string, displayName: string) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -77,6 +82,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [data],
   );
 
+  const memberMaintenances = useMemo(
+    () =>
+      data
+        ? (data.maintenances ?? [])
+            .filter((m) => m.memberId === data.activeMemberId)
+            .sort((a, b) => b.doneOn.localeCompare(a.doneOn))
+        : [],
+    [data],
+  );
+
   const value: Store = {
     data,
     loading,
@@ -84,6 +99,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     activeMember,
     memberBalls,
     memberSessions,
+    memberMaintenances,
     setActiveMemberId: (id) => {
       if (!data) return;
       void persist({ ...data, activeMemberId: id });
@@ -98,17 +114,58 @@ export function DataProvider({ children }: { children: ReactNode }) {
     },
     deleteBall: async (id) => {
       if (!data) return;
-      await persist({ ...data, balls: data.balls.filter((b) => b.id !== id) });
+      await persist({
+        ...data,
+        balls: data.balls.filter((b) => b.id !== id),
+        maintenances: (data.maintenances ?? []).filter((m) => m.ballId !== id),
+      });
     },
-    addSession: async (session) => {
+    upsertSession: async (session) => {
       if (!data) return;
-      await persist({ ...data, sessions: [session, ...data.sessions] });
+      const exists = data.sessions.some((s) => s.id === session.id);
+      const sessions = exists
+        ? data.sessions.map((s) => (s.id === session.id ? session : s))
+        : [session, ...data.sessions];
+      await persist({ ...data, sessions });
     },
     deleteSession: async (id) => {
       if (!data) return;
       await persist({
         ...data,
         sessions: data.sessions.filter((s) => s.id !== id),
+      });
+    },
+    addMaintenance: async (item) => {
+      if (!data) return;
+      const ball = data.balls.find((b) => b.id === item.ballId);
+      const balls = ball
+        ? data.balls.map((b) =>
+            b.id === item.ballId
+              ? {
+                  ...b,
+                  surfaceNote:
+                    [
+                      MAINTENANCE_KIND_LABEL[item.kind],
+                      item.grit,
+                      item.note,
+                    ]
+                      .filter(Boolean)
+                      .join(" / ") || b.surfaceNote,
+                }
+              : b,
+          )
+        : data.balls;
+      await persist({
+        ...data,
+        balls,
+        maintenances: [item, ...(data.maintenances ?? [])],
+      });
+    },
+    deleteMaintenance: async (id) => {
+      if (!data) return;
+      await persist({
+        ...data,
+        maintenances: (data.maintenances ?? []).filter((m) => m.id !== id),
       });
     },
     addMember: async (name) => {
@@ -124,6 +181,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateGroupName: async (name) => {
       if (!data || !name.trim()) return;
       await persist({ ...data, group: { ...data.group, name: name.trim() } });
+    },
+    replaceAppData: async (next) => {
+      await persist({
+        ...next,
+        maintenances: next.maintenances ?? [],
+      });
+    },
+    joinGroup: async (inviteCode, displayName) => {
+      const next = await joinByInviteCode(inviteCode, displayName);
+      setData(next);
     },
     refresh,
   };

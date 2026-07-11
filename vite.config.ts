@@ -1,7 +1,67 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
-// https://vite.dev/config/
+// 本番 GitHub Pages では Actions が VITE_BASE=/ball-manager/ を渡す
 export default defineConfig({
-  plugins: [react()],
-})
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.svg", "icon-192.png", "icon-512.png"],
+      manifest: {
+        name: "Ball Manager",
+        short_name: "BallMgr",
+        description: "ボウリングボールとスコアの管理アプリ",
+        theme_color: "#0b6bcb",
+        background_color: "#f3f5f8",
+        display: "standalone",
+        lang: "ja",
+        start_url: "./",
+        scope: "./",
+        icons: [
+          {
+            src: "icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+          {
+            src: "icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,svg,woff2,webmanifest}"],
+        globIgnores: ["**/catalog-images/**"],
+        navigateFallback: "index.html",
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            urlPattern: /\/catalog-images\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "catalog-images",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
+        ],
+      },
+    }),
+  ],
+  base: process.env.VITE_BASE || "/",
+  server: {
+    port: 5180,
+    host: "127.0.0.1",
+  },
+});

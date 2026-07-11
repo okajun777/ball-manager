@@ -1,26 +1,151 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
+import {
+  emptyFrames,
+  formatFrameDisplay,
+  maxSecondRoll,
+  parseRollInput,
+  scoreGameFromFrames,
+  type FrameRolls,
+} from "../lib/bowlingScore";
 import { useStore } from "../lib/store";
 import type { ScoreGame, ScoreSession, SessionType } from "../lib/types";
 import { today, uid } from "../lib/types";
 
-type GameDraft = { score: string; ballId: string };
+type EntryMode = "total" | "frames";
+
+type GameDraft = {
+  score: string;
+  ballId: string;
+  frames: FrameRolls[];
+};
+
+function blankGame(ballId: string): GameDraft {
+  return { score: "", ballId, frames: emptyFrames() };
+}
+
+function padFrames(frames: number[][] | undefined): FrameRolls[] {
+  const base = emptyFrames();
+  if (!frames?.length) return base;
+  return base.map((_, i) => (frames[i] ? [...frames[i]] : []));
+}
+
+function setFrameRoll(
+  frames: FrameRolls[],
+  frameIndex: number,
+  rollIndex: number,
+  value: number | null,
+): FrameRolls[] {
+  const next = frames.map((f) => [...f]);
+  const frame = [...(next[frameIndex] ?? [])];
+
+  if (value == null) {
+    frame.splice(rollIndex);
+    next[frameIndex] = frame;
+    return next;
+  }
+
+  if (frameIndex < 9) {
+    if (rollIndex === 0) {
+      if (value === 10) next[frameIndex] = [10];
+      else next[frameIndex] = [value];
+      return next;
+    }
+    const first = frame[0] ?? 0;
+    if (first >= 10) return next;
+    const capped = Math.min(value, maxSecondRoll(first));
+    next[frameIndex] = [first, capped];
+    return next;
+  }
+
+  // 10th frame
+  while (frame.length < rollIndex) frame.push(0);
+  frame[rollIndex] = value;
+  frame.length = rollIndex + 1;
+
+  if (rollIndex === 0 && value < 10) {
+    // keep only first until second entered
+  } else if (rollIndex === 1) {
+    const first = frame[0] ?? 0;
+    if (first < 10) {
+      frame[1] = Math.min(value, maxSecondRoll(first));
+      if (first + frame[1] < 10) frame.length = 2;
+    }
+  }
+  next[frameIndex] = frame;
+  return next;
+}
+
+function FrameSheet({
+  frames,
+  onChange,
+}: {
+  frames: FrameRolls[];
+  onChange: (frames: FrameRolls[]) => void;
+}) {
+  const total = scoreGameFromFrames(frames);
+
+  function update(frameIndex: number, rollIndex: number, raw: string) {
+    const prev = frames[frameIndex]?.[rollIndex - 1] ?? null;
+    const parsed = parseRollInput(raw, prev);
+    if (raw.trim() && parsed == null) return;
+    onChange(setFrameRoll(frames, frameIndex, rollIndex, raw.trim() ? parsed : null));
+  }
+
+  function rollCount(frameIndex: number): number {
+    if (frameIndex < 9) {
+      return frames[frameIndex]?.[0] === 10 ? 1 : 2;
+    }
+    const f = frames[9] ?? [];
+    if (!f.length) return 2;
+    if (f[0] === 10 || (f.length >= 2 && f[0] + f[1] === 10)) return 3;
+    return 2;
+  }
+
+  return (
+    <div className="frame-sheet">
+      <div className="frame-grid">
+        {frames.map((frame, fi) => (
+          <div className="frame-cell" key={fi}>
+            <div className="frame-no">{fi + 1}</div>
+            <div className="frame-rolls">
+              {Array.from({ length: rollCount(fi) }, (_, ri) => (
+                <input
+                  key={ri}
+                  className="frame-input"
+                  inputMode="numeric"
+                  placeholder={ri === 0 && fi < 9 ? "X" : ""}
+                  value={frame[ri] == null ? "" : frame[ri] === 10 ? "X" : String(frame[ri])}
+                  onChange={(e) => update(fi, ri, e.target.value)}
+                />
+              ))}
+            </div>
+            <div className="frame-mark">{formatFrameDisplay(frame, fi)}</div>
+          </div>
+        ))}
+      </div>
+      <div className="frame-total">合計 {total ?? "—"}</div>
+    </div>
+  );
+}
 
 export function Scores() {
-  const { data, activeMember, memberBalls, addSession, memberSessions, deleteSession } =
+  const { data, activeMember, memberBalls, upsertSession, memberSessions, deleteSession } =
     useStore();
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [playedOn, setPlayedOn] = useState(today());
   const [sessionType, setSessionType] = useState<SessionType>("practice");
   const [tournamentName, setTournamentName] = useState("");
   const [shopName, setShopName] = useState("");
   const [oilNote, setOilNote] = useState("ハウス");
   const [memo, setMemo] = useState("");
+  const [entryMode, setEntryMode] = useState<EntryMode>("total");
   const [games, setGames] = useState<GameDraft[]>([
-    { score: "", ballId: memberBalls[0]?.id ?? "" },
-    { score: "", ballId: memberBalls[0]?.id ?? "" },
-    { score: "", ballId: memberBalls[0]?.id ?? "" },
+    blankGame(""),
+    blankGame(""),
+    blankGame(""),
   ]);
 
   const defaultBallId = memberBalls[0]?.id ?? "";
@@ -30,7 +155,56 @@ export function Scores() {
     return (id: string | null) => (id ? map.get(id) ?? "—" : "—");
   }, [memberBalls]);
 
+  // 初回ボールIDを埋める
+  useEffect(() => {
+    if (!defaultBallId) return;
+    setGames((prev) =>
+      prev.map((g) => (g.ballId ? g : { ...g, ballId: defaultBallId })),
+    );
+  }, [defaultBallId]);
+
   if (!data || !activeMember) return null;
+
+  function resetForm() {
+    setEditingId(null);
+    setPlayedOn(today());
+    setSessionType("practice");
+    setTournamentName("");
+    setShopName("");
+    setOilNote("ハウス");
+    setMemo("");
+    setEntryMode("total");
+    setGames([blankGame(defaultBallId), blankGame(defaultBallId), blankGame(defaultBallId)]);
+  }
+
+  function startEdit(session: ScoreSession) {
+    setEditingId(session.id);
+    setPlayedOn(session.playedOn);
+    setSessionType(session.sessionType);
+    setTournamentName(session.tournamentName);
+    setShopName(session.shopName);
+    setOilNote(session.oilNote);
+    setMemo(session.memo);
+
+    const hasFrames = session.games.some((g) => g.frames && g.frames.length > 0);
+    setEntryMode(hasFrames ? "frames" : "total");
+
+    const drafts: GameDraft[] = session.games.map((g) => {
+      if (g.frames && g.frames.length > 0) {
+        return {
+          score: String(g.score),
+          ballId: g.ballId ?? defaultBallId,
+          frames: padFrames(g.frames),
+        };
+      }
+      return {
+        score: String(g.score),
+        ballId: g.ballId ?? defaultBallId,
+        frames: emptyFrames(),
+      };
+    });
+    setGames(drafts.length ? drafts : [blankGame(defaultBallId)]);
+  }
 
   function updateGame(i: number, patch: Partial<GameDraft>) {
     setGames((prev) => prev.map((g, idx) => (idx === i ? { ...g, ...patch } : g)));
@@ -42,32 +216,59 @@ export function Scores() {
       alert("先にマイボールを登録してください");
       return;
     }
-    const parsed: { score: number; ballId: string }[] = [];
+
+    const parsed: { score: number; ballId: string; frames?: number[][] }[] = [];
+
     for (const g of games) {
-      if (!g.score.trim()) continue;
-      const score = Number(g.score);
-      if (!Number.isFinite(score) || score < 0 || score > 300) {
-        alert("点数は 0〜300 で入力してください");
-        return;
-      }
       if (!g.ballId) {
-        alert("ボールを選択してください");
-        return;
+        // 空ゲームはスキップ判定の後で
       }
-      parsed.push({ score, ballId: g.ballId });
+
+      if (entryMode === "total") {
+        if (!g.score.trim()) continue;
+        const score = Number(g.score);
+        if (!Number.isFinite(score) || score < 0 || score > 300) {
+          alert("点数は 0〜300 で入力してください");
+          return;
+        }
+        if (!g.ballId) {
+          alert("ボールを選択してください");
+          return;
+        }
+        parsed.push({ score, ballId: g.ballId });
+      } else {
+        const hasAny = g.frames.some((f) => f.length > 0);
+        if (!hasAny) continue;
+        const score = scoreGameFromFrames(g.frames);
+        if (score == null) {
+          alert("フレーム入力が途中です。全フレームを埋めるか、合計点モードを使ってください");
+          return;
+        }
+        if (!g.ballId) {
+          alert("ボールを選択してください");
+          return;
+        }
+        parsed.push({ score, ballId: g.ballId, frames: g.frames.map((f) => [...f]) });
+      }
     }
+
     if (!parsed.length) {
       alert("少なくとも1ゲーム入力してください");
       return;
     }
 
-    const sessionId = uid("ses");
+    const sessionId = editingId ?? uid("ses");
+    const existingGames = editingId
+      ? (memberSessions.find((s) => s.id === editingId)?.games ?? [])
+      : [];
+
     const sessionGames: ScoreGame[] = parsed.map((g, i) => ({
-      id: uid("game"),
+      id: existingGames[i]?.id ?? uid("game"),
       sessionId,
       gameNo: i + 1,
       score: g.score,
       ballId: g.ballId,
+      ...(g.frames ? { frames: g.frames } : {}),
     }));
 
     const session: ScoreSession = {
@@ -82,14 +283,10 @@ export function Scores() {
       memo: memo.trim(),
       games: sessionGames,
     };
-    await addSession(session);
-    setGames([
-      { score: "", ballId: defaultBallId },
-      { score: "", ballId: defaultBallId },
-      { score: "", ballId: defaultBallId },
-    ]);
-    setMemo("");
-    alert("保存しました");
+    const wasEditing = Boolean(editingId);
+    await upsertSession(session);
+    resetForm();
+    alert(wasEditing ? "更新しました" : "保存しました");
   }
 
   return (
@@ -97,7 +294,7 @@ export function Scores() {
       <div className="page-title">
         <div>
           <h1>スコア入力</h1>
-          <p>合計点のみ。ボールは所持ボールから選択</p>
+          <p>合計点 or フレーム入力。ボールは所持ボールから選択</p>
         </div>
       </div>
 
@@ -112,6 +309,7 @@ export function Scores() {
         </div>
       ) : (
         <form className="card" onSubmit={onSubmit}>
+          <h3 style={{ marginTop: 0 }}>{editingId ? "記録を更新" : "スコア記録"}</h3>
           <div className="row three">
             <div className="field">
               <label>日付 *</label>
@@ -149,47 +347,84 @@ export function Scores() {
             <input value={oilNote} onChange={(e) => setOilNote(e.target.value)} />
           </div>
 
+          <div className="field">
+            <label>入力方式</label>
+            <div className="tabs" style={{ marginBottom: 0 }}>
+              <button
+                type="button"
+                className={`tab ${entryMode === "total" ? "active" : ""}`}
+                onClick={() => setEntryMode("total")}
+              >
+                合計点のみ
+              </button>
+              <button
+                type="button"
+                className={`tab ${entryMode === "frames" ? "active" : ""}`}
+                onClick={() => setEntryMode("frames")}
+              >
+                フレーム入力
+              </button>
+            </div>
+          </div>
+
           <h3>ゲーム</h3>
           {games.map((g, i) => (
-            <div className="game-row" key={i}>
-              <div className="field">
-                <label>G{i + 1}</label>
-                <input
-                  inputMode="numeric"
-                  placeholder="187"
-                  value={g.score}
-                  onChange={(e) => updateGame(i, { score: e.target.value })}
-                />
-              </div>
-              <div className="field" style={{ gridColumn: "span 2" }}>
-                <label>ボール（所持）</label>
-                <select
-                  value={g.ballId}
-                  onChange={(e) => updateGame(i, { ballId: e.target.value })}
+            <div key={i} style={{ marginBottom: 14 }}>
+              <div className="game-row">
+                {entryMode === "total" ? (
+                  <div className="field">
+                    <label>G{i + 1}</label>
+                    <input
+                      inputMode="numeric"
+                      placeholder="187"
+                      value={g.score}
+                      onChange={(e) => updateGame(i, { score: e.target.value })}
+                    />
+                  </div>
+                ) : (
+                  <div className="field">
+                    <label>G{i + 1}</label>
+                    <input
+                      readOnly
+                      value={scoreGameFromFrames(g.frames) ?? ""}
+                      placeholder="自動"
+                    />
+                  </div>
+                )}
+                <div className="field" style={{ gridColumn: "span 2" }}>
+                  <label>ボール（所持）</label>
+                  <select
+                    value={g.ballId}
+                    onChange={(e) => updateGame(i, { ballId: e.target.value })}
+                  >
+                    {memberBalls.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name} {b.brand ? `(${b.brand})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  onClick={() => setGames((prev) => prev.filter((_, idx) => idx !== i))}
+                  disabled={games.length <= 1}
                 >
-                  {memberBalls.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name} {b.brand ? `(${b.brand})` : ""}
-                    </option>
-                  ))}
-                </select>
+                  削除
+                </button>
               </div>
-              <button
-                className="btn secondary"
-                type="button"
-                onClick={() => setGames((prev) => prev.filter((_, idx) => idx !== i))}
-                disabled={games.length <= 1}
-              >
-                削除
-              </button>
+              {entryMode === "frames" && (
+                <FrameSheet
+                  frames={g.frames}
+                  onChange={(frames) => updateGame(i, { frames })}
+                />
+              )}
             </div>
           ))}
           <button
             className="btn secondary"
             type="button"
-            onClick={() =>
-              setGames((prev) => [...prev, { score: "", ballId: defaultBallId }])
-            }
+            onClick={() => setGames((prev) => [...prev, blankGame(defaultBallId)])}
           >
             ＋ ゲーム追加
           </button>
@@ -200,8 +435,13 @@ export function Scores() {
           </div>
 
           <div className="form-actions">
+            {editingId && (
+              <button className="btn secondary" type="button" onClick={resetForm}>
+                キャンセル
+              </button>
+            )}
             <button className="btn" type="submit">
-              保存
+              {editingId ? "記録を更新" : "保存"}
             </button>
           </div>
         </form>
@@ -232,20 +472,34 @@ export function Scores() {
                     </span>
                     {s.tournamentName ? ` ${s.tournamentName}` : ""}
                   </td>
-                  <td>{s.games.map((g) => g.score).join(" / ")}</td>
+                  <td>
+                    {s.games.map((g) => g.score).join(" / ")}
+                    {s.games.some((g) => g.frames?.length) ? (
+                      <div style={{ color: "var(--sub)", fontSize: "0.75rem" }}>フレームあり</div>
+                    ) : null}
+                  </td>
                   <td>
                     {[...new Set(s.games.map((g) => ballName(g.ballId)))].join(", ")}
                   </td>
                   <td>
-                    <button
-                      className="btn danger"
-                      type="button"
-                      onClick={() => {
-                        if (confirm("この記録を削除しますか？")) void deleteSession(s.id);
-                      }}
-                    >
-                      削除
-                    </button>
+                    <div className="form-actions" style={{ margin: 0 }}>
+                      <button
+                        className="btn secondary"
+                        type="button"
+                        onClick={() => startEdit(s)}
+                      >
+                        編集
+                      </button>
+                      <button
+                        className="btn danger"
+                        type="button"
+                        onClick={() => {
+                          if (confirm("この記録を削除しますか？")) void deleteSession(s.id);
+                        }}
+                      >
+                        削除
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

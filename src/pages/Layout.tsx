@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { ROUND1_VIEWER_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
 
 const links = [
@@ -43,6 +44,9 @@ export function Layout() {
             ))}
           </select>
         </div>
+        <a className="ext-link" href={ROUND1_VIEWER_URL} target="_blank" rel="noreferrer">
+          ROUND1 プロショップ ↗
+        </a>
       </aside>
       <main className="main">
         {loading && <div className="card empty">読み込み中…</div>}

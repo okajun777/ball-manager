@@ -2,7 +2,13 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import catalogBalls from "../data/catalogBalls.json";
 import { OIL_PRESETS, type CatalogBall, type OilPresetId } from "../lib/catalogTypes";
-import { generateStrategyExplanation, isLlmConfigured } from "../lib/llm";
+import {
+  analyzeOilPatternImage,
+  compressImageForVision,
+  generateStrategyExplanation,
+  isLlmConfigured,
+  type OilImageAnalysis,
+} from "../lib/llm";
 import { adviseBalls, focusLabel, type PerformanceFocus } from "../lib/strategy";
 import { useStore } from "../lib/store";
 
@@ -22,13 +28,24 @@ export function Strategy() {
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [oilPreview, setOilPreview] = useState("");
+  const [oilAnalysis, setOilAnalysis] = useState<OilImageAnalysis | null>(null);
+  const [oilScanLoading, setOilScanLoading] = useState(false);
+  const [oilScanError, setOilScanError] = useState("");
   const llmReady = isLlmConfigured();
 
   const oil = useMemo(() => {
     const base = OIL_PRESETS.find((p) => p.id === presetId) ?? OIL_PRESETS[0];
     if (presetId !== "custom") return base;
-    return { ...base, length, volume, shape };
-  }, [presetId, length, volume, shape]);
+    return {
+      ...base,
+      length,
+      volume,
+      shape,
+      description: oilAnalysis?.summary || base.description,
+      label: oilAnalysis?.label ? `画像: ${oilAnalysis.label}` : base.label,
+    };
+  }, [presetId, length, volume, shape, oilAnalysis]);
 
   const results = useMemo(() => {
     if (!ran) return [];
@@ -57,8 +74,46 @@ export function Strategy() {
       setLength(p.length);
       setVolume(p.volume);
       setShape(p.shape);
+      setOilAnalysis(null);
     }
     resetAdvice();
+  }
+
+  async function onOilImage(file: File | null) {
+    if (!file) return;
+    setOilScanError("");
+    setOilAnalysis(null);
+    try {
+      const preview = URL.createObjectURL(file);
+      setOilPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return preview;
+      });
+      if (!isLlmConfigured()) {
+        setOilScanError(
+          "画像の自動読取には APIキーが必要です。設定・共有で登録するか、スライダーで手動指定してください。",
+        );
+        setPresetId("custom");
+        resetAdvice();
+        return;
+      }
+      setOilScanLoading(true);
+      const dataUrl = await compressImageForVision(file);
+      const result = await analyzeOilPatternImage(dataUrl);
+      setOilAnalysis(result);
+      setPresetId("custom");
+      setLength(result.length);
+      setVolume(result.volume);
+      setShape(result.shape);
+      if (result.label && !note.trim()) {
+        setNote(result.label);
+      }
+      resetAdvice();
+    } catch (err) {
+      setOilScanError(err instanceof Error ? err.message : "画像の解析に失敗しました");
+    } finally {
+      setOilScanLoading(false);
+    }
   }
 
   async function onGenerateAi() {
@@ -83,6 +138,7 @@ export function Strategy() {
   }
 
   const scoredGames = memberSessions.reduce((n, s) => n + s.games.length, 0);
+  const slidersEnabled = presetId === "custom";
 
   return (
     <div>
@@ -114,13 +170,52 @@ export function Strategy() {
           </p>
 
           <div className="field">
+            <label>パターン画像から読取（任意）</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => void onOilImage(e.target.files?.[0] ?? null)}
+            />
+            <p style={{ color: "var(--sub)", fontSize: "0.8rem", margin: "6px 0 0" }}>
+              レーンシートやパターン図をアップロード → 長さ・量・形状を推定（要APIキー）
+            </p>
+          </div>
+          {oilPreview && (
+            <img
+              src={oilPreview}
+              alt="オイルパターン"
+              style={{
+                width: "100%",
+                maxHeight: 180,
+                objectFit: "contain",
+                borderRadius: 10,
+                border: "1px solid var(--line)",
+                marginBottom: 10,
+                background: "#fff",
+              }}
+            />
+          )}
+          {oilScanLoading && (
+            <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>画像を解析中…</p>
+          )}
+          {oilScanError && (
+            <p style={{ color: "#b42318", fontSize: "0.88rem" }}>{oilScanError}</p>
+          )}
+          {oilAnalysis && (
+            <p style={{ color: "var(--good)", fontSize: "0.88rem" }}>
+              推定: {oilAnalysis.label}（信頼度 {oilAnalysis.confidence}
+              ）→ カスタムに反映済み。スライダーで微調整できます。
+            </p>
+          )}
+
+          <div className="field">
             <label>長さ（短い ← → 長い）: {length}</label>
             <input
               type="range"
               min={1}
               max={5}
               value={length}
-              disabled={presetId !== "custom"}
+              disabled={!slidersEnabled}
               onChange={(e) => {
                 setLength(Number(e.target.value));
                 resetAdvice();
@@ -134,7 +229,7 @@ export function Strategy() {
               min={1}
               max={5}
               value={volume}
-              disabled={presetId !== "custom"}
+              disabled={!slidersEnabled}
               onChange={(e) => {
                 setVolume(Number(e.target.value));
                 resetAdvice();
@@ -148,7 +243,7 @@ export function Strategy() {
               min={1}
               max={5}
               value={shape}
-              disabled={presetId !== "custom"}
+              disabled={!slidersEnabled}
               onChange={(e) => {
                 setShape(Number(e.target.value));
                 resetAdvice();

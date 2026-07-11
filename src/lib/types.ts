@@ -1,5 +1,13 @@
 export type SessionType = "practice" | "tournament";
 
+export type MaintenanceKind =
+  | "clean"
+  | "polish"
+  | "sand"
+  | "compound"
+  | "factory"
+  | "other";
+
 export type Member = {
   id: string;
   groupId: string;
@@ -24,12 +32,26 @@ export type Ball = {
   memo: string;
 };
 
+/** 表面メンテ履歴 */
+export type SurfaceMaintenance = {
+  id: string;
+  groupId: string;
+  memberId: string;
+  ballId: string;
+  doneOn: string;
+  kind: MaintenanceKind;
+  grit: string;
+  note: string;
+};
+
+/** フレーム投球。例: [[10],[9,1],[8,0],...,[10,10,10]]。未入力ゲームは省略可。 */
 export type ScoreGame = {
   id: string;
   sessionId: string;
   gameNo: number;
   score: number;
   ballId: string | null;
+  frames?: number[][];
 };
 
 export type ScoreSession = {
@@ -56,7 +78,17 @@ export type AppData = {
   members: Member[];
   balls: Ball[];
   sessions: ScoreSession[];
+  maintenances: SurfaceMaintenance[];
   activeMemberId: string;
+};
+
+export const MAINTENANCE_KIND_LABEL: Record<MaintenanceKind, string> = {
+  clean: "クリーニング",
+  polish: "ポリッシュ",
+  sand: "サンド",
+  compound: "コンパウンド",
+  factory: "工場仕上げ相当",
+  other: "その他",
 };
 
 export function uid(prefix = "id"): string {

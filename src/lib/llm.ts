@@ -12,6 +12,15 @@ export type LlmSettings = {
   model: string;
 };
 
+export type OilImageAnalysis = {
+  length: number;
+  volume: number;
+  shape: number;
+  label: string;
+  summary: string;
+  confidence: "high" | "medium" | "low";
+};
+
 export function loadLlmSettings(): LlmSettings {
   return {
     apiKey: localStorage.getItem(KEY_STORAGE) ?? "",
@@ -30,6 +39,108 @@ export function isLlmConfigured(): boolean {
   return Boolean(loadLlmSettings().apiKey);
 }
 
+async function chatCompletion(messages: unknown[], temperature = 0.4): Promise<string> {
+  const settings = loadLlmSettings();
+  if (!settings.apiKey) {
+    throw new Error("APIキーが未設定です。設定・共有から登録してください。");
+  }
+
+  const endpoint = `${settings.baseUrl.replace(/\/$/, "")}/chat/completions`;
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${settings.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: settings.model,
+      temperature,
+      messages,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`LLM APIエラー (${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  const json = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const content = json.choices?.[0]?.message?.content?.trim();
+  if (!content) throw new Error("LLMから空の応答が返りました");
+  return content;
+}
+
+function clampOil(n: unknown, fallback: number): number {
+  const v = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(v)) return fallback;
+  return Math.min(5, Math.max(1, Math.round(v)));
+}
+
+/** 画像を縮小して data URL にする（API送信用） */
+export async function compressImageForVision(file: File, maxSide = 1280): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("画像の読み込みに失敗しました");
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+  return canvas.toDataURL("image/jpeg", 0.72);
+}
+
+export async function analyzeOilPatternImage(imageDataUrl: string): Promise<OilImageAnalysis> {
+  const system = `あなたはボウリングのオイルパターン解析アシスタントです。
+画像（パターン図・レーンシート・掲示など）から、攻略用の粗い指標を推定してください。
+必ず次のJSONだけを返してください（説明文やコードフェンス禁止）:
+{"length":1-5,"volume":1-5,"shape":1-5,"label":"短い名前","summary":"日本語1〜2文","confidence":"high|medium|low"}
+length: 1短い〜5長い / volume: 1少ない〜5多い / shape: 1タイト〜5ワイド
+読めない場合は自信を下げ、ハウス寄りの中間値を返す。`;
+
+  const content = await chatCompletion(
+    [
+      { role: "system", content: system },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "この画像のオイル条件を length / volume / shape で推定してください。",
+          },
+          { type: "image_url", image_url: { url: imageDataUrl } },
+        ],
+      },
+    ],
+    0.2,
+  );
+
+  const jsonText = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(jsonText) as Record<string, unknown>;
+  } catch {
+    throw new Error("画像解析の応答を解釈できませんでした。別の画像か手動スライダーを試してください。");
+  }
+
+  const confidenceRaw = String(parsed.confidence ?? "medium");
+  const confidence =
+    confidenceRaw === "high" || confidenceRaw === "low" ? confidenceRaw : "medium";
+
+  return {
+    length: clampOil(parsed.length, 3),
+    volume: clampOil(parsed.volume, 3),
+    shape: clampOil(parsed.shape, 3),
+    label: String(parsed.label ?? "画像推定").slice(0, 40),
+    summary: String(parsed.summary ?? "").slice(0, 200),
+    confidence,
+  };
+}
+
 export async function generateStrategyExplanation(input: {
   memberName: string;
   oil: OilPreset;
@@ -38,11 +149,6 @@ export async function generateStrategyExplanation(input: {
   usePerformance: boolean;
   results: AdviceResult[];
 }): Promise<string> {
-  const settings = loadLlmSettings();
-  if (!settings.apiKey) {
-    throw new Error("APIキーが未設定です。設定・共有から登録してください。");
-  }
-
   const top = input.results.slice(0, 3);
   const summary = top
     .map((r, i) => {
@@ -71,32 +177,11 @@ ${summary}
 
 上記をもとに、今日の攻め方（推奨ボール、ラインの考え方、合わなかった時の次手）を解説してください。`;
 
-  const endpoint = `${settings.baseUrl.replace(/\/$/, "")}/chat/completions`;
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${settings.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: settings.model,
-      temperature: 0.6,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`LLM APIエラー (${res.status}): ${text.slice(0, 200)}`);
-  }
-
-  const json = (await res.json()) as {
-    choices?: { message?: { content?: string } }[];
-  };
-  const content = json.choices?.[0]?.message?.content?.trim();
-  if (!content) throw new Error("LLMから空の応答が返りました");
-  return content;
+  return chatCompletion(
+    [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    0.6,
+  );
 }

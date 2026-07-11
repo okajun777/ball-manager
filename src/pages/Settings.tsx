@@ -1,14 +1,26 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { downloadBackupJson, readBackupFile } from "../lib/backup";
 import { loadLlmSettings, saveLlmSettings, type LlmSettings } from "../lib/llm";
+import {
+  loadMaintReminderSettings,
+  requestNotifyPermission,
+  saveMaintReminderSettings,
+  type MaintReminderSettings,
+} from "../lib/maintReminder";
 import { isSupabaseConfigured } from "../lib/supabase";
 import { useStore } from "../lib/store";
 
 export function Settings() {
-  const { data, addMember, updateGroupName } = useStore();
+  const { data, addMember, updateGroupName, replaceAppData, joinGroup } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [joinName, setJoinName] = useState("");
   const [llm, setLlm] = useState<LlmSettings>(() => loadLlmSettings());
+  const [reminder, setReminder] = useState<MaintReminderSettings>(() =>
+    loadMaintReminderSettings(),
+  );
 
   if (!data) return null;
 
@@ -24,10 +36,47 @@ export function Settings() {
     setMemberName("");
   }
 
+  async function onJoin(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await joinGroup(joinCode, joinName);
+      setJoinCode("");
+      setJoinName("");
+      alert("グループに参加しました");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "参加に失敗しました");
+    }
+  }
+
   function saveLlm(e: FormEvent) {
     e.preventDefault();
     saveLlmSettings(llm);
     alert("AI解説の設定を保存しました（この端末のみ）");
+  }
+
+  function saveReminder(e: FormEvent) {
+    e.preventDefault();
+    saveMaintReminderSettings(reminder);
+    alert("メンテリマインダーを保存しました");
+  }
+
+  async function onImportBackup(file: File | null) {
+    if (!file) return;
+    if (
+      !confirm(
+        "バックアップJSONで現在のデータを置き換えます。よろしいですか？（いまの内容は上書きされます）",
+      )
+    ) {
+      return;
+    }
+    try {
+      const imported = await readBackupFile(file);
+      await replaceAppData(imported);
+      setGroupName(imported.group.name);
+      alert("バックアップを読み込みました");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "読み込みに失敗しました");
+    }
   }
 
   const inviteText = `Bowling Ball Manager に参加しませんか？\nグループ: ${data.group.name}\n招待コード: ${data.group.inviteCode}\n※Supabase設定後にクラウド共有が有効になります`;
@@ -81,10 +130,135 @@ export function Settings() {
         </div>
       </div>
 
-      <form className="card" style={{ marginTop: 14 }} onSubmit={saveLlm}>
-        <h3 style={{ marginTop: 0 }}>AI解説（OpenAI互換API）</h3>
+      <form className="card" style={{ marginTop: 14 }} onSubmit={saveReminder}>
+        <h3 style={{ marginTop: 0 }}>表面メンテのリマインダー</h3>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
-          攻略AIの選球結果を文章で解説します。キーはこの端末のブラウザにだけ保存されます。
+          ダッシュボードに「要メンテ」のボールを表示します。任意でブラウザ通知も使えます。
+        </p>
+        <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+          <input
+            type="checkbox"
+            checked={reminder.enabled}
+            onChange={(e) => setReminder({ ...reminder, enabled: e.target.checked })}
+          />
+          リマインダーを有効にする
+        </label>
+        <div className="field">
+          <label>間隔（日）</label>
+          <input
+            type="number"
+            min={7}
+            max={365}
+            value={reminder.intervalDays}
+            onChange={(e) =>
+              setReminder({
+                ...reminder,
+                intervalDays: Math.max(7, Number(e.target.value) || 30),
+              })
+            }
+          />
+        </div>
+        <label style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+          <input
+            type="checkbox"
+            checked={reminder.notify}
+            onChange={(e) => setReminder({ ...reminder, notify: e.target.checked })}
+          />
+          ブラウザ通知を使う（1日1回まで）
+        </label>
+        <div className="form-actions">
+          <button
+            className="btn secondary"
+            type="button"
+            onClick={async () => {
+              const perm = await requestNotifyPermission();
+              if (perm === "granted") {
+                setReminder((r) => {
+                  const next = { ...r, notify: true };
+                  saveMaintReminderSettings(next);
+                  return next;
+                });
+                alert("通知を許可しました");
+              } else {
+                alert("通知が許可されませんでした（ブラウザ設定を確認）");
+              }
+            }}
+          >
+            通知を許可
+          </button>
+          <button className="btn" type="submit">
+            リマインダーを保存
+          </button>
+        </div>
+      </form>
+
+      <form className="card" style={{ marginTop: 14 }} onSubmit={onJoin}>
+        <h3 style={{ marginTop: 0 }}>招待コードで参加</h3>
+        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+          家族からもらった招待コードでグループに入ります。
+          {isSupabaseConfigured
+            ? "クラウド上のグループを検索して参加します。"
+            : "ローカルでは、この端末のグループコードと一致する場合のみメンバー追加できます。別端末は JSON 読み込みか Supabase を使ってください。"}
+        </p>
+        <div className="grid two">
+          <div className="field">
+            <label>招待コード</label>
+            <input
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              placeholder="family01"
+            />
+          </div>
+          <div className="field">
+            <label>あなたの表示名</label>
+            <input
+              value={joinName}
+              onChange={(e) => setJoinName(e.target.value)}
+              placeholder="父 / 友人A"
+            />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button className="btn" type="submit">
+            参加する
+          </button>
+        </div>
+      </form>
+
+      <div className="card" style={{ marginTop: 14 }}>
+        <h3 style={{ marginTop: 0 }}>バックアップ（JSON / GitHub）</h3>
+        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+          全データをJSONで書き出し・読み込みできます。GitHub のプライベートリポジトリにコミットすれば、
+          端末をまたいだバックアップになります。
+        </p>
+        <ol style={{ color: "var(--sub)", paddingLeft: 18, fontSize: "0.9rem" }}>
+          <li>「JSONを書き出し」でファイルを保存</li>
+          <li>GitHub Desktop などでプライベートリポジトリにコミット・プッシュ</li>
+          <li>別端末では「JSONを読み込み」で復元</li>
+        </ol>
+        <div className="form-actions" style={{ justifyContent: "flex-start" }}>
+          <button className="btn" type="button" onClick={() => downloadBackupJson(data)}>
+            JSONを書き出し
+          </button>
+          <label className="btn secondary" style={{ cursor: "pointer", margin: 0 }}>
+            JSONを読み込み
+            <input
+              type="file"
+              accept="application/json,.json"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                void onImportBackup(e.target.files?.[0] ?? null);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+      </div>
+
+      <form className="card" style={{ marginTop: 14 }} onSubmit={saveLlm}>
+        <h3 style={{ marginTop: 0 }}>AI解説・画像読取（OpenAI互換API）</h3>
+        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+          攻略AIの文章解説と、オイルパターン画像の読取に使います。キーはこの端末のブラウザにだけ保存されます。
           未設定でもルールベースの提案はそのまま使えます。
         </p>
         <div className="grid two">

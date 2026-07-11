@@ -9,10 +9,12 @@ import { Scores } from "./pages/Scores";
 import { Settings } from "./pages/Settings";
 import { Strategy } from "./pages/Strategy";
 
+const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || undefined;
+
 export default function App() {
   return (
     <DataProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<Dashboard />} />

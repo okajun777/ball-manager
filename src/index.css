@@ -84,6 +84,18 @@ button, input, select, textarea { font: inherit; }
   padding: 8px 10px;
 }
 
+.ext-link {
+  display: block;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #9a0c22;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+}
+
 .main {
   padding: 22px;
 }
@@ -208,6 +220,110 @@ button, input, select, textarea { font: inherit; }
   gap: 8px;
   align-items: end;
   margin-bottom: 8px;
+}
+
+.frame-sheet {
+  margin: 4px 0 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fafbfc;
+  overflow-x: auto;
+}
+.frame-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(52px, 1fr));
+  gap: 6px;
+  min-width: 560px;
+}
+.frame-cell {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 4px;
+  text-align: center;
+}
+.frame-no {
+  font-size: 0.68rem;
+  color: var(--sub);
+  font-weight: 700;
+}
+.frame-rolls {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  margin: 4px 0;
+}
+.frame-input {
+  width: 22px;
+  padding: 2px 0 !important;
+  text-align: center;
+  font-size: 0.78rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.frame-mark {
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-height: 1em;
+}
+.frame-total {
+  margin-top: 8px;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.dash-rec {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.dash-rec-rank {
+  font-weight: 800;
+  color: var(--accent);
+  padding-top: 2px;
+}
+
+.trend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 120px;
+  margin-bottom: 12px;
+  padding: 8px 4px 0;
+  overflow-x: auto;
+}
+.trend-chart.tall { height: 160px; }
+.trend-col {
+  flex: 1;
+  min-width: 36px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+.trend-bar {
+  width: 100%;
+  max-width: 28px;
+  border-radius: 6px 6px 2px 2px;
+  background: var(--practice);
+  min-height: 4px;
+}
+.trend-bar.tournament { background: var(--tourney); }
+.trend-label {
+  margin-top: 6px;
+  font-size: 0.68rem;
+  color: var(--sub);
+}
+.trend-val {
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 @media (max-width: 960px) {

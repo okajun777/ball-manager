@@ -1,4 +1,12 @@
-import type { AppData, Ball, Group, Member, ScoreGame, ScoreSession } from "./types";
+import type {
+  AppData,
+  Ball,
+  Group,
+  Member,
+  ScoreGame,
+  ScoreSession,
+  SurfaceMaintenance,
+} from "./types";
 import { today, uid } from "./types";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
@@ -94,7 +102,14 @@ function createDemoData(): AppData {
     },
   ];
 
-  return { group, members, balls, sessions, activeMemberId: selfId };
+  return { group, members, balls, sessions, maintenances: [], activeMemberId: selfId };
+}
+
+function normalizeAppData(data: AppData): AppData {
+  return {
+    ...data,
+    maintenances: Array.isArray(data.maintenances) ? data.maintenances : [],
+  };
 }
 
 function loadLocal(): AppData {
@@ -104,7 +119,7 @@ function loadLocal(): AppData {
     localStorage.setItem(LOCAL_KEY, JSON.stringify(demo));
     return demo;
   }
-  return JSON.parse(raw) as AppData;
+  return normalizeAppData(JSON.parse(raw) as AppData);
 }
 
 function saveLocal(data: AppData) {
@@ -114,95 +129,35 @@ function saveLocal(data: AppData) {
 export async function loadAppData(): Promise<AppData> {
   if (!isSupabaseConfigured || !supabase) return loadLocal();
 
-  const { data: groups, error } = await supabase
-    .from("groups")
-    .select("*")
-    .limit(1);
-  if (error) throw error;
+  const local = (() => {
+    try {
+      const raw = localStorage.getItem(LOCAL_KEY);
+      return raw ? (JSON.parse(raw) as AppData) : null;
+    } catch {
+      return null;
+    }
+  })();
 
-  if (!groups?.length) {
-    // 初回: ローカルデモをベースにクラウドへ作成してもよいが、
-    // まずはローカルで使い、設定画面から移行する想定
-    return loadLocal();
+  let groupId = local?.group.id ?? "";
+  let activeMemberId = local?.activeMemberId ?? "";
+
+  if (groupId) {
+    const { data: exists } = await supabase
+      .from("groups")
+      .select("id")
+      .eq("id", groupId)
+      .limit(1);
+    if (!exists?.length) groupId = "";
   }
 
-  const groupRow = groups[0];
-  const groupId = groupRow.id as string;
-
-  const [{ data: members }, { data: balls }, { data: sessions }] = await Promise.all([
-    supabase.from("members").select("*").eq("group_id", groupId),
-    supabase.from("balls").select("*").eq("group_id", groupId),
-    supabase.from("score_sessions").select("*").eq("group_id", groupId).order("played_on", { ascending: false }),
-  ]);
-
-  const sessionIds = (sessions ?? []).map((s) => s.id);
-  const { data: games } = sessionIds.length
-    ? await supabase.from("score_games").select("*").in("session_id", sessionIds)
-    : { data: [] as Record<string, unknown>[] };
-
-  const mappedMembers: Member[] = (members ?? []).map((m) => ({
-    id: m.id,
-    groupId: m.group_id,
-    displayName: m.display_name,
-    isSelf: Boolean(m.is_self),
-  }));
-
-  const mappedBalls: Ball[] = (balls ?? []).map((b) => ({
-    id: b.id,
-    groupId: b.group_id,
-    memberId: b.member_id,
-    name: b.name,
-    brand: b.brand ?? "",
-    weightLb: b.weight_lb == null ? null : Number(b.weight_lb),
-    purchasedOn: b.purchased_on ?? "",
-    shopName: b.shop_name ?? "",
-    drillerName: b.driller_name ?? "",
-    drilledOn: b.drilled_on ?? "",
-    price: b.price == null ? null : Number(b.price),
-    layoutNote: b.layout_note ?? "",
-    surfaceNote: b.surface_note ?? "",
-    memo: b.memo ?? "",
-  }));
-
-  const gamesBySession = new Map<string, ScoreGame[]>();
-  for (const g of games ?? []) {
-    const list = gamesBySession.get(g.session_id) ?? [];
-    list.push({
-      id: g.id,
-      sessionId: g.session_id,
-      gameNo: g.game_no,
-      score: g.score,
-      ballId: g.ball_id,
-    });
-    gamesBySession.set(g.session_id, list);
+  if (!groupId) {
+    const { data: groups, error } = await supabase.from("groups").select("*").limit(1);
+    if (error) throw error;
+    if (!groups?.length) return loadLocal();
+    groupId = groups[0].id as string;
   }
 
-  const mappedSessions: ScoreSession[] = (sessions ?? []).map((s) => ({
-    id: s.id,
-    groupId: s.group_id,
-    memberId: s.member_id,
-    playedOn: s.played_on,
-    sessionType: s.session_type,
-    tournamentName: s.tournament_name ?? "",
-    shopName: s.shop_name ?? "",
-    oilNote: s.oil_note ?? "",
-    memo: s.memo ?? "",
-    games: (gamesBySession.get(s.id) ?? []).sort((a, b) => a.gameNo - b.gameNo),
-  }));
-
-  const self = mappedMembers.find((m) => m.isSelf) ?? mappedMembers[0];
-
-  return {
-    group: {
-      id: groupRow.id,
-      name: groupRow.name,
-      inviteCode: groupRow.invite_code,
-    },
-    members: mappedMembers,
-    balls: mappedBalls,
-    sessions: mappedSessions,
-    activeMemberId: self?.id ?? "",
-  };
+  return loadAppDataFromGroupId(groupId, activeMemberId);
 }
 
 export async function saveAppData(data: AppData): Promise<void> {
@@ -267,9 +222,25 @@ export async function saveAppData(data: AppData): Promise<void> {
           game_no: g.gameNo,
           score: g.score,
           ball_id: g.ballId,
+          frames: g.frames ?? null,
         })),
       );
     }
+  }
+
+  if (data.maintenances?.length) {
+    await supabase.from("surface_maintenances").upsert(
+      data.maintenances.map((m) => ({
+        id: m.id,
+        group_id: m.groupId,
+        member_id: m.memberId,
+        ball_id: m.ballId,
+        done_on: m.doneOn || null,
+        kind: m.kind,
+        grit: m.grit,
+        note: m.note,
+      })),
+    );
   }
 }
 
@@ -277,4 +248,176 @@ export function resetLocalDemo(): AppData {
   const demo = createDemoData();
   saveLocal(demo);
   return demo;
+}
+
+/** 招待コードでグループに参加。Supabase優先、ローカルは同一コードのグループのみ。 */
+export async function joinByInviteCode(
+  inviteCode: string,
+  displayName: string,
+): Promise<AppData> {
+  const code = inviteCode.trim();
+  const name = displayName.trim();
+  if (!code) throw new Error("招待コードを入力してください");
+  if (!name) throw new Error("表示名を入力してください");
+
+  if (isSupabaseConfigured && supabase) {
+    const { data: groups, error } = await supabase
+      .from("groups")
+      .select("*")
+      .eq("invite_code", code)
+      .limit(1);
+    if (error) throw error;
+    if (!groups?.length) throw new Error("招待コードが見つかりません");
+
+    const groupRow = groups[0];
+    const groupId = groupRow.id as string;
+    const memberId = uid("mem");
+
+    const { error: memErr } = await supabase.from("members").insert({
+      id: memberId,
+      group_id: groupId,
+      display_name: name,
+      is_self: true,
+    });
+    if (memErr) throw memErr;
+
+    // 既存メンバーの is_self は触らない（端末ごとに自分扱い）
+    const loaded = await loadAppDataFromGroupId(groupId, memberId);
+    saveLocal(loaded);
+    return loaded;
+  }
+
+  const local = loadLocal();
+  if (local.group.inviteCode !== code) {
+    throw new Error(
+      "この端末のグループとコードが一致しません。別端末からの参加は Supabase 設定か JSON 読み込みを使ってください。",
+    );
+  }
+  const member: Member = {
+    id: uid("mem"),
+    groupId: local.group.id,
+    displayName: name,
+    isSelf: false,
+  };
+  const next: AppData = {
+    ...local,
+    members: [...local.members, member],
+    activeMemberId: member.id,
+  };
+  saveLocal(next);
+  return next;
+}
+
+async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): Promise<AppData> {
+  if (!supabase) throw new Error("Supabase未設定");
+
+  const [{ data: groupRow }, { data: members }, { data: balls }, { data: sessions }] =
+    await Promise.all([
+      supabase.from("groups").select("*").eq("id", groupId).single(),
+      supabase.from("members").select("*").eq("group_id", groupId),
+      supabase.from("balls").select("*").eq("group_id", groupId),
+      supabase
+        .from("score_sessions")
+        .select("*")
+        .eq("group_id", groupId)
+        .order("played_on", { ascending: false }),
+    ]);
+
+  if (!groupRow) throw new Error("グループを読み込めませんでした");
+
+  const { data: maints } = await supabase
+    .from("surface_maintenances")
+    .select("*")
+    .eq("group_id", groupId);
+
+  const sessionIds = (sessions ?? []).map((s) => s.id as string);
+  const { data: games } = sessionIds.length
+    ? await supabase.from("score_games").select("*").in("session_id", sessionIds)
+    : { data: [] as Record<string, unknown>[] };
+
+  const mappedMembers: Member[] = (members ?? []).map((m) => ({
+    id: m.id,
+    groupId: m.group_id,
+    displayName: m.display_name,
+    isSelf: activeMemberId ? m.id === activeMemberId : Boolean(m.is_self),
+  }));
+
+  const mappedBalls: Ball[] = (balls ?? []).map((b) => ({
+    id: b.id,
+    groupId: b.group_id,
+    memberId: b.member_id,
+    name: b.name,
+    brand: b.brand ?? "",
+    weightLb: b.weight_lb == null ? null : Number(b.weight_lb),
+    purchasedOn: b.purchased_on ?? "",
+    shopName: b.shop_name ?? "",
+    drillerName: b.driller_name ?? "",
+    drilledOn: b.drilled_on ?? "",
+    price: b.price == null ? null : Number(b.price),
+    layoutNote: b.layout_note ?? "",
+    surfaceNote: b.surface_note ?? "",
+    memo: b.memo ?? "",
+  }));
+
+  const gamesBySession = new Map<string, ScoreGame[]>();
+  for (const g of games ?? []) {
+    const row = g as {
+      id: string;
+      session_id: string;
+      game_no: number;
+      score: number;
+      ball_id: string | null;
+      frames?: number[][] | null;
+    };
+    const list = gamesBySession.get(row.session_id) ?? [];
+    list.push({
+      id: row.id,
+      sessionId: row.session_id,
+      gameNo: row.game_no,
+      score: row.score,
+      ballId: row.ball_id,
+      ...(Array.isArray(row.frames) ? { frames: row.frames } : {}),
+    });
+    gamesBySession.set(row.session_id, list);
+  }
+
+  const mappedSessions: ScoreSession[] = (sessions ?? []).map((s) => ({
+    id: s.id,
+    groupId: s.group_id,
+    memberId: s.member_id,
+    playedOn: s.played_on,
+    sessionType: s.session_type,
+    tournamentName: s.tournament_name ?? "",
+    shopName: s.shop_name ?? "",
+    oilNote: s.oil_note ?? "",
+    memo: s.memo ?? "",
+    games: (gamesBySession.get(s.id) ?? []).sort((a, b) => a.gameNo - b.gameNo),
+  }));
+
+  const mappedMaints: SurfaceMaintenance[] = (maints ?? []).map((m) => ({
+    id: m.id,
+    groupId: m.group_id,
+    memberId: m.member_id,
+    ballId: m.ball_id,
+    doneOn: m.done_on ?? "",
+    kind: m.kind,
+    grit: m.grit ?? "",
+    note: m.note ?? "",
+  }));
+
+  return {
+    group: {
+      id: groupRow.id,
+      name: groupRow.name,
+      inviteCode: groupRow.invite_code,
+    },
+    members: mappedMembers,
+    balls: mappedBalls,
+    sessions: mappedSessions,
+    maintenances: mappedMaints,
+    activeMemberId:
+      activeMemberId && mappedMembers.some((m) => m.id === activeMemberId)
+        ? activeMemberId
+        : (mappedMembers.find((m) => m.isSelf)?.id ?? mappedMembers[0]?.id ?? ""),
+  };
 }

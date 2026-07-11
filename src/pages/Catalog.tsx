@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import catalogBalls from "../data/catalogBalls.json";
 import { useStore } from "../lib/store";
 import type { CatalogBall } from "../lib/catalogTypes";
+import { publicUrl } from "../lib/paths";
+import { ROUND1_VIEWER_URL, round1SearchUrl } from "../lib/round1";
 import { today, uid } from "../lib/types";
 
 const balls = catalogBalls as CatalogBall[];
@@ -77,6 +79,37 @@ export function Catalog() {
         <div>
           <h1>カタログ</h1>
           <p>メーカー別のボール種類・タイプ一覧（{filtered.length} / {balls.length}）</p>
+        </div>
+        <a className="btn secondary" href={ROUND1_VIEWER_URL} target="_blank" rel="noreferrer">
+          ROUND1商品を見る
+        </a>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14, background: "#fff5f5", borderColor: "#fecaca" }}>
+        <strong style={{ color: "#9a0c22" }}>ROUND1 プロショップ</strong>
+        <p style={{ margin: "6px 0 10px", color: "var(--sub)", fontSize: "0.9rem" }}>
+          r1b.jp の最新価格・在庫をカテゴリ別に検索できます。カタログの球名でそのまま探せます。
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <a className="btn" href={round1SearchUrl(q || undefined)} target="_blank" rel="noreferrer">
+            {q.trim() ? `「${q.trim()}」をROUND1で検索` : "ボール一覧を開く"}
+          </a>
+          <a
+            className="btn secondary"
+            href={round1SearchUrl(undefined, "shoes")}
+            target="_blank"
+            rel="noreferrer"
+          >
+            シューズ
+          </a>
+          <a
+            className="btn secondary"
+            href={round1SearchUrl(undefined, "bag")}
+            target="_blank"
+            rel="noreferrer"
+          >
+            バッグ
+          </a>
         </div>
       </div>
 
@@ -169,7 +202,7 @@ export function Catalog() {
                 >
                   {b.imageUrl ? (
                     <img
-                      src={b.imageUrl}
+                      src={publicUrl(b.imageUrl)}
                       alt={b.name}
                       loading="lazy"
                       style={{ width: "100%", height: "100%", objectFit: "contain" }}
@@ -189,6 +222,14 @@ export function Catalog() {
                 <button className="btn secondary" type="button" onClick={() => setSelected(b)}>
                   詳細
                 </button>
+                <a
+                  className="btn secondary"
+                  href={round1SearchUrl(b.name)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  ROUND1
+                </a>
                 <button
                   className="btn"
                   type="button"
@@ -226,7 +267,7 @@ export function Catalog() {
             <h2 style={{ margin: "4px 0 10px" }}>{selected.name}</h2>
             {selected.imageUrl && (
               <img
-                src={selected.imageUrl}
+                src={publicUrl(selected.imageUrl)}
                 alt={selected.name}
                 style={{
                   width: "50%",
@@ -276,6 +317,14 @@ export function Catalog() {
               <button className="btn secondary" type="button" onClick={() => setSelected(null)}>
                 閉じる
               </button>
+              <a
+                className="btn secondary"
+                href={round1SearchUrl(selected.name)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                ROUND1で価格を見る
+              </a>
               <button
                 className="btn"
                 type="button"
