@@ -92,21 +92,6 @@ export function IdentityGate() {
             autoFocus
           />
         </div>
-        <div className="field">
-          <label>ロック番号（4桁・あとで使う）</label>
-          <input
-            type="password"
-            inputMode="numeric"
-            maxLength={4}
-            value={pin}
-            onChange={(e) => {
-              setPin(e.target.value.replace(/\D/g, "").slice(0, 4));
-              setFormError("");
-            }}
-            placeholder="••••"
-            autoComplete="off"
-          />
-        </div>
         {formError ? (
           <p style={{ color: "#b42318", fontSize: "0.88rem" }}>{formError}</p>
         ) : null}
@@ -120,7 +105,7 @@ export function IdentityGate() {
                 setBusy(true);
                 setFormError("");
                 try {
-                  await startPersonalGroup(displayName, pin);
+                  await startPersonalGroup(displayName);
                 } catch (e) {
                   setFormError(e instanceof Error ? e.message : "開始に失敗しました");
                 } finally {

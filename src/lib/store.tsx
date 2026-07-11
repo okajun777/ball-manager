@@ -81,7 +81,7 @@ type Store = {
   replaceAppData: (next: AppData) => Promise<void>;
   joinGroup: (inviteCode: string, displayName: string) => Promise<void>;
   /** 初めて使う人が自分のグループを作る */
-  startPersonalGroup: (displayName: string, pin: string) => Promise<void>;
+  startPersonalGroup: (displayName: string) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -417,11 +417,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       setData({ ...next, activeMemberId: next.activeMemberId });
     },
-    startPersonalGroup: async (displayName, pin) => {
+    startPersonalGroup: async (displayName) => {
       const name = displayName.trim();
       if (!name) throw new Error("表示名を入力してください");
-      saveAdminPin(pin);
-      setAdminPinReady(true);
       const next = createPersonalGroup(name);
       const saved = await saveAppData(next);
       saveDeviceMemberId(saved.activeMemberId);
