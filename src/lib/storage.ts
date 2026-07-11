@@ -216,39 +216,143 @@ function saveLocal(data: AppData) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
 }
 
+function readLocalRaw(): AppData | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    return raw ? normalizeAppData(JSON.parse(raw) as AppData) : null;
+  } catch {
+    return null;
+  }
+}
+
+function rebindToGroup(data: AppData, group: Group): AppData {
+  return {
+    ...data,
+    group,
+    members: data.members.map((m) => ({ ...m, groupId: group.id })),
+    balls: data.balls.map((b) => ({ ...b, groupId: group.id })),
+    sessions: data.sessions.map((s) => ({ ...s, groupId: group.id })),
+    maintenances: (data.maintenances ?? []).map((m) => ({ ...m, groupId: group.id })),
+  };
+}
+
+function cloudIsEmpty(cloud: AppData): boolean {
+  return (
+    cloud.members.length === 0 &&
+    cloud.balls.length === 0 &&
+    cloud.sessions.length === 0 &&
+    (cloud.maintenances?.length ?? 0) === 0
+  );
+}
+
+function localHasContent(local: AppData): boolean {
+  return (
+    local.members.length > 0 ||
+    local.balls.length > 0 ||
+    local.sessions.length > 0 ||
+    (local.maintenances?.length ?? 0) > 0
+  );
+}
+
+function contentScore(data: AppData): number {
+  return (
+    data.members.length * 10 +
+    data.balls.length * 5 +
+    data.sessions.length * 3 +
+    (data.maintenances?.length ?? 0)
+  );
+}
+
+/**
+ * Supabase 接続時:
+ * - クラウドに中身があればそれを採用（ローカルへも反映）
+ * - クラウドが空でローカルにデータがあればローカルをクラウドへ上げる
+ *   （デプロイ後に空のクラウドがローカル名を消すのを防ぐ）
+ */
 export async function loadAppData(): Promise<AppData> {
   const supabase = getSupabase();
   if (!isSupabaseConfigured() || !supabase) return loadLocal();
 
-  const local = (() => {
-    try {
-      const raw = localStorage.getItem(LOCAL_KEY);
-      return raw ? (JSON.parse(raw) as AppData) : null;
-    } catch {
-      return null;
-    }
-  })();
+  const local = readLocalRaw() ?? loadLocal();
+  const activeMemberId = local.activeMemberId ?? "";
 
-  let groupId = local?.group.id ?? "";
-  let activeMemberId = local?.activeMemberId ?? "";
+  let cloudGroup: Group | null = null;
 
-  if (groupId) {
-    const { data: exists } = await supabase
-      .from("groups")
-      .select("id")
-      .eq("id", groupId)
-      .limit(1);
-    if (!exists?.length) groupId = "";
+  const { data: byId } = await supabase
+    .from("groups")
+    .select("*")
+    .eq("id", local.group.id)
+    .limit(1);
+  if (byId?.length) {
+    cloudGroup = {
+      id: byId[0].id as string,
+      name: byId[0].name as string,
+      inviteCode: byId[0].invite_code as string,
+    };
   }
 
-  if (!groupId) {
+  if (!cloudGroup && local.group.inviteCode) {
+    const { data: byInvite } = await supabase
+      .from("groups")
+      .select("*")
+      .eq("invite_code", local.group.inviteCode)
+      .limit(1);
+    if (byInvite?.length) {
+      cloudGroup = {
+        id: byInvite[0].id as string,
+        name: byInvite[0].name as string,
+        inviteCode: byInvite[0].invite_code as string,
+      };
+    }
+  }
+
+  if (!cloudGroup) {
     const { data: groups, error } = await supabase.from("groups").select("*").limit(1);
     if (error) throw error;
-    if (!groups?.length) return loadLocal();
-    groupId = groups[0].id as string;
+    if (groups?.length) {
+      cloudGroup = {
+        id: groups[0].id as string,
+        name: groups[0].name as string,
+        inviteCode: groups[0].invite_code as string,
+      };
+    }
   }
 
-  return loadAppDataFromGroupId(groupId, activeMemberId);
+  // クラウドにグループが無い → ローカルをそのまま上げる
+  if (!cloudGroup) {
+    await saveAppData(local);
+    return local;
+  }
+
+  const cloud = await loadAppDataFromGroupId(cloudGroup.id, activeMemberId);
+  const boundLocal = rebindToGroup(local, {
+    id: cloudGroup.id,
+    name: cloudGroup.name || local.group.name,
+    inviteCode: cloudGroup.inviteCode || local.group.inviteCode,
+  });
+
+  // クラウドが空でローカルに中身がある → ローカル優先でクラウドへ同期
+  if (cloudIsEmpty(cloud) && localHasContent(local)) {
+    await saveAppData(boundLocal);
+    return boundLocal;
+  }
+
+  // 両方に中身がある場合、ローカルの方が明らかに豊富ならローカルを正とする
+  // （空の Pages 初期デモがクラウドに載って、本データの名前・ボールを消すのを防ぐ）
+  if (!cloudIsEmpty(cloud) && localHasContent(local) && contentScore(local) > contentScore(cloud)) {
+    await saveAppData(boundLocal);
+    return boundLocal;
+  }
+
+  // クラウドに中身がある → クラウドを正としローカルへ反映
+  if (!cloudIsEmpty(cloud)) {
+    saveLocal(cloud);
+    return cloud;
+  }
+
+  // 両方ほぼ空 → ローカル（初期メンバー）をクラウドへも載せる
+  await saveAppData(boundLocal);
+  return boundLocal;
 }
 
 export async function saveAppData(data: AppData): Promise<void> {
@@ -452,7 +556,7 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
       id: m.id,
       groupId: m.group_id,
       displayName: m.display_name,
-      isSelf: activeMemberId ? m.id === activeMemberId : Boolean(m.is_self),
+      isSelf: Boolean(m.is_self),
       gender: m.gender ?? "unspecified",
       hand: m.hand ?? "unspecified",
       throwStyle: m.throw_style ?? "unspecified",
