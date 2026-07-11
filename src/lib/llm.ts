@@ -69,6 +69,7 @@ async function chatCompletion(messages: unknown[], temperature = 0.4): Promise<s
     body: JSON.stringify({
       model: settings.model,
       temperature,
+      max_tokens: 1800,
       messages,
     }),
   });
@@ -233,39 +234,67 @@ export async function generateStrategyExplanation(input: {
   usePerformance: boolean;
   results: AdviceResult[];
 }): Promise<string> {
-  const top = input.results.slice(0, 3);
+  const top = input.results.slice(0, 5);
   const summary = top
     .map((r, i) => {
       const perf = r.performance
-        ? `実績平均${r.performance.average}点/${r.performance.games}G`
+        ? [
+            `全体平均${r.performance.average}点/${r.performance.games}G`,
+            `最高${r.performance.high}`,
+            r.performance.recentAverage != null
+              ? `直近平均${r.performance.recentAverage}`
+              : null,
+            r.performance.matchedConditionAverage != null
+              ? `同系統条件平均${r.performance.matchedConditionAverage}（${r.performance.matchedConditionGames}G）`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" / ")
         : "実績なし";
-      return `#${i + 1} ${r.name}（${r.brand || "ブランド不明"}）適合${r.score} / ${perf}\n理由: ${r.reasons.join(" / ")}`;
+      return [
+        `#${i + 1} ${r.name}（${r.brand || "ブランド不明"} / ${r.source === "owned" ? "所持" : "カタログ"}）`,
+        `適合スコア ${r.score}`,
+        `実績: ${perf}`,
+        `選出理由: ${r.reasons.join("；")}`,
+        `ライン案: ${r.lineHint}`,
+        `調整ヒント: ${r.adjustHint}`,
+      ].join("\n");
     })
     .join("\n\n");
 
-  const system = `あなたはボウリングのレーン攻略コーチです。
-与えられた選球結果を、日本語で簡潔に解説してください。
-・断定しすぎず、調整の余地も書く
-・安全面や過度な保証はしない
-・300〜500文字程度
-・見出しは使わず、読みやすい短段落で`;
+  const system = `あなたは競技・ハウス両方に詳しいボウリングのレーン攻略コーチです。
+与えられた選球結果とオイル条件をもとに、今日の実戦で使える詳しい解説を日本語で書いてください。
+
+必ず次の構成で書いてください（見出しは【】で、各見出しの下に2〜4文）:
+【今日のレーンの読み】
+オイルの長さ・量・形状がボールの動きにどう効くか。ハウスとの違いがあれば触れる。
+【第一候補の使い方】
+なぜその球が合うか。カバーの効き、スキッド〜フックのイメージ、狙い目（板・ブレイクポイントの考え方）、スピードや回転の調整の目安。
+【合わなかったときのサインと次手】
+早すぎるフック／足りないフック／乾きすぎなど、観察ポイントと、第2・第3候補への切り替え判断。
+【ゲームの進め方】
+序盤・中盤・終盤（レーン変化）でのボール・ラインの変え方。スペアの注意があれば一言。
+【注意】
+断定しすぎない。個人差・ドリル・表面状態で変わる旨を短く。過度な保証はしない。
+
+分量の目安は800〜1400文字。箇条書きは最小限。絵文字や英語の長い専門用語の羅列は避ける。`;
 
   const user = `プレイヤー: ${input.memberName}
-オイル: ${input.oil.label}（長さ${input.oil.length}/量${input.oil.volume}/形状${input.oil.shape}）
-説明: ${input.oil.description}
+オイル: ${input.oil.label}（長さ${input.oil.length}/5・量${input.oil.volume}/5・形状${input.oil.shape}/5）
+オイル説明: ${input.oil.description}
 メモ: ${input.note || "なし"}
 実績参照: ${input.usePerformance ? focusLabel(input.focus) : "なし（スペックのみ）"}
 
-選球結果:
+選球結果（上位）:
 ${summary}
 
-上記をもとに、今日の攻め方（推奨ボール、ラインの考え方、合わなかった時の次手）を解説してください。`;
+上記をもとに、今日の攻め方を詳しく解説してください。`;
 
   return chatCompletion(
     [
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    0.6,
+    0.55,
   );
 }

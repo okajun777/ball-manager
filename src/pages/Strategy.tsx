@@ -409,7 +409,7 @@ export function Strategy() {
               >
                 <h4 style={{ margin: "0 0 8px" }}>AI解説（任意）</h4>
                 <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
-                  ルール選球の結果を、文章でわかりやすく解説します。
+                  レーンの読み・第一候補の使い方・切り替え判断・ゲームの進め方まで詳しく解説します。
                 </p>
                 {!llmReady ? (
                   <p style={{ color: "var(--warn)", fontSize: "0.88rem" }}>
