@@ -36,12 +36,6 @@ button, input, select, textarea { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 18px;
-  position: sticky;
-  top: 0;
-  align-self: start;
-  height: 100vh;
-  max-height: 100vh;
-  overflow-y: auto;
   z-index: 30;
 }
 
@@ -113,7 +107,22 @@ button, input, select, textarea { font: inherit; }
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: auto;
+}
+
+/* desktop only: fixed-height sidebar with members pinned to bottom */
+@media (min-width: 961px) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .sidebar-member-row {
+    margin-top: auto;
+  }
 }
 
 .ext-link {
@@ -397,7 +406,11 @@ button, input, select, textarea { font: inherit; }
     font-size: 14px;
   }
 
-  .app-shell { grid-template-columns: 1fr; }
+  .app-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: 100dvh;
+  }
 
   .sidebar {
     position: sticky;
@@ -405,9 +418,11 @@ button, input, select, textarea { font: inherit; }
     z-index: 20;
     height: auto;
     max-height: none;
-    align-self: stretch;
+    min-height: 0;
+    align-self: start;
     padding: 8px 10px;
-    gap: 8px;
+    gap: 6px;
+    overflow: visible;
   }
 
   .brand {
