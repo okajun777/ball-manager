@@ -105,6 +105,13 @@ alter table score_sessions enable row level security;
 alter table score_games enable row level security;
 alter table surface_maintenances enable row level security;
 
+drop policy if exists "groups_all" on groups;
+drop policy if exists "members_all" on members;
+drop policy if exists "balls_all" on balls;
+drop policy if exists "sessions_all" on score_sessions;
+drop policy if exists "games_all" on score_games;
+drop policy if exists "maintenances_all" on surface_maintenances;
+
 create policy "groups_all" on groups for all using (true) with check (true);
 create policy "members_all" on members for all using (true) with check (true);
 create policy "balls_all" on balls for all using (true) with check (true);
