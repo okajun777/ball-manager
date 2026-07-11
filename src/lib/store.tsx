@@ -9,8 +9,11 @@ import {
 } from "react";
 import {
   findAdminMemberId,
+  hasAdminPin,
   loadDeviceMemberId,
+  saveAdminPin,
   saveDeviceMemberId,
+  verifyAdminPin,
 } from "./identity";
 import { loadAppData, saveAppData, joinByInviteCode } from "./storage";
 import type {
@@ -35,13 +38,21 @@ type Store = {
   deviceMember: Member | null;
   /** 管理者（isSelf）としてこの端末を使っているか */
   isAdmin: boolean;
+  /** 初回など、利用者未選択 */
+  needsIdentity: boolean;
   memberBalls: Ball[];
   memberRetiredBalls: Ball[];
   memberAllBalls: Ball[];
   memberSessions: ScoreSession[];
   memberMaintenances: SurfaceMaintenance[];
   setActiveMemberId: (id: string) => void;
-  setDeviceMemberId: (id: string) => void;
+  /** 一般メンバーとしてこの端末を使う（管理者にはできない） */
+  claimAsMember: (memberId: string) => void;
+  /** PINで管理者としてこの端末を使う */
+  unlockAdmin: (pin: string) => { ok: boolean; error?: string };
+  /** 管理者PINを設定・変更（管理者のみ） */
+  setAdminPin: (pin: string) => { ok: boolean; error?: string };
+  hasAdminPin: boolean;
   upsertBall: (ball: Ball) => Promise<void>;
   deleteBall: (id: string) => Promise<void>;
   setBallRetired: (id: string, retired: boolean) => Promise<void>;
@@ -81,6 +92,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [deviceMemberId, setDeviceMemberIdState] = useState<string | null>(() =>
     loadDeviceMemberId(),
   );
+  const [adminPinReady, setAdminPinReady] = useState(() => hasAdminPin());
 
   const persist = useCallback(async (next: AppData) => {
     setData(next);
@@ -95,19 +107,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const adminId = findAdminMemberId(loaded.members);
       let deviceId = loadDeviceMemberId();
 
-      // 初回: 管理者をこの端末の利用者に（管理者端末がそのまま使える）
-      if (!deviceId || !loaded.members.some((m) => m.id === deviceId)) {
-        deviceId = adminId ?? loaded.members[0]?.id ?? null;
-        if (deviceId) {
-          saveDeviceMemberId(deviceId);
-          setDeviceMemberIdState(deviceId);
-        }
-      } else {
-        setDeviceMemberIdState(deviceId);
+      // 不明なIDはクリア（初回は未選択のまま → 本人確認ゲート）
+      if (deviceId && !loaded.members.some((m) => m.id === deviceId)) {
+        deviceId = null;
       }
+      setDeviceMemberIdState(deviceId);
 
       const isAdminDevice = Boolean(deviceId && adminId && deviceId === adminId);
-      // 一般端末は常に自分のデータを表示（共有の activeMemberId に引きずられない）
       if (!isAdminDevice && deviceId) {
         setData({ ...loaded, activeMemberId: deviceId });
       } else {
@@ -130,6 +136,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   const isAdmin = Boolean(deviceMemberId && adminId && deviceMemberId === adminId);
+  const needsIdentity = Boolean(data && !loading && !deviceMemberId);
 
   const viewMemberId = useMemo(() => {
     if (!data) return "";
@@ -193,6 +200,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     activeMember,
     deviceMember,
     isAdmin,
+    needsIdentity,
     memberBalls,
     memberRetiredBalls,
     memberAllBalls,
@@ -203,20 +211,46 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!data.members.some((m) => m.id === id)) return;
       void persist({ ...data, activeMemberId: id });
     },
-    setDeviceMemberId: (id) => {
+    claimAsMember: (id) => {
       if (!data?.members.some((m) => m.id === id)) return;
-      const nextIsAdmin = id === findAdminMemberId(data.members);
-      if (nextIsAdmin && deviceMemberId && deviceMemberId !== id) {
-        if (!window.confirm("管理者としてこの端末を使いますか？全員のデータを表示・管理できます。")) {
-          return;
-        }
-      }
+      const admin = findAdminMemberId(data.members);
+      // 管理者アカウントへの切替は禁止（PIN経由のみ）
+      if (admin && id === admin) return;
       saveDeviceMemberId(id);
       setDeviceMemberIdState(id);
-      if (!nextIsAdmin) {
-        setData({ ...data, activeMemberId: id });
+      setData({ ...data, activeMemberId: id });
+    },
+    unlockAdmin: (pin) => {
+      if (!data) return { ok: false, error: "データ未読込" };
+      const admin = findAdminMemberId(data.members);
+      if (!admin) return { ok: false, error: "管理者が見つかりません" };
+
+      if (!hasAdminPin()) {
+        try {
+          saveAdminPin(pin);
+          setAdminPinReady(true);
+        } catch (e) {
+          return { ok: false, error: e instanceof Error ? e.message : String(e) };
+        }
+      } else if (!verifyAdminPin(pin)) {
+        return { ok: false, error: "PINが違います" };
+      }
+
+      saveDeviceMemberId(admin);
+      setDeviceMemberIdState(admin);
+      return { ok: true };
+    },
+    setAdminPin: (pin) => {
+      if (!isAdmin) return { ok: false, error: "管理者のみ設定できます" };
+      try {
+        saveAdminPin(pin);
+        setAdminPinReady(true);
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
       }
     },
+    hasAdminPin: adminPinReady,
     upsertBall: async (ball) => {
       if (!data || !deviceMemberId) return;
       if (!ownsMemberId(deviceMemberId, ball.memberId, isAdmin)) return;

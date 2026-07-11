@@ -4,6 +4,7 @@ import { APP_PUBLIC_URL, readInviteFromLocation } from "../lib/appUrl";
 import { consumeOsakaDeepLink } from "../lib/osakaBowling";
 import { ROUND1_VIEWER_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
+import { IdentityGate } from "./IdentityGate";
 
 const mainLinks = [
   { to: "/", label: "ダッシュボード", end: true },
@@ -20,8 +21,8 @@ export function Layout() {
     activeMember,
     deviceMember,
     isAdmin,
+    needsIdentity,
     setActiveMemberId,
-    setDeviceMemberId,
     loading,
     error,
   } = useStore();
@@ -80,54 +81,42 @@ export function Layout() {
           </NavLink>
         </div>
 
-        <div className="sidebar-member-row">
-          <div className="member-switch">
-            <label htmlFor="device-member">この端末の利用者</label>
-            <select
-              id="device-member"
-              value={deviceMember?.id ?? ""}
-              onChange={(e) => setDeviceMemberId(e.target.value)}
-              disabled={!data}
-            >
-              {data?.members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName}
-                  {m.isSelf ? "（管理者）" : ""}
-                </option>
-              ))}
-            </select>
-            <p style={{ margin: "6px 0 0", color: "var(--sub)", fontSize: "0.78rem", lineHeight: 1.4 }}>
-              {isAdmin
-                ? "管理者モード: 全員のデータを表示・管理できます"
-                : "自分のデータだけ表示されます"}
-            </p>
-          </div>
-
-          {isAdmin ? (
+        {!needsIdentity ? (
+          <div className="sidebar-member-row">
             <div className="member-switch">
-              <label htmlFor="member">表示メンバー</label>
-              <select
-                id="member"
-                value={activeMember?.id ?? ""}
-                onChange={(e) => setActiveMemberId(e.target.value)}
-                disabled={!data}
-              >
-                {data?.members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.displayName}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div className="member-switch">
-              <label>表示中</label>
+              <label>この端末</label>
               <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                {activeMember?.displayName ?? "—"}
+                {deviceMember?.displayName ?? "—"}
+                {isAdmin ? "（管理者）" : ""}
               </div>
             </div>
-          )}
-        </div>
+
+            {isAdmin ? (
+              <div className="member-switch">
+                <label htmlFor="member">表示メンバー</label>
+                <select
+                  id="member"
+                  value={activeMember?.id ?? ""}
+                  onChange={(e) => setActiveMemberId(e.target.value)}
+                  disabled={!data}
+                >
+                  {data?.members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="member-switch">
+                <label>表示中</label>
+                <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                  {activeMember?.displayName ?? "—"}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
 
         <a className="ext-link" href={APP_PUBLIC_URL} target="_blank" rel="noreferrer">
           公開URLを開く ↗
@@ -139,7 +128,8 @@ export function Layout() {
       <main className="main">
         {loading && <div className="card empty">読み込み中…</div>}
         {error && <div className="card empty">エラー: {error}</div>}
-        {!loading && !error && <Outlet />}
+        {!loading && !error && needsIdentity && <IdentityGate />}
+        {!loading && !error && !needsIdentity && <Outlet />}
       </main>
     </div>
   );

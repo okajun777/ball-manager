@@ -14,6 +14,7 @@ import {
   type SupabaseSettings,
 } from "../lib/supabase";
 import { loadUserPrefs, saveUserPrefs, type UserPrefs } from "../lib/prefs";
+import { findAdminMemberId } from "../lib/identity";
 import { useStore } from "../lib/store";
 import {
   MEMBER_GENDER_LABEL,
@@ -89,7 +90,10 @@ export function Settings() {
     updateGroupName,
     replaceAppData,
     joinGroup,
-    setDeviceMemberId,
+    claimAsMember,
+    unlockAdmin,
+    setAdminPin,
+    hasAdminPin,
   } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
@@ -103,6 +107,8 @@ export function Settings() {
     loadMaintReminderSettings(),
   );
   const [prefs, setPrefs] = useState<UserPrefs>(() => loadUserPrefs());
+  const [adminPinDraft, setAdminPinDraft] = useState("");
+  const [unlockPinDraft, setUnlockPinDraft] = useState("");
   const sharedLlm = hasSharedLlmKey();
   const publicUrl = APP_PUBLIC_URL;
   const inviteLink = data ? appInviteUrl(data.group.inviteCode) : publicUrl;
@@ -230,27 +236,118 @@ export function Settings() {
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginTop: 0 }}>この端末の利用者</h3>
+        <h3 style={{ marginTop: 0 }}>この端末</h3>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
-          はるみなど家族の端末では、ここで自分の名前を選んでください。管理者（淳司）以外は自分のデータだけ見えます。
+          利用者: <strong>{deviceMember?.displayName ?? "—"}</strong>
+          {isAdmin ? "（管理者）" : " — 自分のデータのみ"}
         </p>
-        <div className="field">
-          <label>利用者</label>
-          <select
-            value={deviceMember?.id ?? ""}
-            onChange={(e) => setDeviceMemberId(e.target.value)}
-          >
-            {data.members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.displayName}
-                {m.isSelf ? "（管理者）" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-        <p style={{ color: "var(--sub)", fontSize: "0.85rem", margin: 0 }}>
-          現在: {isAdmin ? "管理者モード" : "一般（自分のみ）"}
+        <p style={{ color: "var(--sub)", fontSize: "0.85rem" }}>
+          淳司（管理者）を選ぶだけでは全員データは見えません。管理者はPINでのみ入れます。
         </p>
+
+        {isAdmin ? (
+          <div className="field">
+            <label>管理者PIN（4桁）{hasAdminPin ? "を変更" : "を設定"}</label>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={adminPinDraft}
+              onChange={(e) => setAdminPinDraft(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="••••"
+              autoComplete="off"
+            />
+            <div className="form-actions" style={{ justifyContent: "flex-start" }}>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => {
+                  const res = setAdminPin(adminPinDraft);
+                  if (!res.ok) {
+                    alert(res.error || "設定できませんでした");
+                    return;
+                  }
+                  setAdminPinDraft("");
+                  alert("管理者PINを保存しました");
+                }}
+              >
+                PINを保存
+              </button>
+            </div>
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>この端末を一般メンバー用にする</label>
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  const id = e.target.value;
+                  if (!id) return;
+                  if (!confirm("この端末では選んだ人のデータだけ見えるようになります。よろしいですか？")) {
+                    e.target.value = "";
+                    return;
+                  }
+                  claimAsMember(id);
+                  e.target.value = "";
+                }}
+              >
+                <option value="">メンバーを選択…</option>
+                {data.members
+                  .filter((m) => m.id !== findAdminMemberId(data.members))
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.displayName}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="field">
+              <label>利用者を変更（一般メンバーのみ）</label>
+              <select
+                value={deviceMember?.id ?? ""}
+                onChange={(e) => claimAsMember(e.target.value)}
+              >
+                {data.members
+                  .filter((m) => m.id !== findAdminMemberId(data.members))
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.displayName}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>管理者で開き直す（PIN）</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={unlockPinDraft}
+                onChange={(e) => setUnlockPinDraft(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                placeholder="••••"
+                autoComplete="off"
+              />
+              <div className="form-actions" style={{ justifyContent: "flex-start" }}>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  onClick={() => {
+                    const res = unlockAdmin(unlockPinDraft);
+                    if (!res.ok) {
+                      alert(res.error || "入れませんでした");
+                      return;
+                    }
+                    setUnlockPinDraft("");
+                    alert("管理者モードで開きました");
+                  }}
+                >
+                  管理者で開く
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
