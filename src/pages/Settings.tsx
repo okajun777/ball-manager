@@ -606,7 +606,7 @@ export function Settings() {
             <input
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
-              placeholder="family01"
+              placeholder="招待コード"
             />
           </div>
           <div className="field">

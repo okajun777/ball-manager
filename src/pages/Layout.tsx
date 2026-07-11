@@ -32,10 +32,12 @@ export function Layout() {
   useEffect(() => {
     const code = readInviteFromLocation();
     if (!code) return;
+    // 未選択時は IdentityGate で参加する
+    if (needsIdentity) return;
     if (!/\/settings\/?$/.test(location.pathname)) {
       navigate(`/settings?invite=${encodeURIComponent(code)}`, { replace: true });
     }
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, needsIdentity]);
 
   useEffect(() => {
     const linked = consumeOsakaDeepLink(location.search);

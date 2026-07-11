@@ -12,6 +12,54 @@ import { getSupabase, isSupabaseConfigured } from "./supabase";
 
 const LOCAL_KEY = "ball-manager-data-v1";
 
+function randomInviteCode(): string {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** 初回起動用（メンバーなし。ゲートで新規 or 招待） */
+export function createBlankData(): AppData {
+  return {
+    group: {
+      id: uid(),
+      name: "マイグループ",
+      inviteCode: randomInviteCode(),
+    },
+    members: [],
+    balls: [],
+    sessions: [],
+    maintenances: [],
+    activeMemberId: "",
+  };
+}
+
+/** 初めて使う人が自分のグループを作る */
+export function createPersonalGroup(displayName: string): AppData {
+  const groupId = uid();
+  const selfId = uid();
+  const name = displayName.trim();
+  return {
+    group: {
+      id: groupId,
+      name: `${name}のグループ`,
+      inviteCode: randomInviteCode(),
+    },
+    members: [
+      normalizeMember({
+        id: selfId,
+        groupId,
+        displayName: name,
+        isSelf: true,
+      }),
+    ],
+    balls: [],
+    sessions: [],
+    maintenances: [],
+    activeMemberId: selfId,
+  };
+}
+
 function createDemoData(): AppData {
   const groupId = uid("grp");
   const selfId = uid("mem");
@@ -24,7 +72,7 @@ function createDemoData(): AppData {
   const group: Group = {
     id: groupId,
     name: "うちのボウリング部",
-    inviteCode: "family01",
+    inviteCode: randomInviteCode(),
   };
 
   const members: Member[] = [
@@ -134,7 +182,7 @@ export function createFreshData(): AppData {
     group: {
       id: groupId,
       name: "うちのボウリング部",
-      inviteCode: "family01",
+      inviteCode: randomInviteCode(),
     },
     members: [
       {
@@ -199,9 +247,9 @@ function normalizeAppData(data: AppData): AppData {
 function loadLocal(): AppData {
   const raw = localStorage.getItem(LOCAL_KEY);
   if (!raw) {
-    const demo = createDemoData();
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(demo));
-    return demo;
+    const blank = createBlankData();
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(blank));
+    return blank;
   }
   const parsed = JSON.parse(raw) as AppData;
   const normalized = normalizeAppData(parsed);
@@ -306,21 +354,8 @@ export async function loadAppData(): Promise<AppData> {
     }
   }
 
+  // 初めての端末は他人のグループに引き込まない（招待参加は別経路）
   if (!cloudGroup) {
-    const { data: groups, error } = await supabase.from("groups").select("*").limit(1);
-    if (error) throw error;
-    if (groups?.length) {
-      cloudGroup = {
-        id: groups[0].id as string,
-        name: groups[0].name as string,
-        inviteCode: groups[0].invite_code as string,
-      };
-    }
-  }
-
-  // クラウドにグループが無い → ローカルをそのまま上げる
-  if (!cloudGroup) {
-    await saveAppData(local);
     return local;
   }
 

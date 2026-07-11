@@ -16,7 +16,7 @@ import {
   saveDeviceMemberId,
   verifyAdminPin,
 } from "./identity";
-import { loadAppData, saveAppData, joinByInviteCode } from "./storage";
+import { loadAppData, saveAppData, joinByInviteCode, createPersonalGroup } from "./storage";
 import type {
   AppData,
   Ball,
@@ -80,6 +80,8 @@ type Store = {
   updateGroupName: (name: string) => Promise<void>;
   replaceAppData: (next: AppData) => Promise<void>;
   joinGroup: (inviteCode: string, displayName: string) => Promise<void>;
+  /** 初めて使う人が自分のグループを作る */
+  startPersonalGroup: (displayName: string, pin: string) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -414,6 +416,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setDeviceMemberIdState(next.activeMemberId);
       }
       setData({ ...next, activeMemberId: next.activeMemberId });
+    },
+    startPersonalGroup: async (displayName, pin) => {
+      const name = displayName.trim();
+      if (!name) throw new Error("表示名を入力してください");
+      saveAdminPin(pin);
+      setAdminPinReady(true);
+      const next = createPersonalGroup(name);
+      const saved = await saveAppData(next);
+      saveDeviceMemberId(saved.activeMemberId);
+      setDeviceMemberIdState(saved.activeMemberId);
+      setData(saved);
     },
     refresh,
   };
