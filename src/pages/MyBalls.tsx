@@ -175,14 +175,15 @@ export function MyBalls() {
     const q = searchQuery.trim() || form.name.trim();
     if (!q) {
       setSearchResults([]);
-      setSearchMessage("英名または日本名を入力してから検索してください。");
+      setSearchMessage("ボール名（英名または日本名）を入力してから検索してください。");
       return;
     }
-    const hits = searchCatalogBalls(form.brand, q, catalog, 60);
+    // メーカー未選択でも名前だけで全カタログを検索
+    const hits = searchCatalogBalls(form.brand.trim(), q, catalog, form.brand.trim() ? 60 : 80);
     setSearchResults(hits);
     setSearchMessage(
       hits.length
-        ? `${hits.length}件ヒットしました。一覧から選ぶと詳細が入ります。`
+        ? `${hits.length}件ヒットしました。一覧から選ぶとメーカー・詳細が入ります。`
         : "一致する球が見つかりませんでした。メーカーサイトで確認するか、手入力してください。",
     );
     setCatalogHitId(null);
@@ -349,55 +350,58 @@ export function MyBalls() {
       {open && (
         <form className="card" onSubmit={onSubmit} style={{ marginBottom: 14 }}>
           <h3 style={{ marginTop: 0 }}>{editing ? "ボール編集" : "ボール追加"}</h3>
-          <div className="row">
-            <div className="field">
-              <label>メーカー</label>
-              <select
-                value={brandSelectValue}
-                onChange={(e) => onBrandSelect(e.target.value)}
-              >
-                <option value="">選択してください</option>
-                {catalogBrands.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-                <option value="__other__">その他（手入力）</option>
-              </select>
-              {brandSelectValue === "__other__" ? (
-                <input
-                  style={{ marginTop: 8 }}
-                  value={form.brand}
-                  onChange={(e) => onBrandChange(e.target.value)}
-                  placeholder="メーカー名を入力"
-                  autoFocus={brandCustom}
-                />
-              ) : null}
+          <div className="field">
+            <label>ボール名で検索 *</label>
+            <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+              <input
+                style={{ flex: 1, minWidth: 0 }}
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  onNameChange(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    runBallSearch();
+                  }
+                }}
+                placeholder="例: Physix / フィジックス（メーカーなしでも可）"
+                required
+                autoFocus={!editing}
+              />
+              <button className="btn" type="button" onClick={runBallSearch}>
+                検索
+              </button>
             </div>
-            <div className="field">
-              <label>ボール名検索（英名・日本名）</label>
-              <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
-                <input
-                  style={{ flex: 1, minWidth: 0 }}
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    onNameChange(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      runBallSearch();
-                    }
-                  }}
-                  placeholder="例: Physix / フィジックス"
-                  required
-                />
-                <button className="btn" type="button" onClick={runBallSearch}>
-                  検索
-                </button>
-              </div>
-            </div>
+            <p style={{ margin: "6px 0 0", color: "var(--sub)", fontSize: "0.78rem" }}>
+              英名・日本名どちらでも検索できます。メーカーは選ばなくても大丈夫です。
+            </p>
+          </div>
+
+          <div className="field">
+            <label>メーカー（任意・絞り込み）</label>
+            <select
+              value={brandSelectValue}
+              onChange={(e) => onBrandSelect(e.target.value)}
+            >
+              <option value="">指定なし（全メーカー）</option>
+              {catalogBrands.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+              <option value="__other__">その他（手入力）</option>
+            </select>
+            {brandSelectValue === "__other__" ? (
+              <input
+                style={{ marginTop: 8 }}
+                value={form.brand}
+                onChange={(e) => onBrandChange(e.target.value)}
+                placeholder="メーカー名を入力"
+                autoFocus={brandCustom}
+              />
+            ) : null}
           </div>
 
           <div className="row">
@@ -577,7 +581,7 @@ export function MyBalls() {
             </div>
           ) : (
             <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
-              英名または日本名を入れて「検索」を押し、ヒットした一覧から選んでください。メーカーを選ぶと絞り込めます。
+              ボール名を入れて「検索」→一覧から選んでください。メーカーは任意です。
             </p>
           )}
 
