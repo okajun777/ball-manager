@@ -56,6 +56,7 @@ alter table balls add column if not exists core_type text not null default '';
 alter table balls add column if not exists rg numeric;
 alter table balls add column if not exists diff numeric;
 alter table balls add column if not exists mb numeric;
+alter table balls add column if not exists release_month text not null default '';
 alter table balls add column if not exists weight_oz numeric;
 
 create table if not exists score_sessions (
