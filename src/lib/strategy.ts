@@ -115,7 +115,14 @@ function toKatakana(s: string): string {
 }
 
 function normalizeBallQuery(s: string): string {
-  return normalizeSearchText(toKatakana(s));
+  return normalizeSearchText(toKatakana(s))
+    .replace(/[・･]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function compactQuery(s: string): string {
+  return normalizeBallQuery(s).replace(/\s+/g, "");
 }
 
 /** メーカー＋キーワードでカタログを複数件検索（英名・日本名） */
@@ -127,10 +134,20 @@ export function searchCatalogBalls(
 ): CatalogBall[] {
   const b = normalizeSearchText(brand);
   const q = normalizeBallQuery(query);
+  const qCompact = compactQuery(query);
   const pool = b
     ? catalog.filter((c) => {
         const cb = normalizeSearchText(c.brand);
-        return cb === b || cb.includes(b) || b.includes(cb);
+        const aliases = normalizeBallQuery(
+          `${c.brand} ${c.brand === "HI-SP" ? "ハイスポーツ ハイスポ hi-sp hisp" : ""}`,
+        );
+        return (
+          cb === b ||
+          cb.includes(b) ||
+          b.includes(cb) ||
+          aliases.includes(b) ||
+          (b.includes("ハイスポ") && cb === "hi-sp")
+        );
       })
     : catalog;
 
@@ -146,17 +163,46 @@ export function searchCatalogBalls(
     .map((c) => {
       const nameEn = normalizeSearchText(c.name);
       const nameJa = normalizeBallQuery(c.nameJa || "");
+      const nameEnC = compactQuery(c.name);
+      const nameJaC = compactQuery(c.nameJa || "");
       const hay = normalizeBallQuery(
         `${c.name} ${c.nameJa || ""} ${c.coverName} ${c.coreName} ${c.coverType} ${c.coreType} ${c.memo}`,
       );
+      const hayC = compactQuery(
+        `${c.name} ${c.nameJa || ""} ${c.coverName} ${c.coreName} ${c.memo}`,
+      );
       let score = 0;
-      if (nameEn === q || nameJa === q) score += 100;
-      else if (nameEn.startsWith(q) || nameJa.startsWith(q)) score += 85;
-      else if (nameEn.includes(q) || nameJa.includes(q)) score += 70;
-      else if (tokens.every((t) => nameEn.includes(t) || nameJa.includes(t))) score += 55;
-      if (tokens.length && tokens.every((t) => hay.includes(t))) score += 20;
-      else if (tokens.some((t) => hay.includes(t))) score += 8;
-      if (q.length >= 1 && (nameEn.includes(q) || nameJa.includes(q))) {
+      if (nameEn === q || nameJa === q || nameEnC === qCompact || nameJaC === qCompact) {
+        score += 100;
+      } else if (
+        nameEn.startsWith(q) ||
+        nameJa.startsWith(q) ||
+        nameEnC.startsWith(qCompact) ||
+        nameJaC.startsWith(qCompact)
+      ) {
+        score += 85;
+      } else if (
+        nameEn.includes(q) ||
+        nameJa.includes(q) ||
+        nameEnC.includes(qCompact) ||
+        nameJaC.includes(qCompact)
+      ) {
+        score += 70;
+      } else if (tokens.every((t) => nameEn.includes(t) || nameJa.includes(t) || hayC.includes(compactQuery(t)))) {
+        score += 55;
+      }
+      if (tokens.length && tokens.every((t) => hay.includes(t) || hayC.includes(compactQuery(t)))) {
+        score += 20;
+      } else if (tokens.some((t) => hay.includes(t) || hayC.includes(compactQuery(t)))) {
+        score += 8;
+      }
+      if (
+        q.length >= 1 &&
+        (nameEn.includes(q) ||
+          nameJa.includes(q) ||
+          nameEnC.includes(qCompact) ||
+          nameJaC.includes(qCompact))
+      ) {
         score = Math.max(score, 45);
       }
       return { c, score };

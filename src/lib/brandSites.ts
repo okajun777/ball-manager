@@ -11,6 +11,12 @@ export type BrandSiteInfo = {
 
 const BRAND_SITES: BrandSiteInfo[] = [
   {
+    brand: "HI-SP",
+    aliases: ["ハイスポーツ", "ハイスポ", "hi-sp", "hisp", "hi sp"],
+    officialUrl: "https://hi-sp.co.jp/",
+    japanUrl: "https://hi-sp.co.jp/",
+  },
+  {
     brand: "Storm",
     aliases: ["ストーム"],
     officialUrl: "https://www.stormbowling.com/",
