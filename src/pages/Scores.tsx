@@ -146,6 +146,7 @@ export function Scores() {
     data,
     activeMember,
     setActiveMemberId,
+    isAdmin,
     memberBalls,
     memberAllBalls,
     upsertSession,
@@ -482,9 +483,11 @@ export function Scores() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link className="btn secondary" to="/family">
-            全員の状況
-          </Link>
+          {isAdmin ? (
+            <Link className="btn secondary" to="/family">
+              全員の状況
+            </Link>
+          ) : null}
           {memberSessions.length > 0 && memberBalls.length > 0 ? (
             <button className="btn secondary" type="button" onClick={copyLastSession}>
               前回をコピー
@@ -493,14 +496,16 @@ export function Scores() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 14 }}>
-        <MemberPicker
-          members={data.members}
-          value={activeMember.id}
-          onChange={setActiveMemberId}
-          label="登録するメンバー（クラウド上のその人の記録を書き換え）"
-        />
-      </div>
+      {isAdmin ? (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <MemberPicker
+            members={data.members}
+            value={activeMember.id}
+            onChange={setActiveMemberId}
+            label="登録するメンバー（管理者のみ・クラウドへ保存）"
+          />
+        </div>
+      ) : null}
 
       {!memberBalls.length ? (
         <div className="card empty">

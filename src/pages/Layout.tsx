@@ -8,7 +8,7 @@ import { IdentityGate } from "./IdentityGate";
 
 const mainLinks = [
   { to: "/", label: "ダッシュボード", end: true },
-  { to: "/family", label: "全員の状況" },
+  { to: "/family", label: "全員の状況", adminOnly: true },
   { to: "/balls", label: "マイボール" },
   { to: "/catalog", label: "カタログ" },
   { to: "/compare", label: "比較チャート" },
@@ -18,18 +18,35 @@ const mainLinks = [
 ];
 
 export function Layout() {
-  const { data, activeMember, needsSetup, setActiveMemberId, loading, error } = useStore();
+  const {
+    data,
+    activeMember,
+    deviceMember,
+    isAdmin,
+    needsSetup,
+    needsIdentity,
+    setActiveMemberId,
+    loading,
+    error,
+  } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const blocked = needsSetup || needsIdentity;
 
   useEffect(() => {
     const code = readInviteFromLocation();
     if (!code) return;
-    if (needsSetup) return;
+    if (blocked) return;
     if (!/\/settings\/?$/.test(location.pathname)) {
       navigate(`/settings?invite=${encodeURIComponent(code)}`, { replace: true });
     }
-  }, [location.pathname, navigate, needsSetup]);
+  }, [location.pathname, navigate, blocked]);
+
+  useEffect(() => {
+    if (!isAdmin && location.pathname.replace(/\/$/, "").endsWith("/family")) {
+      navigate("/", { replace: true });
+    }
+  }, [isAdmin, location.pathname, navigate]);
 
   useEffect(() => {
     const linked = consumeOsakaDeepLink(location.search);
@@ -64,37 +81,49 @@ export function Layout() {
         </div>
         <div className="nav-row">
           <nav className="nav">
-            {mainLinks.map((l) => (
-              <NavLink key={l.to} to={l.to} end={l.end}>
-                {l.label}
-              </NavLink>
-            ))}
+            {mainLinks
+              .filter((l) => !l.adminOnly || isAdmin)
+              .map((l) => (
+                <NavLink key={l.to} to={l.to} end={l.end}>
+                  {l.label}
+                </NavLink>
+              ))}
           </nav>
           <NavLink to="/settings" className="nav-settings">
             設定・共有
           </NavLink>
         </div>
 
-        {!needsSetup ? (
+        {!blocked ? (
           <div className="sidebar-member-row">
             <div className="member-switch">
-              <label htmlFor="member">管理するメンバー</label>
-              <select
-                id="member"
-                value={activeMember?.id ?? ""}
-                onChange={(e) => setActiveMemberId(e.target.value)}
-                disabled={!data}
-              >
-                {data?.members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.displayName}
-                  </option>
-                ))}
-              </select>
-              <p style={{ margin: "6px 0 0", fontSize: "0.72rem", opacity: 0.7 }}>
-                ボール・スコアはクラウドへ保存。誰を表示するかだけこの端末
-              </p>
+              <label>この端末</label>
+              <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                {deviceMember?.displayName ?? "—"}
+                {isAdmin ? "（管理者）" : ""}
+              </div>
             </div>
+
+            {isAdmin ? (
+              <div className="member-switch">
+                <label htmlFor="member">管理するメンバー</label>
+                <select
+                  id="member"
+                  value={activeMember?.id ?? ""}
+                  onChange={(e) => setActiveMemberId(e.target.value)}
+                  disabled={!data}
+                >
+                  {data?.members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.displayName}
+                    </option>
+                  ))}
+                </select>
+                <p style={{ margin: "6px 0 0", fontSize: "0.72rem", opacity: 0.7 }}>
+                  保存はクラウドへ。管理者の淳司のみ全員を編集可
+                </p>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -108,8 +137,8 @@ export function Layout() {
       <main className="main">
         {loading && <div className="card empty">読み込み中…</div>}
         {error && <div className="card empty">エラー: {error}</div>}
-        {!loading && !error && needsSetup && <IdentityGate />}
-        {!loading && !error && !needsSetup && <Outlet />}
+        {!loading && !error && blocked && <IdentityGate />}
+        {!loading && !error && !blocked && <Outlet />}
       </main>
     </div>
   );

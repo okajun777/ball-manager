@@ -1,9 +1,13 @@
-/** この端末でいま管理・表示しているメンバー（クラウドには載せない） */
+/** この端末の利用者（権限用。データ本体はクラウド） */
+const DEVICE_MEMBER_KEY = "ball-manager-device-member-v1";
+const ADMIN_PIN_KEY = "ball-manager-admin-pin-v1";
+
+/** 管理者（淳司）がいま編集中のメンバー表示（端末ローカル） */
 const VIEW_MEMBER_KEY = "ball-manager-view-member-v1";
 
 type ViewMap = Record<string, string>;
 
-function readMap(): ViewMap {
+function readViewMap(): ViewMap {
   try {
     const raw = localStorage.getItem(VIEW_MEMBER_KEY);
     if (!raw) return {};
@@ -15,18 +19,28 @@ function readMap(): ViewMap {
 }
 
 export function loadViewMemberId(groupId: string): string | null {
-  const id = readMap()[groupId];
+  const id = readViewMap()[groupId];
   return id && id.trim() ? id.trim() : null;
 }
 
 export function saveViewMemberId(groupId: string, memberId: string) {
-  const map = readMap();
+  const map = readViewMap();
   map[groupId] = memberId.trim();
   localStorage.setItem(VIEW_MEMBER_KEY, JSON.stringify(map));
 }
 
-/** 旧端末利用者キーの掃除用 */
-const DEVICE_MEMBER_KEY = "ball-manager-device-member-v1";
+export function loadDeviceMemberId(): string | null {
+  try {
+    const v = localStorage.getItem(DEVICE_MEMBER_KEY);
+    return v && v.trim() ? v.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveDeviceMemberId(memberId: string) {
+  localStorage.setItem(DEVICE_MEMBER_KEY, memberId.trim());
+}
 
 export function clearDeviceMemberId() {
   try {
@@ -36,9 +50,33 @@ export function clearDeviceMemberId() {
   }
 }
 
-/** グループ内の isSelf メンバー（代表） */
+/** グループ内の isSelf メンバー＝管理者（淳司） */
 export function findAdminMemberId(
   members: { id: string; isSelf: boolean }[],
 ): string | null {
   return members.find((m) => m.isSelf)?.id ?? null;
+}
+
+export function hasAdminPin(): boolean {
+  try {
+    return Boolean(localStorage.getItem(ADMIN_PIN_KEY)?.trim());
+  } catch {
+    return false;
+  }
+}
+
+export function saveAdminPin(pin: string) {
+  const p = pin.trim();
+  if (!/^\d{4}$/.test(p)) throw new Error("4桁の数字にしてください");
+  localStorage.setItem(ADMIN_PIN_KEY, p);
+}
+
+export function verifyAdminPin(pin: string): boolean {
+  try {
+    const saved = localStorage.getItem(ADMIN_PIN_KEY)?.trim();
+    if (!saved) return false;
+    return saved === pin.trim();
+  } catch {
+    return false;
+  }
 }

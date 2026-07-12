@@ -26,6 +26,7 @@ export function Dashboard() {
     data,
     activeMember,
     setActiveMemberId,
+    isAdmin,
     memberBalls,
     memberAllBalls,
     memberSessions,
@@ -161,7 +162,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      {data && data.members.length > 0 ? (
+      {isAdmin && data && data.members.length > 0 ? (
         <div className="card" style={{ marginBottom: 14 }}>
           <div
             style={{
@@ -172,13 +173,13 @@ export function Dashboard() {
               flexWrap: "wrap",
             }}
           >
-            <h3 style={{ margin: 0 }}>全員の登録状況（クラウド）</h3>
+            <h3 style={{ margin: 0 }}>全員の登録状況（管理者・クラウド）</h3>
             <Link className="btn secondary" to="/family">
               詳しく管理
             </Link>
           </div>
           <p style={{ color: "var(--sub)", fontSize: "0.88rem", margin: "6px 0 10px" }}>
-            ボールやスコアの追記・変更はクラウド上のデータを書き換えます。PCをつけっぱなしにする必要はありません。
+            淳司だけが全員分を追記・変更できます。保存はクラウドへ書き込みます（PC常時起動は不要）。
           </p>
           <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 8 }}>
             {data.members.map((m) => {

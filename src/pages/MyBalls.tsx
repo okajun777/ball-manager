@@ -56,6 +56,7 @@ export function MyBalls() {
     data,
     activeMember,
     setActiveMemberId,
+    isAdmin,
     memberBalls,
     memberRetiredBalls,
     memberSessions,
@@ -346,35 +347,41 @@ export function MyBalls() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link className="btn secondary" to="/family">
-            全員の状況
-          </Link>
+          {isAdmin ? (
+            <Link className="btn secondary" to="/family">
+              全員の状況
+            </Link>
+          ) : null}
           <button className="btn" type="button" onClick={startCreate}>
             ＋ ボール追加
           </button>
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 14 }}>
+      {isAdmin ? (
+        <div className="card" style={{ marginBottom: 14 }}>
           <MemberPicker
             members={data.members}
             value={activeMember.id}
             onChange={setActiveMemberId}
-            label="管理するメンバー（クラウド上のその人のボールを書き換え）"
+            label="管理するメンバー（管理者のみ・クラウドへ保存）"
           />
-      </div>
+        </div>
+      ) : null}
 
       {open && (
         <form className="card" onSubmit={onSubmit} style={{ marginBottom: 14 }}>
           <h3 style={{ marginTop: 0 }}>{editing ? "ボール編集" : "ボール追加"}</h3>
-          <MemberPicker
-            members={data.members}
-            value={activeMember.id}
-            onChange={(id) => {
-              setActiveMemberId(id);
-            }}
-            label="このボールの持ち主"
-          />
+          {isAdmin ? (
+            <MemberPicker
+              members={data.members}
+              value={activeMember.id}
+              onChange={(id) => {
+                setActiveMemberId(id);
+              }}
+              label="このボールの持ち主"
+            />
+          ) : null}
           <div className="field">
             <label>ボール名で検索 *</label>
             <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>

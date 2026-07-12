@@ -12,7 +12,7 @@ import { today, uid } from "../lib/types";
 const balls = catalogBalls as CatalogBall[];
 
 export function Catalog() {
-  const { data, activeMember, setActiveMemberId, memberBalls, upsertBall } = useStore();
+  const { data, activeMember, setActiveMemberId, isAdmin, memberBalls, upsertBall } = useStore();
   const [brand, setBrand] = useState("");
   const [cover, setCover] = useState("");
   const [core, setCore] = useState("");
@@ -97,13 +97,13 @@ export function Catalog() {
         </a>
       </div>
 
-      {data && activeMember ? (
+      {isAdmin && data && activeMember ? (
         <div className="card" style={{ marginBottom: 14 }}>
           <MemberPicker
             members={data.members}
             value={activeMember.id}
             onChange={setActiveMemberId}
-            label="マイボールに追加するメンバー（クラウドへ保存）"
+            label="マイボールに追加するメンバー（管理者のみ・クラウドへ保存）"
           />
         </div>
       ) : null}

@@ -18,10 +18,23 @@ type MemberStats = {
 };
 
 export function Family() {
-  const { data, activeMember, setActiveMemberId } = useStore();
+  const { data, activeMember, setActiveMemberId, isAdmin } = useStore();
   const navigate = useNavigate();
 
   if (!data) return null;
+  if (!isAdmin) {
+    return (
+      <div className="card">
+        <h2 style={{ marginTop: 0 }}>管理者のみ</h2>
+        <p style={{ color: "var(--sub)" }}>
+          全員の登録状況の管理は、管理者（淳司）だけができます。
+        </p>
+        <button className="btn" type="button" onClick={() => navigate("/")}>
+          ダッシュボードへ
+        </button>
+      </div>
+    );
+  }
 
   const rows: MemberStats[] = data.members.map((member) => {
     const balls = data.balls.filter((b) => b.memberId === member.id && !b.retired);
@@ -58,7 +71,7 @@ export function Family() {
         <div>
           <h1>全員の登録状況</h1>
           <p>
-            各メンバーのボール・スコア・プロフィールを、このPCからクラウド上のデータを直接追記・変更できます。
+            各メンバーのボール・スコア・プロフィールを、管理者のPCからクラウド上のデータを直接追記・変更できます。
           </p>
         </div>
         <Link className="btn secondary" to="/settings">
