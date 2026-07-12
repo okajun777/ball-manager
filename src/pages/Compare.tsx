@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import catalogBalls from "../data/catalogBalls.json";
 import type { CatalogBall } from "../lib/catalogTypes";
-import { findCatalogBall, resolveBallImageUrl } from "../lib/strategy";
+import { findCatalogBall, catalogPrimaryName, resolveBallImageUrl } from "../lib/strategy";
+import {
+  generateCompareConsultation,
+  isLlmConfigured,
+  type CompareCandidate,
+} from "../lib/llm";
 import { useStore } from "../lib/store";
 import type { Ball } from "../lib/types";
 import { publicUrl } from "../lib/paths";
@@ -81,10 +87,11 @@ function resolveOwnedSpecs(ball: Ball): {
 function ownedToPoint(ball: Ball): ChartPoint | null {
   const s = resolveOwnedSpecs(ball);
   if (s.rg == null || s.diff == null) return null;
+  const cat = findCatalogBall(ball, catalog);
   return {
     id: ball.id,
     key: `owned:${ball.id}`,
-    name: ball.name,
+    name: catalogPrimaryName({ name: ball.name, nameJa: cat?.nameJa }) || ball.name,
     brand: ball.brand,
     rg: s.rg,
     diff: s.diff,
@@ -108,7 +115,7 @@ function catalogToPoint(ball: CatalogBall, ownedKeys: Set<string>): ChartPoint |
   return {
     id: ball.id,
     key: `catalog:${ball.id}`,
-    name: ball.name,
+    name: catalogPrimaryName(ball),
     brand: ball.brand,
     rg: ball.rg,
     diff: ball.diff,
@@ -125,6 +132,29 @@ function catalogToPoint(ball: CatalogBall, ownedKeys: Set<string>): ChartPoint |
   };
 }
 
+function toCandidate(p: ChartPoint): CompareCandidate {
+  return {
+    key: p.key,
+    name: p.name,
+    brand: p.brand,
+    rg: p.rg,
+    diff: p.diff,
+    mb: p.mb,
+    coverType: p.coverType,
+    coreType: p.coreType,
+    owned: p.owned,
+  };
+}
+
+const CONCERN_CHIPS = [
+  "手前で引っかかる／早く反応しすぎる",
+  "奥で曲がらずピンまで足りない",
+  "スペアが不安で安定球が欲しい",
+  "マイボールの中から役割分担を整理したい",
+  "今の所持に足りないカバー／コアを知りたい",
+  "オイル多めの日に強い球が欲しい",
+];
+
 const PAD = { top: 28, right: 24, bottom: 48, left: 58 };
 const CHART_W = 760;
 const CHART_H = 520;
@@ -132,7 +162,7 @@ const INNER_W = CHART_W - PAD.left - PAD.right;
 const INNER_H = CHART_H - PAD.top - PAD.bottom;
 
 export function Compare() {
-  const { memberBalls } = useStore();
+  const { memberBalls, activeMember } = useStore();
   const [source, setSource] = useState<SourceMode>("catalog");
   const [brand, setBrand] = useState("");
   const [cover, setCover] = useState("");
@@ -142,6 +172,13 @@ export function Compare() {
   const [pinned, setPinned] = useState<string[]>([]);
   const [hoverKey, setHoverKey] = useState<string | null>(null);
   const [showLabels, setShowLabels] = useState(false);
+
+  const [concern, setConcern] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiAdvice, setAiAdvice] = useState("");
+  const [aiSuggestedKeys, setAiSuggestedKeys] = useState<string[]>([]);
+  const llmReady = isLlmConfigured();
 
   const ownedKeys = useMemo(
     () => new Set(memberBalls.map((b) => `${b.brand}|${b.name}`.toLowerCase())),
@@ -256,6 +293,57 @@ export function Compare() {
     );
   }
 
+  function pinSuggested(keys: string[]) {
+    setPinned((prev) => {
+      const next = [...prev];
+      for (const k of keys) {
+        if (!next.includes(k) && next.length < 8) next.push(k);
+      }
+      return next;
+    });
+    if (keys[0]) setHoverKey(keys[0]);
+  }
+
+  async function onConsultAi() {
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const ownedPts = memberBalls
+        .map(ownedToPoint)
+        .filter((p): p is ChartPoint => !!p);
+      const ownedKeysSet = new Set(ownedPts.map((p) => p.key));
+      // 比較固定があれば優先。なければ所持＋表示中から最大36件
+      let pool: ChartPoint[];
+      if (pinnedPoints.length > 0) {
+        pool = [...pinnedPoints];
+        for (const p of ownedPts) {
+          if (!pool.some((x) => x.key === p.key) && pool.length < 36) pool.push(p);
+        }
+      } else {
+        pool = [...ownedPts];
+        const rest = points.filter((p) => !ownedKeysSet.has(p.key));
+        const step = Math.max(1, Math.ceil(rest.length / Math.max(1, 36 - pool.length)));
+        for (let i = 0; i < rest.length && pool.length < 36; i += step) {
+          pool.push(rest[i]!);
+        }
+      }
+      const result = await generateCompareConsultation({
+        memberName: activeMember?.displayName || "プレイヤー",
+        member: activeMember,
+        concern,
+        owned: ownedPts.map(toCandidate),
+        candidates: pool.map(toCandidate),
+      });
+      setAiAdvice(result.advice);
+      setAiSuggestedKeys(result.suggestedKeys);
+      if (result.suggestedKeys.length) pinSuggested(result.suggestedKeys);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "AI相談に失敗しました");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   const xTicks = useMemo(() => {
     const n = 5;
     return Array.from({ length: n }, (_, i) => {
@@ -293,6 +381,7 @@ export function Compare() {
           <h1>ボール比較</h1>
           <p>
             縦軸＝転がり（RG・上が早い）／横軸＝曲がり幅（Diff） · 表示 {points.length} 件
+            {" · "}悩みからAIに相談できます
           </p>
         </div>
       </div>
@@ -476,29 +565,30 @@ export function Compare() {
                   const cy = yOf(p.rg);
                   const isPinned = pinned.includes(p.key);
                   const isHover = hoverKey === p.key;
+                  const isAi = aiSuggestedKeys.includes(p.key);
                   const fill =
                     colorBy === "source"
                       ? colorMap.get(p.owned ? "owned" : "catalog")!
                       : colorBy === "cover"
                         ? colorMap.get(p.coverType || "不明")!
                         : colorMap.get(p.brand)!;
-                  const r = isPinned || p.owned ? 7 : points.length > 400 ? 3.5 : 5;
+                  const r = isPinned || p.owned || isAi ? 7 : points.length > 400 ? 3.5 : 5;
                   return (
                     <g key={p.key}>
                       <circle
                         cx={cx}
                         cy={cy}
-                        r={isHover || isPinned ? r + 2 : r}
+                        r={isHover || isPinned || isAi ? r + 2 : r}
                         fill={fill}
-                        fillOpacity={isPinned || isHover || p.owned ? 0.95 : 0.55}
-                        stroke={isPinned ? "#152033" : "#fff"}
-                        strokeWidth={isPinned ? 2 : 1}
+                        fillOpacity={isPinned || isHover || p.owned || isAi ? 0.95 : 0.55}
+                        stroke={isAi ? "#b54708" : isPinned ? "#152033" : "#fff"}
+                        strokeWidth={isAi || isPinned ? 2.5 : 1}
                         style={{ cursor: "pointer" }}
                         onMouseEnter={() => setHoverKey(p.key)}
                         onMouseLeave={() => setHoverKey((k) => (k === p.key ? null : k))}
                         onClick={() => togglePin(p.key)}
                       />
-                      {(showLabels || isPinned || isHover) && (
+                      {(showLabels || isPinned || isHover || isAi) && (
                         <text
                           x={cx + 8}
                           y={cy - 8}
@@ -620,6 +710,120 @@ export function Compare() {
             </div>
           ) : null}
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 14 }}>
+        <h3 style={{ marginTop: 0 }}>AI相談（ボール選び）</h3>
+        <p style={{ color: "var(--sub)", fontSize: "0.88rem", marginTop: 0 }}>
+          悩みを書くと、いま表示中（または比較固定中）の候補から適した球を提案します。提案球はチャートに自動で固定されます。
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+          {CONCERN_CHIPS.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              className="btn secondary"
+              style={{ fontSize: "0.82rem", padding: "6px 10px" }}
+              onClick={() =>
+                setConcern((prev) => (prev.trim() ? `${prev.trim()}\n${chip}` : chip))
+              }
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+        <div className="field">
+          <label>悩み・相談内容</label>
+          <textarea
+            value={concern}
+            onChange={(e) => setConcern(e.target.value)}
+            rows={4}
+            placeholder="例: ハウスコンディションで手前に張り付く。もう少し奥まで走る球が欲しい。マイボール中心で考えたい。"
+          />
+        </div>
+        {!llmReady ? (
+          <p style={{ color: "var(--warn)", fontSize: "0.88rem" }}>
+            APIキー未設定です。<Link to="/settings">設定・共有</Link>から登録してください。
+          </p>
+        ) : (
+          <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+            <button
+              className="btn"
+              type="button"
+              disabled={aiLoading || !concern.trim() || points.length === 0}
+              onClick={() => void onConsultAi()}
+            >
+              {aiLoading ? "相談中…" : aiAdvice ? "もう一度相談する" : "AIに相談する"}
+            </button>
+            {aiSuggestedKeys.length > 0 ? (
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={() => pinSuggested(aiSuggestedKeys)}
+              >
+                提案球をチャートに再固定（{aiSuggestedKeys.length}）
+              </button>
+            ) : null}
+          </div>
+        )}
+        {aiError ? (
+          <p style={{ color: "#b42318", fontSize: "0.88rem", marginTop: 10 }}>{aiError}</p>
+        ) : null}
+        {aiAdvice ? (
+          <div
+            style={{
+              marginTop: 14,
+              padding: 12,
+              borderRadius: 12,
+              background: "#f8fafc",
+              border: "1px solid var(--line)",
+              whiteSpace: "pre-wrap",
+              lineHeight: 1.65,
+              fontSize: "0.92rem",
+            }}
+          >
+            {aiAdvice}
+          </div>
+        ) : null}
+        {aiSuggestedKeys.length > 0 ? (
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            <strong style={{ fontSize: "0.9rem" }}>提案球</strong>
+            {aiSuggestedKeys.map((key) => {
+              const p = points.find((x) => x.key === key);
+              if (!p) return null;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className="compare-pin-row"
+                  onClick={() => {
+                    setHoverKey(key);
+                    if (!pinned.includes(key)) togglePin(key);
+                  }}
+                >
+                  {p.imageUrl ? (
+                    <img
+                      src={publicUrl(p.imageUrl)}
+                      alt=""
+                      style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 6 }}
+                    />
+                  ) : (
+                    <span className="compare-pin-dot" style={{ background: "#0b6bcb" }} />
+                  )}
+                  <span style={{ flex: 1, textAlign: "left" }}>
+                    <strong>
+                      {p.brand} {p.name}
+                    </strong>
+                    <div style={{ color: "var(--sub)", fontSize: "0.82rem" }}>
+                      RG {p.rg.toFixed(3)} · Diff {p.diff.toFixed(3)}
+                      {p.owned ? " · 所持" : " · カタログ"}
+                    </div>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
     </div>
   );

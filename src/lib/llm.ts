@@ -395,3 +395,129 @@ ${summary}
     0.55,
   );
 }
+
+export type CompareCandidate = {
+  key: string;
+  name: string;
+  brand: string;
+  rg: number;
+  diff: number;
+  mb: number | null;
+  coverType: string;
+  coreType: string;
+  owned: boolean;
+};
+
+export type CompareConsultationResult = {
+  advice: string;
+  suggestedKeys: string[];
+};
+
+/** 比較チャート向け: 悩みから適したボールを相談 */
+export async function generateCompareConsultation(input: {
+  memberName: string;
+  member?: Member | null;
+  concern: string;
+  owned: CompareCandidate[];
+  candidates: CompareCandidate[];
+}): Promise<CompareConsultationResult> {
+  const member = input.member ? normalizeMember(input.member) : null;
+  const concern = input.concern.trim();
+  if (!concern) throw new Error("悩み・相談内容を入力してください。");
+
+  const fmt = (c: CompareCandidate, i: number) =>
+    [
+      `${i + 1}. [${c.key}] ${c.brand} ${c.name}`,
+      `  RG=${c.rg.toFixed(3)} Diff=${c.diff.toFixed(3)}${c.mb != null ? ` MB=${c.mb.toFixed(3)}` : ""}`,
+      `  ${c.coverType || "カバー不明"} / ${c.coreType || "コア不明"} / ${c.owned ? "所持" : "カタログ"}`,
+    ].join("\n");
+
+  const ownedBlock = input.owned.length
+    ? input.owned.slice(0, 20).map((c, i) => fmt(c, i)).join("\n")
+    : "（所持球なし）";
+  const candBlock = input.candidates.slice(0, 36).map((c, i) => fmt(c, i)).join("\n");
+
+  const system = `あなたはボウリングのボール選びアドバイザーです。RG/Diffチャート上の候補から、相談者の悩みに合う球を日本語で提案してください。
+
+チャートの読み方:
+・RGが小さい＝転がり出しが早い（手前で噛みやすい）
+・RGが大きい＝転がりが遅い（奥まで行きやすい）
+・Diffが大きい＝曲がり幅が大きい
+・Diffが小さい＝曲がりが控えめ（スペア向きに近い）
+・非対称（MBあり）は向きの変化が出やすい
+
+必須:
+・候補リストにある球だけを勧める（リストにない球名を作らない）
+・可能なら所持球を優先し、足りない役割だけカタログを勧める
+・「なぜそのRG/Diff帯か」を悩みに結びつけて説明する
+・最終出力は必ず次のJSONのみ（前後に説明文やコードフェンスを付けない）:
+{"advice":"相談への回答（500〜900文字。見出しは【】可）","suggestedKeys":["候補のkey文字列を最大4つ"]}`;
+
+  const profileLine = member
+    ? `プロフィール: ${formatMemberProfile(member)}`
+    : "プロフィール: 未設定";
+
+  const user = `プレイヤー: ${input.memberName}
+${profileLine}
+
+相談・悩み:
+${concern}
+
+所持球:
+${ownedBlock}
+
+候補（チャート表示中／比較中）:
+${candBlock}
+
+上記候補の key だけを suggestedKeys に入れて、JSONのみ返してください。`;
+
+  const raw = await chatCompletion(
+    [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    0.45,
+  );
+
+  const parsed = parseCompareConsultationJson(raw);
+  if (parsed) {
+    const allowed = new Set(input.candidates.map((c) => c.key));
+    return {
+      advice: parsed.advice,
+      suggestedKeys: parsed.suggestedKeys.filter((k) => allowed.has(k)).slice(0, 4),
+    };
+  }
+
+  // JSON失敗時は本文をそのままadviceに
+  const keys = input.candidates
+    .filter((c) => raw.includes(c.name) || raw.includes(`${c.brand} ${c.name}`))
+    .map((c) => c.key)
+    .slice(0, 4);
+  return { advice: raw.slice(0, 2000), suggestedKeys: keys };
+}
+
+function parseCompareConsultationJson(raw: string): {
+  advice: string;
+  suggestedKeys: string[];
+} | null {
+  const trimmed = raw.trim();
+  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const body = fence ? fence[1].trim() : trimmed;
+  const start = body.indexOf("{");
+  const end = body.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try {
+    const obj = JSON.parse(body.slice(start, end + 1)) as {
+      advice?: unknown;
+      suggestedKeys?: unknown;
+    };
+    const advice = String(obj.advice ?? "").trim();
+    if (!advice) return null;
+    const keys = Array.isArray(obj.suggestedKeys)
+      ? obj.suggestedKeys.map((k) => String(k)).filter(Boolean)
+      : [];
+    return { advice, suggestedKeys: keys };
+  } catch {
+    return null;
+  }
+}
