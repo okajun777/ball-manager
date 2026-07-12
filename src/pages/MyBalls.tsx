@@ -8,7 +8,11 @@ import {
 } from "../lib/maintReminder";
 import { publicUrl } from "../lib/paths";
 import { round1SearchUrl } from "../lib/round1";
-import { findCatalogBall } from "../lib/strategy";
+import {
+  catalogDetailFields,
+  findCatalogBall,
+  lookupCatalogBall,
+} from "../lib/strategy";
 import type { CatalogBall } from "../lib/catalogTypes";
 import type { Ball, MaintenanceKind, SurfaceMaintenance } from "../lib/types";
 import { MAINTENANCE_KIND_LABEL, avg, today, uid } from "../lib/types";
@@ -46,6 +50,7 @@ export function MyBalls() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ball | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [catalogHitId, setCatalogHitId] = useState<string | null>(null);
 
   const [maintOpen, setMaintOpen] = useState(false);
   const [maintBallId, setMaintBallId] = useState("");
@@ -53,6 +58,27 @@ export function MyBalls() {
   const [maintKind, setMaintKind] = useState<MaintenanceKind>("clean");
   const [maintGrit, setMaintGrit] = useState("");
   const [maintNote, setMaintNote] = useState("");
+
+  const catalogBrands = useMemo(
+    () => [...new Set(catalog.map((b) => b.brand))].sort((a, b) => a.localeCompare(b, "ja")),
+    [],
+  );
+
+  const nameSuggestions = useMemo(() => {
+    const brand = form.brand.trim().toLowerCase();
+    const list = brand
+      ? catalog.filter((b) => b.brand.toLowerCase() === brand)
+      : catalog;
+    return list
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name, "ja"))
+      .map((b) => b.name);
+  }, [form.brand]);
+
+  const catalogMatch = useMemo(
+    () => lookupCatalogBall(form.brand, form.name, catalog),
+    [form.brand, form.name],
+  );
 
   const ballStats = useMemo(() => {
     const map = new Map<string, number[]>();
@@ -78,9 +104,51 @@ export function MyBalls() {
     }).map((d) => [d.ballId, d]),
   );
 
+  function applyCatalog(c: CatalogBall) {
+    const details = catalogDetailFields(c);
+    setForm((prev) => ({
+      ...prev,
+      name: c.name,
+      brand: c.brand,
+      surfaceNote: details.surfaceNote || prev.surfaceNote,
+      memo: details.memo || prev.memo,
+    }));
+    setCatalogHitId(c.id);
+  }
+
+  function onBrandChange(brand: string) {
+    const hit = lookupCatalogBall(brand, form.name, catalog);
+    if (hit && form.name.trim()) {
+      applyCatalog(hit);
+      return;
+    }
+    setForm((prev) => ({ ...prev, brand }));
+    setCatalogHitId(null);
+  }
+
+  function onNameChange(name: string) {
+    const hit = lookupCatalogBall(form.brand, name, catalog);
+    const exact = Boolean(
+      hit && hit.name.toLowerCase() === name.trim().toLowerCase(),
+    );
+    if (hit && exact) {
+      applyCatalog(hit);
+      return;
+    }
+    setForm((prev) => ({ ...prev, name }));
+    setCatalogHitId(hit && name.trim().length >= 3 ? hit.id : null);
+  }
+
+  function onNameBlur() {
+    if (!form.name.trim()) return;
+    const hit = lookupCatalogBall(form.brand, form.name, catalog);
+    if (hit) applyCatalog(hit);
+  }
+
   function startCreate() {
     setEditing(null);
     setForm(emptyForm);
+    setCatalogHitId(null);
     setOpen(true);
   }
 
@@ -99,6 +167,7 @@ export function MyBalls() {
       surfaceNote: ball.surfaceNote,
       memo: ball.memo,
     });
+    setCatalogHitId(lookupCatalogBall(ball.brand, ball.name, catalog)?.id ?? null);
     setOpen(true);
   }
 
@@ -186,21 +255,82 @@ export function MyBalls() {
           <h3 style={{ marginTop: 0 }}>{editing ? "ボール編集" : "ボール追加"}</h3>
           <div className="row">
             <div className="field">
-              <label>ボール名 *</label>
+              <label>メーカー</label>
               <input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
+                list="myball-brand-list"
+                value={form.brand}
+                onChange={(e) => onBrandChange(e.target.value)}
+                placeholder="Storm / Motiv など"
               />
+              <datalist id="myball-brand-list">
+                {catalogBrands.map((b) => (
+                  <option key={b} value={b} />
+                ))}
+              </datalist>
             </div>
             <div className="field">
-              <label>ブランド</label>
+              <label>ボール名 *</label>
               <input
-                value={form.brand}
-                onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                list="myball-name-list"
+                value={form.name}
+                onChange={(e) => onNameChange(e.target.value)}
+                onBlur={onNameBlur}
+                placeholder="メーカー選択後に候補が出ます"
+                required
               />
+              <datalist id="myball-name-list">
+                {nameSuggestions.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
             </div>
           </div>
+
+          {catalogMatch ? (
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                flexWrap: "wrap",
+                marginBottom: 12,
+                padding: 10,
+                border: "1px solid var(--line)",
+                borderRadius: 10,
+                background: catalogHitId === catalogMatch.id ? "var(--accent-soft)" : "#fff",
+              }}
+            >
+              {catalogMatch.imageUrl ? (
+                <img
+                  src={publicUrl(catalogMatch.imageUrl)}
+                  alt={catalogMatch.name}
+                  style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 8 }}
+                />
+              ) : null}
+              <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+                <div style={{ fontWeight: 700 }}>
+                  {catalogMatch.brand} {catalogMatch.name}
+                </div>
+                <div style={{ color: "var(--sub)", fontSize: "0.85rem" }}>
+                  {[catalogMatch.coverType, catalogMatch.coreType, catalogMatch.finish]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              </div>
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={() => applyCatalog(catalogMatch)}
+              >
+                詳細を反映
+              </button>
+            </div>
+          ) : form.name.trim().length >= 2 ? (
+            <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
+              カタログに一致する球が見つかりません。そのまま手入力でも登録できます。
+            </p>
+          ) : null}
+
           <div className="row three">
             <div className="field">
               <label>重量 (lb)</label>
@@ -256,6 +386,7 @@ export function MyBalls() {
               <input
                 value={form.surfaceNote}
                 onChange={(e) => setForm({ ...form, surfaceNote: e.target.value })}
+                placeholder="カタログから自動入力"
               />
             </div>
           </div>
@@ -267,10 +398,11 @@ export function MyBalls() {
             />
           </div>
           <div className="field">
-            <label>メモ</label>
+            <label>メモ（カバー・コア・RGなど）</label>
             <textarea
               value={form.memo}
               onChange={(e) => setForm({ ...form, memo: e.target.value })}
+              placeholder="カタログ一致時に詳細が入ります"
             />
           </div>
           <div className="form-actions">

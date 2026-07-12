@@ -4,6 +4,7 @@ import { useStore } from "../lib/store";
 import type { CatalogBall } from "../lib/catalogTypes";
 import { publicUrl } from "../lib/paths";
 import { ROUND1_VIEWER_URL, round1SearchUrl } from "../lib/round1";
+import { catalogDetailFields } from "../lib/strategy";
 import { today, uid } from "../lib/types";
 
 const balls = catalogBalls as CatalogBall[];
@@ -54,6 +55,7 @@ export function Catalog() {
       alert("すでにマイボールにあります");
       return;
     }
+    const details = catalogDetailFields(ball);
     await upsertBall({
       id: uid("ball"),
       groupId: data.group.id,
@@ -67,8 +69,8 @@ export function Catalog() {
       drilledOn: "",
       price: null,
       layoutNote: "",
-      surfaceNote: ball.finish || "",
-      memo: ball.memo || "",
+      surfaceNote: details.surfaceNote,
+      memo: details.memo,
     });
     alert(`${ball.name} をマイボールに追加しました`);
   }

@@ -54,21 +54,66 @@ function inferCoverFromText(...parts: string[]): string {
 }
 
 export function findCatalogBall(owned: Ball, catalog: CatalogBall[]): CatalogBall | null {
-  const name = owned.name.toLowerCase();
-  const brand = owned.brand.toLowerCase();
-  const exact = catalog.find(
-    (c) =>
-      c.name.toLowerCase() === name &&
-      (!brand || c.brand.toLowerCase() === brand || name.includes(c.brand.toLowerCase())),
-  );
+  return lookupCatalogBall(owned.brand, owned.name, catalog);
+}
+
+/** メーカー＋ボール名でカタログを探す（登録フォーム用） */
+export function lookupCatalogBall(
+  brand: string,
+  name: string,
+  catalog: CatalogBall[],
+): CatalogBall | null {
+  const n = name.trim().toLowerCase();
+  const b = brand.trim().toLowerCase();
+  if (!n) return null;
+
+  const brandOk = (c: CatalogBall) =>
+    !b ||
+    c.brand.toLowerCase() === b ||
+    n.includes(c.brand.toLowerCase()) ||
+    c.brand.toLowerCase().includes(b);
+
+  const exact = catalog.find((c) => c.name.toLowerCase() === n && brandOk(c));
   if (exact) return exact;
-  return (
-    catalog.find(
-      (c) =>
-        name.includes(c.name.toLowerCase()) ||
-        c.name.toLowerCase().includes(name.replace(/\s+/g, " ").trim()),
-    ) ?? null
+
+  const sameBrand = b
+    ? catalog.filter((c) => c.brand.toLowerCase() === b || c.brand.toLowerCase().includes(b))
+    : catalog;
+
+  const partial = sameBrand.find(
+    (c) =>
+      n.includes(c.name.toLowerCase()) ||
+      c.name.toLowerCase().includes(n.replace(/\s+/g, " ").trim()),
   );
+  if (partial) return partial;
+
+  if (b) {
+    return (
+      catalog.find(
+        (c) =>
+          n.includes(c.name.toLowerCase()) ||
+          c.name.toLowerCase().includes(n.replace(/\s+/g, " ").trim()),
+      ) ?? null
+    );
+  }
+  return null;
+}
+
+/** カタログヒットを表面・メモ欄向けの文言にする */
+export function catalogDetailFields(c: CatalogBall): { surfaceNote: string; memo: string } {
+  const surfaceNote = [c.finish, c.coverType].filter(Boolean).join(" / ");
+  const memo = [
+    c.coverName ? `カバー: ${c.coverName}` : c.coverType ? `カバー: ${c.coverType}` : "",
+    c.coreName ? `コア: ${c.coreName}` : c.coreType ? `コア: ${c.coreType}` : "",
+    c.rg != null ? `RG ${c.rg}` : "",
+    c.diff != null ? `Diff ${c.diff}` : "",
+    c.mb != null ? `MB ${c.mb}` : "",
+    c.releaseMonth ? `発売 ${c.releaseMonth}` : "",
+    c.memo,
+  ]
+    .filter(Boolean)
+    .join(" / ");
+  return { surfaceNote, memo };
 }
 
 type Candidate = {
