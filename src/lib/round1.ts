@@ -1,9 +1,11 @@
 /** ROUND1 プロショップ商品ビューア（GitHub Pages） */
 export const ROUND1_VIEWER_URL = "https://okajun777.github.io/round1-proshop-viewer/";
 
-/** ボウリング混雑一覧（同サイト内） */
+/** ラウンドワン連携の既定入口（混雑状況） */
 export const ROUND1_QUEUE_URL = `${ROUND1_VIEWER_URL}queue.html`;
 export const ROUND1_QUEUE_JSON_URL = `${ROUND1_VIEWER_URL}queue.json`;
+/** @deprecated 入口は ROUND1_QUEUE_URL を使う。商品一覧が必要なときのみ */
+export const ROUND1_HOME_URL = ROUND1_QUEUE_URL;
 
 /** queue.html と共有（同一オリジンの localStorage） */
 const FAV_KEY = "round1-queue-favorites";

@@ -111,7 +111,7 @@ export function Round1QueueWidget() {
         }}
       >
         <div>
-          <h3 style={{ marginTop: 0, marginBottom: 4 }}>ROUND1 ボウリング混雑</h3>
+          <h3 style={{ marginTop: 0, marginBottom: 4 }}>ラウンドワン 混雑状況</h3>
           <p style={{ color: "var(--sub)", fontSize: "0.88rem", margin: 0 }}>
             {loading
               ? "読み込み中…"

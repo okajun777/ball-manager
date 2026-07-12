@@ -10,7 +10,7 @@ import {
 import { formatSessionShareText } from "../lib/shareSession";
 import { adviseBalls } from "../lib/strategy";
 import { useStore } from "../lib/store";
-import { ROUND1_VIEWER_URL } from "../lib/round1";
+import { ROUND1_QUEUE_URL } from "../lib/round1";
 import {
   OSAKA_BOWLING_URL,
   eventsWithOilPattern,
@@ -133,8 +133,8 @@ export function Dashboard() {
           <a className="btn secondary" href={OSAKA_BOWLING_URL} target="_blank" rel="noreferrer">
             大阪府大会情報
           </a>
-          <a className="btn secondary" href={ROUND1_VIEWER_URL} target="_blank" rel="noreferrer">
-            ROUND1商品
+          <a className="btn secondary" href={ROUND1_QUEUE_URL} target="_blank" rel="noreferrer">
+            ラウンドワン
           </a>
           <Link className="btn secondary" to="/catalog">
             カタログ
