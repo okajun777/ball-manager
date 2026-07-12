@@ -27,7 +27,7 @@ import {
 } from "../lib/strategy";
 import type { CatalogBall } from "../lib/catalogTypes";
 import type { Ball, MaintenanceKind, SurfaceMaintenance } from "../lib/types";
-import { MAINTENANCE_KIND_LABEL, avg, formatBallWeight, manageExpireStatus, today, uid } from "../lib/types";
+import { MAINTENANCE_KIND_LABEL, avg, formatBallWeight, manageRegisteredLabel, today, uid } from "../lib/types";
 
 const catalog = catalogBalls as CatalogBall[];
 
@@ -836,7 +836,7 @@ export function MyBalls() {
               />
             </div>
             <div className="field">
-              <label>有効期限</label>
+              <label>登録日</label>
               <input
                 type="date"
                 value={form.manageExpireOn}
@@ -845,7 +845,7 @@ export function MyBalls() {
             </div>
           </div>
           <p style={{ margin: "-4px 0 10px", color: "var(--sub)", fontSize: "0.78rem" }}>
-            大会のボール管理シール記号と、検定・登録の有効期限です。
+            大会のボール管理シール記号と、その登録日です。
           </p>
           <div className="field">
             <label>メモ</label>
@@ -1000,16 +1000,7 @@ export function MyBalls() {
                         <>
                           {b.manageMark ? `管理記号 ${b.manageMark}` : "管理記号 —"}
                           {" · "}
-                          {(() => {
-                            const st = manageExpireStatus(b.manageExpireOn, today());
-                            const color =
-                              st.tone === "expired"
-                                ? "#b42318"
-                                : st.tone === "soon"
-                                  ? "var(--warn)"
-                                  : "inherit";
-                            return <span style={{ color }}>{st.label}</span>;
-                          })()}
+                          {manageRegisteredLabel(b.manageExpireOn)}
                           <br />
                         </>
                       ) : null}

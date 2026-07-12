@@ -109,7 +109,7 @@ export type Ball = {
   releaseMonth?: string;
   /** 大会用の管理記号（シール記号など） */
   manageMark?: string;
-  /** 大会管理の有効期限（YYYY-MM-DD） */
+  /** 大会管理の登録日（YYYY-MM-DD）。DB列名は manage_expire_on のまま互換保持 */
   manageExpireOn?: string;
   /** true のときバッグから外した扱い（スコア選択・攻略から除外） */
   retired?: boolean;
@@ -145,19 +145,21 @@ export function normalizeBall(b: Ball): Ball {
   };
 }
 
-/** 大会管理の有効期限表示 */
-export function manageExpireStatus(expireOn: string | undefined, todayKey: string): {
+/** 大会管理の登録日表示 */
+export function manageRegisteredLabel(registeredOn: string | undefined): string {
+  const d = (registeredOn || "").trim();
+  if (!d) return "登録日なし";
+  return `登録日 ${d}`;
+}
+
+/** @deprecated 登録日表示に変更。互換のため残す */
+export function manageExpireStatus(expireOn: string | undefined, _todayKey?: string): {
   label: string;
   tone: "ok" | "soon" | "expired" | "none";
 } {
   const d = (expireOn || "").trim();
-  if (!d) return { label: "有効期限なし", tone: "none" };
-  if (d < todayKey) return { label: `期限切れ ${d}`, tone: "expired" };
-  const soon = new Date(todayKey + "T12:00:00");
-  soon.setDate(soon.getDate() + 30);
-  const soonKey = soon.toISOString().slice(0, 10);
-  if (d <= soonKey) return { label: `期限間近 ${d}`, tone: "soon" };
-  return { label: `有効期限 ${d}`, tone: "ok" };
+  if (!d) return { label: "登録日なし", tone: "none" };
+  return { label: `登録日 ${d}`, tone: "ok" };
 }
 
 /** 表示用: 15lb / 15lb 2oz */

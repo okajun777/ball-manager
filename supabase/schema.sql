@@ -63,6 +63,7 @@ alter table balls add column if not exists mb numeric;
 alter table balls add column if not exists release_month text not null default '';
 alter table balls add column if not exists weight_oz numeric;
 alter table balls add column if not exists manage_mark text not null default '';
+-- 大会管理の登録日（過去名 manage_expire_on のまま互換）
 alter table balls add column if not exists manage_expire_on date;
 alter table balls add column if not exists catalog_id text not null default '';
 alter table balls add column if not exists image_url text not null default '';
