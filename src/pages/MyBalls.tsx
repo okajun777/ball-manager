@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import catalogBalls from "../data/catalogBalls.json";
@@ -22,6 +22,7 @@ import {
   lookupCatalogBall,
   catalogPrimaryName,
   catalogSecondaryName,
+  resolveBallImageUrl,
   searchCatalogBalls,
 } from "../lib/strategy";
 import type { CatalogBall } from "../lib/catalogTypes";
@@ -94,6 +95,30 @@ export function MyBalls() {
       a.localeCompare(b, "ja"),
     );
   }, []);
+
+  // 既存マイボールにカタログ写真を自動ひも付け
+  useEffect(() => {
+    if (!memberBalls.length) return;
+    let cancelled = false;
+    (async () => {
+      for (const b of memberBalls) {
+        if (cancelled) return;
+        if ((b.imageUrl || "").trim()) continue;
+        const cat = findCatalogBall(b, catalog);
+        if (!cat?.imageUrl) continue;
+        await upsertBall({
+          ...b,
+          catalogId: b.catalogId || cat.id,
+          imageUrl: cat.imageUrl,
+        });
+      }
+    })().catch(() => {
+      /* ignore backfill errors */
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [memberBalls, upsertBall]);
 
   const catalogMatch = useMemo(
     () => lookupCatalogBall(form.brand, form.name, catalog),
@@ -289,6 +314,9 @@ export function MyBalls() {
       const n = Number(v);
       return v.trim() && Number.isFinite(n) ? n : null;
     };
+    const cat =
+      (catalogHitId ? catalog.find((c) => c.id === catalogHitId) : null) ??
+      lookupCatalogBall(form.brand.trim(), form.name.trim(), catalog);
     const ball: Ball = {
       id: editing?.id ?? uid("ball"),
       groupId: data!.group.id,
@@ -320,6 +348,8 @@ export function MyBalls() {
       mb: num(form.mb),
       releaseMonth: form.releaseMonth.trim(),
       retired: editing?.retired ?? false,
+      catalogId: cat?.id ?? editing?.catalogId ?? "",
+      imageUrl: cat?.imageUrl || editing?.imageUrl || "",
     };
     await upsertBall(ball);
     setOpen(false);
@@ -913,7 +943,8 @@ export function MyBalls() {
             const last = lastMaintFor(b.id);
             const due = dueMap.get(b.id);
             const cat = findCatalogBall(b, catalog);
-            const img = cat?.imageUrl ? publicUrl(cat.imageUrl) : "";
+            const imgPath = resolveBallImageUrl(b, catalog);
+            const img = imgPath ? publicUrl(imgPath) : "";
             return (
               <div className="card ball-card" key={b.id}>
                 <div className="ball-card-top">
@@ -924,7 +955,11 @@ export function MyBalls() {
                       alt={b.name}
                       loading="lazy"
                     />
-                  ) : null}
+                  ) : (
+                    <div className="ball-card-img ball-card-img--empty" aria-hidden>
+                      No Photo
+                    </div>
+                  )}
                   <div className="ball-card-body">
                     <div className="ball-brand">{b.brand || cat?.brand || "ブランド未設定"}</div>
                     <div className="ball-title">

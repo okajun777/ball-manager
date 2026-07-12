@@ -64,6 +64,8 @@ alter table balls add column if not exists release_month text not null default '
 alter table balls add column if not exists weight_oz numeric;
 alter table balls add column if not exists manage_mark text not null default '';
 alter table balls add column if not exists manage_expire_on date;
+alter table balls add column if not exists catalog_id text not null default '';
+alter table balls add column if not exists image_url text not null default '';
 
 create table if not exists score_sessions (
   id uuid primary key default gen_random_uuid(),

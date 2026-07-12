@@ -859,6 +859,8 @@ export async function saveAppData(data: AppData): Promise<AppData> {
       release_month: b.releaseMonth ?? "",
       manage_mark: b.manageMark ?? "",
       manage_expire_on: b.manageExpireOn || null,
+      catalog_id: b.catalogId ?? "",
+      image_url: b.imageUrl ?? "",
       retired: Boolean(b.retired),
     }));
     const { error } = await supabase.from("balls").upsert(ballRows);
@@ -877,6 +879,8 @@ export async function saveAppData(data: AppData): Promise<AppData> {
             weight_oz: _oz,
             manage_mark: _mm,
             manage_expire_on: _me,
+            catalog_id: _cid,
+            image_url: _img,
             ...rest
           }) => rest,
         ),
@@ -1112,6 +1116,8 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
     releaseMonth: b.release_month ?? "",
     manageMark: b.manage_mark ?? "",
     manageExpireOn: b.manage_expire_on ?? "",
+    catalogId: b.catalog_id ?? "",
+    imageUrl: b.image_url ?? "",
     retired: Boolean(b.retired),
   }));
 

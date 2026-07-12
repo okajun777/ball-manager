@@ -54,7 +54,22 @@ function inferCoverFromText(...parts: string[]): string {
 }
 
 export function findCatalogBall(owned: Ball, catalog: CatalogBall[]): CatalogBall | null {
+  if (owned.catalogId) {
+    const byId = catalog.find((c) => c.id === owned.catalogId);
+    if (byId) return byId;
+  }
   return lookupCatalogBall(owned.brand, owned.name, catalog);
+}
+
+/** マイボール表示用の写真URL（保存済み → カタログ照合） */
+export function resolveBallImageUrl(
+  owned: Pick<Ball, "brand" | "name" | "catalogId" | "imageUrl">,
+  catalog: CatalogBall[],
+): string {
+  const stored = (owned.imageUrl || "").trim();
+  if (stored) return stored;
+  const hit = findCatalogBall(owned as Ball, catalog);
+  return (hit?.imageUrl || "").trim();
 }
 
 /** 表示・登録用：日本名があればそれを優先 */

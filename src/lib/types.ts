@@ -113,6 +113,10 @@ export type Ball = {
   manageExpireOn?: string;
   /** true のときバッグから外した扱い（スコア選択・攻略から除外） */
   retired?: boolean;
+  /** カタログ球 ID（写真・詳細の照合用） */
+  catalogId?: string;
+  /** マイボール表示用写真（カタログ画像パスなど） */
+  imageUrl?: string;
 };
 
 export function normalizeBall(b: Ball): Ball {
@@ -136,6 +140,8 @@ export function normalizeBall(b: Ball): Ball {
     manageMark: b.manageMark ?? "",
     manageExpireOn: b.manageExpireOn ?? "",
     retired: Boolean(b.retired),
+    catalogId: b.catalogId ?? "",
+    imageUrl: b.imageUrl ?? "",
   };
 }
 

@@ -6,7 +6,7 @@ import type { CatalogBall } from "../lib/catalogTypes";
 import { publicUrl } from "../lib/paths";
 import { ROUND1_VIEWER_URL, round1SearchUrl } from "../lib/round1";
 import { manufacturerOfficialSearchUrl, manufacturerSearchUrl } from "../lib/brandSites";
-import { catalogDetailFields } from "../lib/strategy";
+import { catalogDetailFields, catalogPrimaryName } from "../lib/strategy";
 import { today, uid } from "../lib/types";
 
 const balls = catalogBalls as CatalogBall[];
@@ -62,7 +62,7 @@ export function Catalog() {
       id: uid("ball"),
       groupId: data.group.id,
       memberId: activeMember.id,
-      name: ball.name,
+      name: catalogPrimaryName(ball),
       brand: ball.brand,
       weightLb: 15,
       purchasedOn: today(),
@@ -83,8 +83,10 @@ export function Catalog() {
       diff: details.diff,
       mb: details.mb,
       releaseMonth: details.releaseMonth,
+      catalogId: ball.id,
+      imageUrl: ball.imageUrl || "",
     });
-    alert(`${ball.name} をマイボールに追加しました`);
+    alert(`${catalogPrimaryName(ball)} をマイボールに追加しました`);
   }
 
   return (

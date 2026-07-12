@@ -267,6 +267,13 @@ button, input, select, textarea { font: inherit; }
   border-radius: 10px;
   border: 1px solid var(--line);
 }
+.ball-card-img--empty {
+  display: grid;
+  place-items: center;
+  color: var(--sub);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
 .ball-card-body { min-width: 0; }
 
 .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }

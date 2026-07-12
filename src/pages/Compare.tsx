@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import catalogBalls from "../data/catalogBalls.json";
 import type { CatalogBall } from "../lib/catalogTypes";
-import { lookupCatalogBall } from "../lib/strategy";
+import { findCatalogBall, resolveBallImageUrl } from "../lib/strategy";
 import { useStore } from "../lib/store";
 import type { Ball } from "../lib/types";
 import { publicUrl } from "../lib/paths";
@@ -63,7 +63,7 @@ function resolveOwnedSpecs(ball: Ball): {
   releaseMonth: string;
   imageUrl: string;
 } {
-  const hit = lookupCatalogBall(ball.brand, ball.name, catalog);
+  const hit = findCatalogBall(ball, catalog);
   return {
     rg: ball.rg ?? hit?.rg ?? null,
     diff: ball.diff ?? hit?.diff ?? null,
@@ -74,7 +74,7 @@ function resolveOwnedSpecs(ball: Ball): {
     coreName: ball.coreName || hit?.coreName || "",
     finish: ball.surfaceNote || hit?.finish || "",
     releaseMonth: ball.releaseMonth || hit?.releaseMonth || "",
-    imageUrl: hit?.imageUrl || "",
+    imageUrl: resolveBallImageUrl(ball, catalog) || hit?.imageUrl || "",
   };
 }
 
