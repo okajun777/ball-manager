@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { APP_PUBLIC_URL, readInviteFromLocation } from "../lib/appUrl";
 import { consumeOsakaDeepLink } from "../lib/osakaBowling";
-import { ROUND1_VIEWER_URL } from "../lib/round1";
+import { ROUND1_QUEUE_URL, ROUND1_VIEWER_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
 import { IdentityGate } from "./IdentityGate";
 
@@ -117,6 +117,9 @@ export function Layout() {
         </a>
         <a className="ext-link" href={ROUND1_VIEWER_URL} target="_blank" rel="noreferrer">
           ROUND1 プロショップ ↗
+        </a>
+        <a className="ext-link" href={ROUND1_QUEUE_URL} target="_blank" rel="noreferrer">
+          ROUND1 混雑状況 ↗
         </a>
       </aside>
       <main className="main">

@@ -15,6 +15,7 @@ import {
   OSAKA_BOWLING_URL,
   eventsWithOilPattern,
 } from "../lib/osakaBowling";
+import { Round1QueueWidget } from "../components/Round1QueueWidget";
 import { avg, today } from "../lib/types";
 
 const catalog = catalogBalls as CatalogBall[];
@@ -149,6 +150,8 @@ export function Dashboard() {
           </Link>
         </div>
       </div>
+
+      <Round1QueueWidget />
 
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginTop: 0 }}>大阪府ボウリング大会情報</h3>
