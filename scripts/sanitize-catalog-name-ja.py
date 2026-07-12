@@ -37,6 +37,12 @@ SPECIAL: dict[str, str] = {
     "black widow purple pearl urethane": "ブラックウィドー・パープル・パール・ウレタン",
     "effect purple pearl urethane": "エフェクト・パープル・パール・ウレタン",
     "sweep hard": "スイープ・ハード",
+    "zenith": "ゼニス",
+    "zenith hybrid": "ゼニス・ハイブリッド",
+    "zenith pearl": "ゼニス・パール",
+    "quantum bias": "カンタム・バイアス",
+    "quantum bias pearl": "カンタム・バイアス・パール",
+    "quantum bias urethane": "カンタム・バイアス・ウレタン",
 }
 
 # 単語単位の定訳（英名を組み立てる用）

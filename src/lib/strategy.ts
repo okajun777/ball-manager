@@ -77,7 +77,7 @@ export function isTrustedNameJa(nameJa?: string): boolean {
   const ja = (nameJa || "").trim();
   if (!ja) return false;
   if (
-    /プルプルエ|ペアルル|ウレサネ|アフテル|フェヴェル|デエプ|インプアクト|アククウ|ドルイヴェ|フルエエゼ|グルアヴィトイ/.test(
+    /プルプルエ|ペアルル|ウレサネ|アフテル|フェヴェル|デエプ|インプアクト|アククウ|ドルイヴェ|フルエエゼ|グルアヴィトイ|ゼニトフ/.test(
       ja,
     )
   ) {
@@ -211,6 +211,17 @@ const JP_QUERY_ALIASES: Record<string, string[]> = {
     "ナノデス・アキュスペア",
   ],
   ナノデスアキュスペア: ["accu spare", "nanodesu accu spare", "アキュスペア"],
+  ゼニス: ["zenith", "ゼニトフ"],
+  ゼニスハイブリッド: ["zenith hybrid", "zenithhybrid"],
+  ゼニスパール: ["zenith pearl", "zenithpearl"],
+  カンタム: ["quantum"],
+  カンタムバイアス: ["quantum bias", "quantumbias"],
+  カンタムバイアスウレタン: [
+    "quantum bias urethane",
+    "quantumbiasurethane",
+    "quantum bias urethane blue",
+  ],
+  カンタムバイアスパール: ["quantum bias pearl", "quantumbiaspearl"],
 };
 
 function expandQueryAliases(query: string): string[] {

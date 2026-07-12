@@ -6997,7 +6997,7 @@
     "releaseMonth": "2018-08",
     "imageUrl": "/catalog-images/brunswick-quantum-bias.jpg",
     "sourceUrl": "https://www.bowwwl.com/bowling-ball-database/brunswick/quantum-bias",
-    "nameJa": ""
+    "nameJa": "カンタム・バイアス"
   },
   {
     "id": "brunswick-quantum-bias-pearl",
@@ -7017,7 +7017,27 @@
     "releaseMonth": "2019-03",
     "imageUrl": "/catalog-images/brunswick-quantum-bias-pearl.jpg",
     "sourceUrl": "https://www.bowwwl.com/bowling-ball-database/brunswick/quantum-bias-pearl",
-    "nameJa": ""
+    "nameJa": "カンタム・バイアス・パール"
+  },
+  {
+    "id": "brunswick-quantum-bias-urethane",
+    "brand": "Brunswick",
+    "name": "Quantum Bias Urethane",
+    "nameJa": "カンタム・バイアス・ウレタン",
+    "coverName": "Solid Urethane ソリッド",
+    "coverType": "ソリッド・ウレタン",
+    "finish": "1500 Micro Pad",
+    "coreName": "Quantum Mushroom High RG Asymmetric",
+    "coreType": "非対称コア",
+    "rg": 2.581,
+    "diff": 0.049,
+    "mb": 0.012,
+    "rgClass": "やや遅め",
+    "diffClass": "中程度",
+    "memo": "国内／韓国限定の非対称ウレタン。転がり出しやや遅め / ウレタン",
+    "releaseMonth": "2020-08",
+    "imageUrl": "/catalog-images/brunswick-quantum-bias-urethane.jpg",
+    "sourceUrl": "https://www.sunbridge-group.com/product/ball/all-balls/quantum-bias-urethane-solid/"
   },
   {
     "id": "brunswick-quantum-classic-black",
@@ -8257,7 +8277,7 @@
     "releaseMonth": "2020-11",
     "imageUrl": "/catalog-images/brunswick-zenith.jpg",
     "sourceUrl": "https://www.bowwwl.com/bowling-ball-database/brunswick/zenith",
-    "nameJa": "ゼニトフ"
+    "nameJa": "ゼニス"
   },
   {
     "id": "brunswick-zenith-hybrid",
@@ -8277,7 +8297,7 @@
     "releaseMonth": "2021-08",
     "imageUrl": "/catalog-images/brunswick-zenith-hybrid.jpg",
     "sourceUrl": "https://www.bowwwl.com/bowling-ball-database/brunswick/zenith-hybrid",
-    "nameJa": ""
+    "nameJa": "ゼニス・ハイブリッド"
   },
   {
     "id": "brunswick-zenith-pearl",
@@ -8297,7 +8317,7 @@
     "releaseMonth": "2021-03",
     "imageUrl": "/catalog-images/brunswick-zenith-pearl.jpg",
     "sourceUrl": "https://www.bowwwl.com/bowling-ball-database/brunswick/zenith-pearl",
-    "nameJa": ""
+    "nameJa": "ゼニス・パール"
   },
   {
     "id": "brunswick-zodiac-aries",
