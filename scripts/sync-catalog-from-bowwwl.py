@@ -1,17 +1,30 @@
 #!/usr/bin/env python3
 """bowwwl サイトマップから過去球を含めカタログを拡充する。
 
-既存の詳細データ（RG・画像など）は維持し、未登録球は名前付きスタブとして追加する。
+⚠️ このリポジトリは国内取扱球中心。新規の海外のみ球を追加しない。
+   国内カタログ更新は sync-catalog-from-sunbridge.py / HI-SP / ABS を使うこと。
+   どうしても bowwwl 同期する場合のみ: --force
 """
 from __future__ import annotations
 
 import json
 import re
+import sys
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "src" / "data" / "catalogBalls.json"
+
+if __name__ == "__main__" and "--force" not in sys.argv:
+    print(
+        "ERROR: カタログは国内取扱優先です。bowwwl からの海外球追加はしません。\n"
+        "国内更新: python scripts/sync-catalog-from-sunbridge.py\n"
+        "絞り込み: python scripts/filter-catalog-japan-only.py\n"
+        "どうしても bowwwl 同期する場合: python scripts/sync-catalog-from-bowwwl.py --force",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 UA = {"User-Agent": "Mozilla/5.0 (compatible; BallManagerCatalog/1.0)"}
 

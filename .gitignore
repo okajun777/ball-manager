@@ -28,3 +28,6 @@ public/osaka-patterns/
 *.njsproj
 *.sln
 *.sw?
+\
+scripts/_cache_hi_sp_products.json
+scripts/__pycache__/\

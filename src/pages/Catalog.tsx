@@ -95,7 +95,7 @@ export function Catalog() {
       <div className="page-title">
         <div>
           <h1>カタログ</h1>
-          <p>メーカー別のボール種類・タイプ一覧（{filtered.length} / {balls.length}）</p>
+          <p>国内取扱ボール一覧（{filtered.length} / {balls.length}）</p>
         </div>
         <a className="btn secondary" href={ROUND1_VIEWER_URL} target="_blank" rel="noreferrer">
           ROUND1商品を見る
