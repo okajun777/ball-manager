@@ -67,6 +67,7 @@ export function MyBalls() {
   const [form, setForm] = useState(emptyForm);
   const [catalogHitId, setCatalogHitId] = useState<string | null>(null);
   const [brandCustom, setBrandCustom] = useState(false);
+  const [weightCustom, setWeightCustom] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<CatalogBall[] | null>(null);
   const [searchMessage, setSearchMessage] = useState("");
@@ -204,6 +205,7 @@ export function MyBalls() {
     setForm(emptyForm);
     setCatalogHitId(null);
     setBrandCustom(false);
+    setWeightCustom(false);
     setSearchQuery("");
     setSearchResults(null);
     setSearchMessage("");
@@ -216,6 +218,8 @@ export function MyBalls() {
       (b) => b.toLowerCase() === ball.brand.trim().toLowerCase(),
     );
     setBrandCustom(Boolean(ball.brand.trim()) && !known);
+    const w = ball.weightLb?.toString() ?? "";
+    setWeightCustom(Boolean(w) && !["10", "11", "12", "13", "14", "15", "16"].includes(w));
     setForm({
       name: ball.name,
       brand: ball.brand,
@@ -387,6 +391,51 @@ export function MyBalls() {
                 </button>
               </div>
             </div>
+          </div>
+
+          <div className="field">
+            <label>重量 (lb)</label>
+            <select
+              value={
+                weightCustom
+                  ? "__other__"
+                  : ["10", "11", "12", "13", "14", "15", "16"].includes(form.weightLb)
+                    ? form.weightLb
+                    : form.weightLb.trim()
+                      ? "__other__"
+                      : "15"
+              }
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "__other__") {
+                  setWeightCustom(true);
+                  return;
+                }
+                setWeightCustom(false);
+                setForm((prev) => ({ ...prev, weightLb: v }));
+              }}
+            >
+              {[10, 11, 12, 13, 14, 15, 16].map((w) => (
+                <option key={w} value={String(w)}>
+                  {w} lb
+                </option>
+              ))}
+              <option value="__other__">その他（手入力）</option>
+            </select>
+            {weightCustom ||
+            (form.weightLb.trim() !== "" &&
+              !["10", "11", "12", "13", "14", "15", "16"].includes(form.weightLb)) ? (
+              <input
+                style={{ marginTop: 8 }}
+                value={form.weightLb}
+                onChange={(e) => {
+                  setWeightCustom(true);
+                  setForm({ ...form, weightLb: e.target.value });
+                }}
+                placeholder="例: 14.5"
+                inputMode="decimal"
+              />
+            ) : null}
           </div>
 
           {searchResults ? (
@@ -608,14 +657,7 @@ export function MyBalls() {
           </div>
 
           <h4 style={{ margin: "14px 0 10px" }}>購入・ドリル</h4>
-          <div className="row three">
-            <div className="field">
-              <label>重量 (lb)</label>
-              <input
-                value={form.weightLb}
-                onChange={(e) => setForm({ ...form, weightLb: e.target.value })}
-              />
-            </div>
+          <div className="row">
             <div className="field">
               <label>購入日</label>
               <input
@@ -630,6 +672,7 @@ export function MyBalls() {
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: e.target.value })}
                 placeholder="40810"
+                inputMode="numeric"
               />
             </div>
           </div>
