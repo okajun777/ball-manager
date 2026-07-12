@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ROUND1_QUEUE_URL,
   fetchRound1Queue,
@@ -21,29 +21,28 @@ export function Round1QueueWidget() {
   const [data, setData] = useState<Round1QueueData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const favIds = useMemo(() => loadRound1FavoriteStoreIds(), []);
+  const [refreshing, setRefreshing] = useState(false);
+  const [favIds, setFavIds] = useState(() => loadRound1FavoriteStoreIds());
+
+  const load = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    try {
+      setFavIds(loadRound1FavoriteStoreIds());
+      const q = await fetchRound1Queue();
+      setData(q);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "読み込みに失敗しました");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const q = await fetchRound1Queue();
-        if (!cancelled) {
-          setData(q);
-          setError(null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "読み込みに失敗しました");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void load(false);
+  }, [load]);
 
   const favorites = useMemo(() => {
     if (!data) return [] as Round1QueueStore[];
@@ -103,13 +102,42 @@ export function Round1QueueWidget() {
                       alignItems: "center",
                     }}
                   >
-                    <a href={store.queue_url} target="_blank" rel="noreferrer">
-                      <div style={{ fontWeight: 700 }}>★ {store.name}</div>
-                      <div style={{ fontSize: "0.78rem", color: "var(--sub)" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <a
+                          href={store.queue_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ fontWeight: 700 }}
+                        >
+                          ★ {store.name}
+                        </a>
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          style={{
+                            padding: "4px 10px",
+                            fontSize: "0.75rem",
+                            borderRadius: 999,
+                          }}
+                          disabled={refreshing}
+                          onClick={() => void load(true)}
+                        >
+                          {refreshing ? "更新中…" : "更新"}
+                        </button>
+                      </div>
+                      <div style={{ fontSize: "0.78rem", color: "var(--sub)", marginTop: 2 }}>
                         {store.prefecture}
                         {store.update_time ? ` · ${store.update_time}` : ""}
                       </div>
-                    </a>
+                    </div>
                     <a
                       href={store.queue_url}
                       target="_blank"
