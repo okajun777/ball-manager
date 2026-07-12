@@ -483,7 +483,7 @@ function mergeCloudAndLocal(cloud: AppData, local: AppData): AppData {
     balls,
     sessions,
     maintenances,
-    activeMemberId: local.activeMemberId || cloud.activeMemberId,
+    activeMemberId: cloud.activeMemberId || local.activeMemberId,
   });
 }
 
@@ -802,11 +802,20 @@ export async function saveAppData(data: AppData): Promise<AppData> {
 
   const g = fixed.group;
   {
-    const { error } = await supabase.from("groups").upsert({
+    const groupPayload: Record<string, unknown> = {
       id: g.id,
       name: g.name,
       invite_code: g.inviteCode,
-    });
+      active_member_id: fixed.activeMemberId || null,
+    };
+    let { error } = await supabase.from("groups").upsert(groupPayload);
+    if (error && /active_member_id/i.test(error.message)) {
+      ({ error } = await supabase.from("groups").upsert({
+        id: g.id,
+        name: g.name,
+        invite_code: g.inviteCode,
+      }));
+    }
     if (error) throw new Error(`グループ同期に失敗: ${error.message}`);
   }
 
@@ -1054,6 +1063,10 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
 
   if (!groupRow) throw new Error("グループを読み込めませんでした");
 
+  const cloudActive =
+    typeof groupRow.active_member_id === "string" ? groupRow.active_member_id : "";
+  const preferredActive = cloudActive || activeMemberId;
+
   const { data: maints } = await supabase
     .from("surface_maintenances")
     .select("*")
@@ -1164,8 +1177,8 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
     sessions: mappedSessions,
     maintenances: mappedMaints,
     activeMemberId:
-      activeMemberId && mappedMembers.some((m) => m.id === activeMemberId)
-        ? activeMemberId
+      preferredActive && mappedMembers.some((m) => m.id === preferredActive)
+        ? preferredActive
         : (mappedMembers.find((m) => m.isSelf)?.id ?? mappedMembers[0]?.id ?? ""),
   };
 }

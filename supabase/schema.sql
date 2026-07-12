@@ -7,8 +7,12 @@ create table if not exists groups (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   invite_code text not null unique default encode(gen_random_bytes(6), 'hex'),
+  active_member_id uuid,
   created_at timestamptz not null default now()
 );
+
+-- 既存DB向け
+alter table groups add column if not exists active_member_id uuid;
 
 create table if not exists members (
   id uuid primary key default gen_random_uuid(),

@@ -17,28 +17,18 @@ const mainLinks = [
 ];
 
 export function Layout() {
-  const {
-    data,
-    activeMember,
-    deviceMember,
-    isAdmin,
-    needsIdentity,
-    setActiveMemberId,
-    loading,
-    error,
-  } = useStore();
+  const { data, activeMember, needsSetup, setActiveMemberId, loading, error } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     const code = readInviteFromLocation();
     if (!code) return;
-    // 未選択時は IdentityGate で参加する
-    if (needsIdentity) return;
+    if (needsSetup) return;
     if (!/\/settings\/?$/.test(location.pathname)) {
       navigate(`/settings?invite=${encodeURIComponent(code)}`, { replace: true });
     }
-  }, [location.pathname, navigate, needsIdentity]);
+  }, [location.pathname, navigate, needsSetup]);
 
   useEffect(() => {
     const linked = consumeOsakaDeepLink(location.search);
@@ -84,32 +74,23 @@ export function Layout() {
           </NavLink>
         </div>
 
-        {!needsIdentity ? (
+        {!needsSetup ? (
           <div className="sidebar-member-row">
             <div className="member-switch">
-              <label>表示</label>
-              <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                {deviceMember?.displayName ?? activeMember?.displayName ?? "—"}
-              </div>
+              <label htmlFor="member">メンバー</label>
+              <select
+                id="member"
+                value={activeMember?.id ?? ""}
+                onChange={(e) => setActiveMemberId(e.target.value)}
+                disabled={!data}
+              >
+                {data?.members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.displayName}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            {isAdmin ? (
-              <div className="member-switch">
-                <label htmlFor="member">メンバー</label>
-                <select
-                  id="member"
-                  value={activeMember?.id ?? ""}
-                  onChange={(e) => setActiveMemberId(e.target.value)}
-                  disabled={!data}
-                >
-                  {data?.members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.displayName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
           </div>
         ) : null}
 
@@ -123,8 +104,8 @@ export function Layout() {
       <main className="main">
         {loading && <div className="card empty">読み込み中…</div>}
         {error && <div className="card empty">エラー: {error}</div>}
-        {!loading && !error && needsIdentity && <IdentityGate />}
-        {!loading && !error && !needsIdentity && <Outlet />}
+        {!loading && !error && needsSetup && <IdentityGate />}
+        {!loading && !error && !needsSetup && <Outlet />}
       </main>
     </div>
   );
