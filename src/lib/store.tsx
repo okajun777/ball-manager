@@ -51,7 +51,8 @@ type Store = {
   memberSessions: ScoreSession[];
   memberMaintenances: SurfaceMaintenance[];
   setActiveMemberId: (id: string) => void;
-  claimAsMember: (memberId: string) => void;
+  /** 一般メンバー：表示名だけでこの端末の利用者にする（PIN不要・他人の名前は出さない） */
+  claimByDisplayName: (displayName: string) => { ok: boolean; error?: string };
   unlockAdmin: (pin: string) => { ok: boolean; error?: string };
   setAdminPin: (pin: string) => { ok: boolean; error?: string };
   resetIdentity: () => void;
@@ -228,13 +229,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveViewMemberId(data.group.id, id);
       setViewMemberId(id);
     },
-    claimAsMember: (id) => {
-      if (!data?.members.some((m) => m.id === id)) return;
+    claimByDisplayName: (displayName) => {
+      if (!data) return { ok: false, error: "データ未読込" };
+      const name = displayName.trim();
+      if (!name) return { ok: false, error: "名前を入力してください" };
+      const key = name.toLowerCase();
       const admin = findAdminMemberId(data.members);
-      if (admin && id === admin) return;
-      saveDeviceMemberId(id);
-      setDeviceMemberIdState(id);
-      setViewMemberId(id);
+      const hit = data.members.find(
+        (m) => m.displayName.trim().toLowerCase() === key && !m.isSelf,
+      );
+      if (!hit) {
+        const adminHit = data.members.find(
+          (m) => m.displayName.trim().toLowerCase() === key && m.isSelf,
+        );
+        if (adminHit || (admin && data.members.find((m) => m.id === admin)?.displayName.trim().toLowerCase() === key)) {
+          return { ok: false, error: "管理者は下の「管理者として開く」から入ってください" };
+        }
+        return {
+          ok: false,
+          error: "その名前のメンバーが見つかりません。初回は招待コードで参加してください",
+        };
+      }
+      saveDeviceMemberId(hit.id);
+      setDeviceMemberIdState(hit.id);
+      setViewMemberId(hit.id);
+      return { ok: true };
     },
     unlockAdmin: (pin) => {
       if (!data) return { ok: false, error: "データ未読込" };

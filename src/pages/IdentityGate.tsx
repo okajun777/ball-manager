@@ -1,15 +1,13 @@
 import { useMemo, useState } from "react";
 import { clearInviteFromLocation, readInviteFromLocation } from "../lib/appUrl";
-import { findAdminMemberId } from "../lib/identity";
 import { useStore } from "../lib/store";
 
 type Mode = "home" | "start" | "join" | "ownerPin";
 
-/** 初回セットアップ、またはこの端末の利用者選択（管理者はPIN） */
+/** 初回セットアップ、またはこの端末の利用者選択（一般は名前のみ／管理者はPIN） */
 export function IdentityGate() {
   const {
-    data,
-    claimAsMember,
+    claimByDisplayName,
     unlockAdmin,
     hasAdminPin,
     joinGroup,
@@ -17,30 +15,20 @@ export function IdentityGate() {
     needsSetup,
   } = useStore();
   const inviteFromUrl = useMemo(() => readInviteFromLocation() ?? "", []);
-  const [mode, setMode] = useState<Mode>(() =>
-    inviteFromUrl ? "join" : needsSetup ? "home" : "home",
-  );
+  const [mode, setMode] = useState<Mode>(() => (inviteFromUrl ? "join" : "home"));
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
-  const [pendingOwnerId, setPendingOwnerId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [joinCode, setJoinCode] = useState(inviteFromUrl);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const members = useMemo(() => data?.members ?? [], [data]);
-  const ownerId = useMemo(() => findAdminMemberId(members), [members]);
-  const pendingName =
-    members.find((m) => m.id === pendingOwnerId)?.displayName ?? "";
-
-  if (!data) return null;
-
-  if (mode === "ownerPin" && pendingOwnerId) {
+  if (mode === "ownerPin") {
     return (
       <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
-        <h2 style={{ marginTop: 0 }}>{pendingName}（管理者）</h2>
+        <h2 style={{ marginTop: 0 }}>管理者として開く</h2>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
-          全員のボール・スコアをクラウド上で管理できます。ロック番号を入力してください。
+          全員のボール・スコアをクラウド上で管理できます。ロック番号（4桁）を入力してください。
         </p>
         <div className="field">
           <label>ロック番号（4桁）</label>
@@ -80,7 +68,6 @@ export function IdentityGate() {
             className="btn secondary"
             onClick={() => {
               setMode("home");
-              setPendingOwnerId(null);
               setPin("");
               setPinError("");
             }}
@@ -149,6 +136,9 @@ export function IdentityGate() {
     return (
       <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
         <h2 style={{ marginTop: 0 }}>招待コードで参加</h2>
+        <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
+          名前を入れるだけで参加できます（PINは不要です）。
+        </p>
         <div className="field">
           <label>招待コード</label>
           <input
@@ -215,7 +205,7 @@ export function IdentityGate() {
         データはクラウドに保存されます。
         {needsSetup
           ? "新規作成か招待コードで参加してください。"
-          : "管理者（淳司）だけが全員の登録を追記・変更できます。一般メンバーは自分のデータのみです。"}
+          : "一般の方は自分の名前だけ入力してください。管理者だけがロック番号を使います。"}
       </p>
 
       {needsSetup ? (
@@ -229,31 +219,44 @@ export function IdentityGate() {
         </div>
       ) : (
         <>
-          <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
+          <div className="field">
+            <label>あなたの名前</label>
+            <input
+              value={displayName}
+              onChange={(e) => {
+                setDisplayName(e.target.value);
+                setFormError("");
+              }}
+              placeholder="登録した表示名"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                e.preventDefault();
+                const res = claimByDisplayName(displayName);
+                if (!res.ok) setFormError(res.error || "入れませんでした");
+              }}
+            />
+          </div>
+          {formError ? (
+            <p style={{ color: "#b42318", fontSize: "0.88rem" }}>{formError}</p>
+          ) : null}
+          <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                const res = claimByDisplayName(displayName);
+                if (!res.ok) setFormError(res.error || "入れませんでした");
+              }}
+            >
+              入る
+            </button>
             <button type="button" className="btn secondary" onClick={() => setMode("join")}>
               招待コードで参加
             </button>
-          </div>
-          <h3 style={{ marginTop: 8, marginBottom: 8 }}>メンバーを選ぶ</h3>
-          <div style={{ display: "grid", gap: 8 }}>
-            {members.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className="btn secondary"
-                onClick={() => {
-                  if (ownerId && m.id === ownerId) {
-                    setPendingOwnerId(m.id);
-                    setMode("ownerPin");
-                    return;
-                  }
-                  claimAsMember(m.id);
-                }}
-              >
-                {m.displayName}
-                {ownerId && m.id === ownerId ? "（管理者）" : ""}
-              </button>
-            ))}
+            <button type="button" className="btn secondary" onClick={() => setMode("ownerPin")}>
+              管理者として開く
+            </button>
           </div>
         </>
       )}

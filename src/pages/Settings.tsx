@@ -14,7 +14,6 @@ import {
   type SupabaseSettings,
 } from "../lib/supabase";
 import { loadUserPrefs, saveUserPrefs, type UserPrefs } from "../lib/prefs";
-import { findAdminMemberId } from "../lib/identity";
 import { useStore } from "../lib/store";
 import {
   MEMBER_GENDER_LABEL,
@@ -91,7 +90,6 @@ export function Settings() {
     updateGroupName,
     replaceAppData,
     joinGroup,
-    claimAsMember,
     unlockAdmin,
     setAdminPin,
     resetIdentity,
@@ -348,31 +346,12 @@ export function Settings() {
             </div>
           </div>
         ) : (
-          <div>
-            <div className="field">
-              <label>利用者を切り替え</label>
-              <select
-                value={deviceMember?.id ?? ""}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  const owner = findAdminMemberId(data.members);
-                  if (owner && id === owner) {
-                    setPendingOwner(true);
-                    return;
-                  }
-                  claimAsMember(id);
-                }}
-              >
-                {data.members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.displayName}
-                    {m.isSelf ? "（管理者）" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
             <button className="btn secondary" type="button" onClick={() => resetIdentity()}>
-              選び直す
+              名前を入れ直す
+            </button>
+            <button className="btn secondary" type="button" onClick={() => setPendingOwner(true)}>
+              管理者として開く
             </button>
           </div>
         )}
@@ -591,12 +570,12 @@ export function Settings() {
 
       <form className="card" style={{ marginTop: 14 }} onSubmit={onJoin}>
         <h3 style={{ marginTop: 0 }}>招待コードで参加</h3>
-        <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
-          家族からもらった招待コードでグループに入ります。
-          {isSupabaseConfigured()
-            ? "クラウド上のグループを検索して参加します。"
-            : "ローカルでは、この端末のグループコードと一致する場合のみメンバー追加できます。別端末は JSON 読み込みか Supabase を使ってください。"}
-        </p>
+          <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
+            家族からもらった招待コードと、自分の表示名だけで参加できます（PINは不要です）。
+            {isSupabaseConfigured()
+              ? "クラウド上のグループを検索して参加します。"
+              : "ローカルでは、この端末のグループコードと一致する場合のみメンバー追加できます。別端末は JSON 読み込みか Supabase を使ってください。"}
+          </p>
         <div className="grid two">
           <div className="field">
             <label>招待コード</label>
