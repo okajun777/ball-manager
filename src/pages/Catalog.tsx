@@ -4,6 +4,7 @@ import { useStore } from "../lib/store";
 import type { CatalogBall } from "../lib/catalogTypes";
 import { publicUrl } from "../lib/paths";
 import { ROUND1_VIEWER_URL, round1SearchUrl } from "../lib/round1";
+import { manufacturerOfficialSearchUrl, manufacturerSearchUrl } from "../lib/brandSites";
 import { catalogDetailFields } from "../lib/strategy";
 import { today, uid } from "../lib/types";
 
@@ -319,6 +320,22 @@ export function Catalog() {
               <button className="btn secondary" type="button" onClick={() => setSelected(null)}>
                 閉じる
               </button>
+              <a
+                className="btn secondary"
+                href={manufacturerSearchUrl(selected.brand, selected.name)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                メーカーサイトで検索
+              </a>
+              <a
+                className="btn secondary"
+                href={manufacturerOfficialSearchUrl(selected.brand, selected.name)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                公式サイトで検索
+              </a>
               <a
                 className="btn secondary"
                 href={round1SearchUrl(selected.name)}

@@ -9,6 +9,13 @@ import {
 import { publicUrl } from "../lib/paths";
 import { round1SearchUrl } from "../lib/round1";
 import {
+  findBrandSite,
+  listKnownBrands,
+  manufacturerHomeUrl,
+  manufacturerOfficialSearchUrl,
+  manufacturerSearchUrl,
+} from "../lib/brandSites";
+import {
   catalogDetailFields,
   findCatalogBall,
   lookupCatalogBall,
@@ -59,10 +66,12 @@ export function MyBalls() {
   const [maintGrit, setMaintGrit] = useState("");
   const [maintNote, setMaintNote] = useState("");
 
-  const catalogBrands = useMemo(
-    () => [...new Set(catalog.map((b) => b.brand))].sort((a, b) => a.localeCompare(b, "ja")),
-    [],
-  );
+  const catalogBrands = useMemo(() => {
+    const fromCatalog = catalog.map((b) => b.brand);
+    return [...new Set([...listKnownBrands(), ...fromCatalog])].sort((a, b) =>
+      a.localeCompare(b, "ja"),
+    );
+  }, []);
 
   const nameSuggestions = useMemo(() => {
     const brand = form.brand.trim().toLowerCase();
@@ -79,6 +88,16 @@ export function MyBalls() {
     () => lookupCatalogBall(form.brand, form.name, catalog),
     [form.brand, form.name],
   );
+
+  const brandSite = useMemo(() => findBrandSite(form.brand), [form.brand]);
+  const makerSearchUrl = useMemo(() => {
+    if (!form.brand.trim() || !form.name.trim()) return "";
+    return manufacturerSearchUrl(form.brand, form.name);
+  }, [form.brand, form.name]);
+  const makerOfficialSearchUrl = useMemo(() => {
+    if (!form.brand.trim() || !form.name.trim()) return "";
+    return manufacturerOfficialSearchUrl(form.brand, form.name);
+  }, [form.brand, form.name]);
 
   const ballStats = useMemo(() => {
     const map = new Map<string, number[]>();
@@ -286,6 +305,54 @@ export function MyBalls() {
             </div>
           </div>
 
+          {makerSearchUrl ? (
+            <div
+              style={{
+                marginBottom: 12,
+                padding: 10,
+                border: "1px solid var(--line)",
+                borderRadius: 10,
+                background: "#fff",
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>メーカーサイトで詳細を検索</div>
+              <p style={{ margin: "0 0 8px", color: "var(--sub)", fontSize: "0.85rem" }}>
+                {brandSite
+                  ? `${brandSite.brand} の${brandSite.japanUrl ? "日本代理店／" : ""}公式情報からスペックを確認できます。`
+                  : "メーカー名で Web 検索します。"}
+              </p>
+              <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                <a className="btn" href={makerSearchUrl} target="_blank" rel="noreferrer">
+                  {brandSite?.japanUrl ? "代理店サイトで検索" : "メーカー公式で検索"}
+                </a>
+                {brandSite?.japanUrl ? (
+                  <a
+                    className="btn secondary"
+                    href={makerOfficialSearchUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    公式サイトで検索
+                  </a>
+                ) : null}
+                {manufacturerHomeUrl(form.brand) ? (
+                  <a
+                    className="btn secondary"
+                    href={manufacturerHomeUrl(form.brand)!}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    公式トップ
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
+              メーカーとボール名を入れると、各メーカーサイトでの検索ボタンが出ます。
+            </p>
+          )}
+
           {catalogMatch ? (
             <div
               style={{
@@ -322,12 +389,12 @@ export function MyBalls() {
                 type="button"
                 onClick={() => applyCatalog(catalogMatch)}
               >
-                詳細を反映
+                カタログ詳細を反映
               </button>
             </div>
           ) : form.name.trim().length >= 2 ? (
             <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
-              カタログに一致する球が見つかりません。そのまま手入力でも登録できます。
+              内蔵カタログに一致がありません。上のメーカーサイト検索で確認して手入力してください。
             </p>
           ) : null}
 
