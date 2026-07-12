@@ -60,6 +60,12 @@ const BRAND_SITES: BrandSiteInfo[] = [
     officialUrl: "https://www.radicalbowling.com/",
   },
   {
+    brand: "ABS 300",
+    aliases: ["ABS", "ナノデス", "nanodesu", "アメリカンボウリングサービス"],
+    officialUrl: "https://www.absbowling.co.jp/",
+    japanUrl: "https://www.absbowling.co.jp/",
+  },
+  {
     brand: "DV8",
     aliases: ["ディーブイエイト"],
     officialUrl: "https://www.dv8bowling.com/",

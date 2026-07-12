@@ -3060,6 +3060,26 @@
     "nameJa": "ナノデス アククウ ドルイヴェ 5"
   },
   {
+    "id": "abs-300-nanodesu-accu-spare",
+    "brand": "ABS 300",
+    "name": "Nanodesu Accu Spare",
+    "nameJa": "ナノデス・アキュスペア",
+    "coverName": "NANO Urethane Hard",
+    "coverType": "ウレタン",
+    "finish": "#2000 Polish",
+    "coreName": "Modified NEW Premium Core with 衝撃吸収コアシステム",
+    "coreType": "対称コア",
+    "rg": 2.533,
+    "diff": 0.009,
+    "mb": null,
+    "rgClass": "標準",
+    "diffClass": "かなり低い",
+    "memo": "スペア向け・高硬度ウレタン（86〜87°）/ 曲がり控えめ",
+    "releaseMonth": "",
+    "imageUrl": "",
+    "sourceUrl": "https://www.absbowling.co.jp/product/product-814/"
+  },
+  {
     "id": "abs-300-ultra-bend-lv-10",
     "brand": "ABS 300",
     "name": "Ultra Bend LV 1.0",
@@ -29877,7 +29897,7 @@
     "releaseMonth": "2026-02",
     "imageUrl": "/catalog-images/radical__deep-impact.jpg",
     "sourceUrl": "https://www.bowwwl.com/bowling-ball-database/radical/deep-impact",
-    "nameJa": "デエプ インプアクト"
+    "nameJa": "ディープインパクト"
   },
   {
     "id": "radical-double-cross",

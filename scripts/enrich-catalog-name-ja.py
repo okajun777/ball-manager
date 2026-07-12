@@ -39,6 +39,11 @@ SPECIAL: dict[str, str] = {
     "dv8": "ディーブイエイト",
     "900 global": "ナインハンドレッドグローバル",
     "roto grip": "ロトグリップ",
+    "deep impact": "ディープインパクト",
+    "deep freeze": "ディープフリーズ",
+    "nanodesu accu spare": "ナノデス・アキュスペア",
+    "accu spare": "アキュスペア",
+    "nanodesu accu drive 5": "ナノデス・アキュドライブ 5",
 }
 
 # 長い順にマッチする音節

@@ -125,6 +125,61 @@ function compactQuery(s: string): string {
   return normalizeBallQuery(s).replace(/\s+/g, "");
 }
 
+/**
+ * 日本名検索の補助（自動カタカナ生成の誤変換や通称向け）。
+ * キー・値はスペースなしカタカナ／英小文字で持つ。
+ */
+const JP_QUERY_ALIASES: Record<string, string[]> = {
+  ディープインパクト: ["deep impact", "deepimpact", "デエプインプアクト"],
+  アキュスペア: [
+    "accu spare",
+    "accuspare",
+    "nanodesu accu spare",
+    "ナノデスアキュスペア",
+    "ナノデス・アキュスペア",
+  ],
+  ナノデスアキュスペア: ["accu spare", "nanodesu accu spare", "アキュスペア"],
+};
+
+function expandQueryAliases(query: string): string[] {
+  const q = normalizeBallQuery(query);
+  const qCompact = compactQuery(query);
+  const out = new Set<string>([q, qCompact].filter(Boolean));
+  for (const [ja, aliases] of Object.entries(JP_QUERY_ALIASES)) {
+    const jaN = normalizeBallQuery(ja);
+    const jaC = compactQuery(ja);
+    if (q === jaN || qCompact === jaC || qCompact.includes(jaC) || jaC.includes(qCompact)) {
+      for (const a of aliases) {
+        out.add(normalizeBallQuery(a));
+        out.add(compactQuery(a));
+      }
+    }
+    for (const a of aliases) {
+      const aN = normalizeBallQuery(a);
+      const aC = compactQuery(a);
+      if (q === aN || qCompact === aC) {
+        out.add(jaN);
+        out.add(jaC);
+        for (const other of aliases) {
+          out.add(normalizeBallQuery(other));
+          out.add(compactQuery(other));
+        }
+      }
+    }
+  }
+  return [...out].filter(Boolean);
+}
+
+function brandSearchBlob(brand: string): string {
+  const extra =
+    brand === "HI-SP"
+      ? "ハイスポーツ ハイスポ hi-sp hisp"
+      : brand === "ABS 300" || brand.startsWith("ABS")
+        ? "ABS アメリカンボウリングサービス ナノデス nanodesu"
+        : "";
+  return normalizeBallQuery(`${brand} ${extra}`);
+}
+
 /** メーカー＋キーワードでカタログを複数件検索（英名・日本名） */
 export function searchCatalogBalls(
   brand: string,
@@ -135,18 +190,18 @@ export function searchCatalogBalls(
   const b = normalizeSearchText(brand);
   const q = normalizeBallQuery(query);
   const qCompact = compactQuery(query);
+  const qAliases = expandQueryAliases(query);
   const pool = b
     ? catalog.filter((c) => {
         const cb = normalizeSearchText(c.brand);
-        const aliases = normalizeBallQuery(
-          `${c.brand} ${c.brand === "HI-SP" ? "ハイスポーツ ハイスポ hi-sp hisp" : ""}`,
-        );
+        const aliases = brandSearchBlob(c.brand);
         return (
           cb === b ||
           cb.includes(b) ||
           b.includes(cb) ||
           aliases.includes(b) ||
-          (b.includes("ハイスポ") && cb === "hi-sp")
+          (b.includes("ハイスポ") && cb === "hi-sp") ||
+          (b === "abs" && cb.startsWith("abs"))
         );
       })
     : catalog;
@@ -172,6 +227,20 @@ export function searchCatalogBalls(
         `${c.name} ${c.nameJa || ""} ${c.coverName} ${c.coreName} ${c.memo}`,
       );
       let score = 0;
+      const aliasHit = qAliases.some(
+        (a) =>
+          a &&
+          (nameEn === a ||
+            nameJa === a ||
+            nameEnC === a ||
+            nameJaC === a ||
+            nameEn.includes(a) ||
+            nameJa.includes(a) ||
+            nameEnC.includes(a) ||
+            nameJaC.includes(a) ||
+            hayC.includes(a)),
+      );
+      if (aliasHit) score += 90;
       if (nameEn === q || nameJa === q || nameEnC === qCompact || nameJaC === qCompact) {
         score += 100;
       } else if (
