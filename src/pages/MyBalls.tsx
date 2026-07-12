@@ -66,6 +66,7 @@ export function MyBalls() {
   const [editing, setEditing] = useState<Ball | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [catalogHitId, setCatalogHitId] = useState<string | null>(null);
+  const [brandCustom, setBrandCustom] = useState(false);
 
   const [maintOpen, setMaintOpen] = useState(false);
   const [maintBallId, setMaintBallId] = useState("");
@@ -96,6 +97,15 @@ export function MyBalls() {
     () => lookupCatalogBall(form.brand, form.name, catalog),
     [form.brand, form.name],
   );
+
+  const brandSelectValue = useMemo(() => {
+    if (brandCustom) return "__other__";
+    if (!form.brand.trim()) return "";
+    const exact = catalogBrands.find(
+      (b) => b.toLowerCase() === form.brand.trim().toLowerCase(),
+    );
+    return exact ?? "__other__";
+  }, [brandCustom, form.brand, catalogBrands]);
 
   const brandSite = useMemo(() => findBrandSite(form.brand), [form.brand]);
   const makerSearchUrl = useMemo(() => {
@@ -133,6 +143,7 @@ export function MyBalls() {
 
   function applyCatalog(c: CatalogBall) {
     const details = catalogDetailFields(c);
+    setBrandCustom(false);
     setForm((prev) => ({
       ...prev,
       name: c.name,
@@ -180,15 +191,31 @@ export function MyBalls() {
     if (hit) applyCatalog(hit);
   }
 
+  function onBrandSelect(value: string) {
+    if (value === "__other__") {
+      setBrandCustom(true);
+      setForm((prev) => ({ ...prev, brand: "" }));
+      setCatalogHitId(null);
+      return;
+    }
+    setBrandCustom(false);
+    onBrandChange(value);
+  }
+
   function startCreate() {
     setEditing(null);
     setForm(emptyForm);
     setCatalogHitId(null);
+    setBrandCustom(false);
     setOpen(true);
   }
 
   function startEdit(ball: Ball) {
     setEditing(ball);
+    const known = catalogBrands.some(
+      (b) => b.toLowerCase() === ball.brand.trim().toLowerCase(),
+    );
+    setBrandCustom(Boolean(ball.brand.trim()) && !known);
     setForm({
       name: ball.name,
       brand: ball.brand,
@@ -311,17 +338,27 @@ export function MyBalls() {
           <div className="row">
             <div className="field">
               <label>メーカー</label>
-              <input
-                list="myball-brand-list"
-                value={form.brand}
-                onChange={(e) => onBrandChange(e.target.value)}
-                placeholder="Storm / Motiv など"
-              />
-              <datalist id="myball-brand-list">
+              <select
+                value={brandSelectValue}
+                onChange={(e) => onBrandSelect(e.target.value)}
+              >
+                <option value="">選択してください</option>
                 {catalogBrands.map((b) => (
-                  <option key={b} value={b} />
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
                 ))}
-              </datalist>
+                <option value="__other__">その他（手入力）</option>
+              </select>
+              {brandSelectValue === "__other__" ? (
+                <input
+                  style={{ marginTop: 8 }}
+                  value={form.brand}
+                  onChange={(e) => onBrandChange(e.target.value)}
+                  placeholder="メーカー名を入力"
+                  autoFocus={brandCustom}
+                />
+              ) : null}
             </div>
             <div className="field">
               <label>ボール名 *</label>
