@@ -11,7 +11,6 @@ import { round1SearchUrl } from "../lib/round1";
 import {
   findBrandSite,
   listKnownBrands,
-  manufacturerHomeUrl,
   manufacturerOfficialSearchUrl,
   manufacturerSearchUrl,
 } from "../lib/brandSites";
@@ -19,6 +18,7 @@ import {
   catalogDetailFields,
   findCatalogBall,
   lookupCatalogBall,
+  searchCatalogBalls,
 } from "../lib/strategy";
 import type { CatalogBall } from "../lib/catalogTypes";
 import type { Ball, MaintenanceKind, SurfaceMaintenance } from "../lib/types";
@@ -67,6 +67,8 @@ export function MyBalls() {
   const [form, setForm] = useState(emptyForm);
   const [catalogHitId, setCatalogHitId] = useState<string | null>(null);
   const [brandCustom, setBrandCustom] = useState(false);
+  const [searchResults, setSearchResults] = useState<CatalogBall[] | null>(null);
+  const [searchMessage, setSearchMessage] = useState("");
 
   const [maintOpen, setMaintOpen] = useState(false);
   const [maintBallId, setMaintBallId] = useState("");
@@ -81,17 +83,6 @@ export function MyBalls() {
       a.localeCompare(b, "ja"),
     );
   }, []);
-
-  const nameSuggestions = useMemo(() => {
-    const brand = form.brand.trim().toLowerCase();
-    const list = brand
-      ? catalog.filter((b) => b.brand.toLowerCase() === brand)
-      : catalog;
-    return list
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name, "ja"))
-      .map((b) => b.name);
-  }, [form.brand]);
 
   const catalogMatch = useMemo(
     () => lookupCatalogBall(form.brand, form.name, catalog),
@@ -160,35 +151,38 @@ export function MyBalls() {
       releaseMonth: details.releaseMonth,
     }));
     setCatalogHitId(c.id);
+    setSearchResults(null);
+    setSearchMessage("");
   }
 
   function onBrandChange(brand: string) {
-    const hit = lookupCatalogBall(brand, form.name, catalog);
-    if (hit && form.name.trim()) {
-      applyCatalog(hit);
-      return;
-    }
     setForm((prev) => ({ ...prev, brand }));
     setCatalogHitId(null);
+    setSearchResults(null);
+    setSearchMessage("");
   }
 
   function onNameChange(name: string) {
-    const hit = lookupCatalogBall(form.brand, name, catalog);
-    const exact = Boolean(
-      hit && hit.name.toLowerCase() === name.trim().toLowerCase(),
-    );
-    if (hit && exact) {
-      applyCatalog(hit);
-      return;
-    }
     setForm((prev) => ({ ...prev, name }));
-    setCatalogHitId(hit && name.trim().length >= 3 ? hit.id : null);
+    setCatalogHitId(null);
+    setSearchResults(null);
+    setSearchMessage("");
   }
 
-  function onNameBlur() {
-    if (!form.name.trim()) return;
-    const hit = lookupCatalogBall(form.brand, form.name, catalog);
-    if (hit) applyCatalog(hit);
+  function runBallSearch() {
+    if (!form.brand.trim()) {
+      setSearchResults([]);
+      setSearchMessage("先にメーカーを選択してください。");
+      return;
+    }
+    const hits = searchCatalogBalls(form.brand, form.name, catalog, 40);
+    setSearchResults(hits);
+    setSearchMessage(
+      hits.length
+        ? `${hits.length}件見つかりました。選んで詳細を反映してください。`
+        : "一致する球がカタログにありません。メーカーサイトで確認するか、手入力してください。",
+    );
+    setCatalogHitId(null);
   }
 
   function onBrandSelect(value: string) {
@@ -196,6 +190,8 @@ export function MyBalls() {
       setBrandCustom(true);
       setForm((prev) => ({ ...prev, brand: "" }));
       setCatalogHitId(null);
+      setSearchResults(null);
+      setSearchMessage("");
       return;
     }
     setBrandCustom(false);
@@ -207,6 +203,8 @@ export function MyBalls() {
     setForm(emptyForm);
     setCatalogHitId(null);
     setBrandCustom(false);
+    setSearchResults(null);
+    setSearchMessage("");
     setOpen(true);
   }
 
@@ -238,6 +236,8 @@ export function MyBalls() {
       releaseMonth: ball.releaseMonth ?? "",
     });
     setCatalogHitId(lookupCatalogBall(ball.brand, ball.name, catalog)?.id ?? null);
+    setSearchResults(null);
+    setSearchMessage("");
     setOpen(true);
   }
 
@@ -362,43 +362,119 @@ export function MyBalls() {
             </div>
             <div className="field">
               <label>ボール名 *</label>
-              <input
-                list="myball-name-list"
-                value={form.name}
-                onChange={(e) => onNameChange(e.target.value)}
-                onBlur={onNameBlur}
-                placeholder="メーカー選択後に候補が出ます"
-                required
-              />
-              <datalist id="myball-name-list">
-                {nameSuggestions.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
+              <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+                <input
+                  style={{ flex: 1, minWidth: 0 }}
+                  value={form.name}
+                  onChange={(e) => onNameChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      runBallSearch();
+                    }
+                  }}
+                  placeholder="例: Physix / Absolute"
+                  required
+                />
+                <button
+                  className="btn"
+                  type="button"
+                  onClick={runBallSearch}
+                  disabled={!form.brand.trim()}
+                >
+                  検索
+                </button>
+              </div>
             </div>
           </div>
 
-          {makerSearchUrl ? (
-            <div
-              style={{
-                marginBottom: 12,
-                padding: 10,
-                border: "1px solid var(--line)",
-                borderRadius: 10,
-                background: "#fff",
-              }}
-            >
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>メーカーサイトで詳細を検索</div>
-              <p style={{ margin: "0 0 8px", color: "var(--sub)", fontSize: "0.85rem" }}>
-                {brandSite
-                  ? `${brandSite.brand} の${brandSite.japanUrl ? "日本代理店／" : ""}公式情報からスペックを確認できます。`
-                  : "メーカー名で Web 検索します。"}
+          {searchResults ? (
+            <div style={{ marginBottom: 12 }}>
+              <p style={{ color: "var(--sub)", fontSize: "0.85rem", margin: "0 0 8px" }}>
+                {searchMessage}
               </p>
-              <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
-                <a className="btn" href={makerSearchUrl} target="_blank" rel="noreferrer">
-                  {brandSite?.japanUrl ? "代理店サイトで検索" : "メーカー公式で検索"}
-                </a>
-                {brandSite?.japanUrl ? (
+              {searchResults.length > 0 ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 8,
+                    maxHeight: 280,
+                    overflow: "auto",
+                    padding: 8,
+                    border: "1px solid var(--line)",
+                    borderRadius: 10,
+                    background: "#fff",
+                  }}
+                >
+                  {searchResults.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => applyCatalog(c)}
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "center",
+                        textAlign: "left",
+                        width: "100%",
+                        padding: 8,
+                        border:
+                          catalogHitId === c.id
+                            ? "2px solid var(--accent)"
+                            : "1px solid var(--line)",
+                        borderRadius: 8,
+                        background: catalogHitId === c.id ? "var(--accent-soft)" : "#fff",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {c.imageUrl ? (
+                        <img
+                          src={publicUrl(c.imageUrl)}
+                          alt=""
+                          style={{
+                            width: 48,
+                            height: 48,
+                            objectFit: "contain",
+                            borderRadius: 6,
+                            flex: "0 0 auto",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: 6,
+                            background: "#eef2f7",
+                            flex: "0 0 auto",
+                          }}
+                        />
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 700 }}>
+                          {c.brand} {c.name}
+                        </div>
+                        <div style={{ color: "var(--sub)", fontSize: "0.82rem" }}>
+                          {[c.coverType, c.coreType, c.finish].filter(Boolean).join(" · ")}
+                        </div>
+                      </div>
+                      <span style={{ color: "var(--accent)", fontSize: "0.85rem", flex: "0 0 auto" }}>
+                        選択
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <div
+                className="form-actions"
+                style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}
+              >
+                {makerSearchUrl ? (
+                  <a className="btn secondary" href={makerSearchUrl} target="_blank" rel="noreferrer">
+                    {brandSite?.japanUrl ? "代理店サイトで検索" : "メーカー公式で検索"}
+                  </a>
+                ) : null}
+                {brandSite?.japanUrl && makerOfficialSearchUrl ? (
                   <a
                     className="btn secondary"
                     href={makerOfficialSearchUrl}
@@ -408,66 +484,17 @@ export function MyBalls() {
                     公式サイトで検索
                   </a>
                 ) : null}
-                {manufacturerHomeUrl(form.brand) ? (
-                  <a
-                    className="btn secondary"
-                    href={manufacturerHomeUrl(form.brand)!}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    公式トップ
-                  </a>
-                ) : null}
               </div>
             </div>
           ) : (
             <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
-              メーカーとボール名を入れると、各メーカーサイトでの検索ボタンが出ます。
+              メーカーを選び、ボール名を入れて「検索」を押すと候補から選べます。
             </p>
           )}
 
-          {catalogMatch ? (
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                alignItems: "center",
-                flexWrap: "wrap",
-                marginBottom: 12,
-                padding: 10,
-                border: "1px solid var(--line)",
-                borderRadius: 10,
-                background: catalogHitId === catalogMatch.id ? "var(--accent-soft)" : "#fff",
-              }}
-            >
-              {catalogMatch.imageUrl ? (
-                <img
-                  src={publicUrl(catalogMatch.imageUrl)}
-                  alt={catalogMatch.name}
-                  style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 8 }}
-                />
-              ) : null}
-              <div style={{ flex: "1 1 180px", minWidth: 0 }}>
-                <div style={{ fontWeight: 700 }}>
-                  {catalogMatch.brand} {catalogMatch.name}
-                </div>
-                <div style={{ color: "var(--sub)", fontSize: "0.85rem" }}>
-                  {[catalogMatch.coverType, catalogMatch.coreType, catalogMatch.finish]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </div>
-              </div>
-              <button
-                className="btn secondary"
-                type="button"
-                onClick={() => applyCatalog(catalogMatch)}
-              >
-                カタログ詳細を反映
-              </button>
-            </div>
-          ) : form.name.trim().length >= 2 ? (
-            <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
-              内蔵カタログに一致がありません。上のメーカーサイト検索で確認して手入力してください。
+          {catalogHitId && catalogMatch ? (
+            <p style={{ color: "var(--good)", fontSize: "0.88rem", marginTop: 0 }}>
+              選択中: {catalogMatch.brand} {catalogMatch.name}（詳細を反映済み）
             </p>
           ) : null}
 

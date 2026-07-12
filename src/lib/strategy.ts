@@ -99,6 +99,50 @@ export function lookupCatalogBall(
   return null;
 }
 
+/** メーカー＋キーワードでカタログを複数件検索（登録フォーム用） */
+export function searchCatalogBalls(
+  brand: string,
+  query: string,
+  catalog: CatalogBall[],
+  limit = 30,
+): CatalogBall[] {
+  const b = brand.trim().toLowerCase();
+  const q = query.trim().toLowerCase().replace(/\s+/g, " ");
+  const pool = b
+    ? catalog.filter(
+        (c) =>
+          c.brand.toLowerCase() === b ||
+          c.brand.toLowerCase().includes(b) ||
+          b.includes(c.brand.toLowerCase()),
+      )
+    : catalog;
+
+  if (!q) {
+    return pool
+      .slice()
+      .sort((a, c) => a.name.localeCompare(c.name, "ja"))
+      .slice(0, limit);
+  }
+
+  const tokens = q.split(" ").filter(Boolean);
+  const scored = pool
+    .map((c) => {
+      const name = c.name.toLowerCase();
+      const hay = `${c.name} ${c.coverName} ${c.coreName} ${c.memo}`.toLowerCase();
+      let score = 0;
+      if (name === q) score += 100;
+      else if (name.startsWith(q)) score += 80;
+      else if (name.includes(q)) score += 60;
+      if (tokens.every((t) => hay.includes(t))) score += 20;
+      else if (tokens.some((t) => hay.includes(t))) score += 5;
+      return { c, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, c) => c.score - a.score || a.c.name.localeCompare(c.c.name, "ja"));
+
+  return scored.slice(0, limit).map((x) => x.c);
+}
+
 /** カタログヒットをマイボール詳細欄へ展開する */
 export function catalogDetailFields(c: CatalogBall): {
   surfaceNote: string;
