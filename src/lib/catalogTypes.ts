@@ -2,6 +2,8 @@ export type CatalogBall = {
   id: string;
   brand: string;
   name: string;
+  /** 日本名（カタカナ等）。検索用 */
+  nameJa?: string;
   coverName: string;
   coverType: string;
   finish: string;

@@ -5,7 +5,7 @@ import {
   clearInviteFromLocation,
   readInviteFromLocation,
 } from "../lib/appUrl";
-import { createFreshData } from "../lib/storage";
+import { createFreshDataKeepingGroup } from "../lib/storage";
 import {
   clearSupabaseSettings,
   isSupabaseConfigured,
@@ -95,6 +95,7 @@ export function Settings() {
     unlockAdmin,
     setAdminPin,
     resetIdentity,
+    refresh,
   } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
@@ -236,7 +237,18 @@ export function Settings() {
       <div className="page-title">
         <div>
           <h1>設定・共有</h1>
+          <p>データはクラウド（同一招待コード）にまとまります。PC・スマホとも同じコードで参加してください。</p>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14, background: "#eef6ff", borderColor: "#bfdbfe" }}>
+        <strong>同期の正本</strong>
+        <p style={{ margin: "6px 0 0", color: "var(--sub)", fontSize: "0.9rem" }}>
+          グループ「{data.group.name}」／招待コード{" "}
+          <code style={{ fontWeight: 700 }}>{data.group.inviteCode}</code>
+          {" · "}メンバー {data.members.length} 人・ボール {data.balls.length} 個
+          {isSupabaseConfigured() ? " · クラウド接続中" : " · クラウド未設定（端末内のみ）"}
+        </p>
       </div>
 
       <div className="card" style={{ marginBottom: 14 }}>
@@ -672,18 +684,29 @@ export function Settings() {
             onClick={async () => {
               if (
                 !confirm(
-                  "デモ／既存データを消して、淳司・はるみだけの空データにします。よろしいですか？（先にJSON書き出し推奨）",
+                  "ボール・スコア・メンテを空にします。グループと招待コード、淳司・はるみのIDは維持します（他端末と別れません）。よろしいですか？（先にJSON書き出し推奨）",
                 )
               ) {
                 return;
               }
-              const fresh = createFreshData();
+              const fresh = createFreshDataKeepingGroup(data);
+              // 明示削除として現状の球などを tombstone するため、空データで上書き保存
               await replaceAppData(fresh);
               setGroupName(fresh.group.name);
-              alert("空データで開始しました。マイボールから登録してください。");
+              alert("中身を空にしました。招待コードはそのままです。");
             }}
           >
             空データでやり直す
+          </button>
+          <button
+            className="btn"
+            type="button"
+            onClick={async () => {
+              await refresh();
+              alert("クラウドから最新を取り込みました。");
+            }}
+          >
+            クラウドから再読込
           </button>
         </div>
       </div>

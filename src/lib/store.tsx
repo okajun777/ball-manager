@@ -137,6 +137,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  // 別端末で更新された内容を取り込む
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const onFocus = () => {
+      void refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [refresh]);
+
   const adminId = useMemo(
     () => (data ? findAdminMemberId(data.members) : null),
     [data],

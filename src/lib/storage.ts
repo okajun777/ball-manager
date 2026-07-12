@@ -414,20 +414,187 @@ function localHasContent(local: AppData): boolean {
   );
 }
 
-function contentScore(data: AppData): number {
-  return (
-    data.members.length * 10 +
-    data.balls.length * 5 +
-    data.sessions.length * 3 +
-    (data.maintenances?.length ?? 0)
+function filledCount(obj: Record<string, unknown>): number {
+  let n = 0;
+  for (const v of Object.values(obj)) {
+    if (v == null || v === "") continue;
+    if (typeof v === "boolean") {
+      n += 1;
+      continue;
+    }
+    if (typeof v === "number" && Number.isFinite(v)) {
+      n += 1;
+      continue;
+    }
+    if (typeof v === "string" && v.trim()) n += 1;
+    if (Array.isArray(v) && v.length) n += 1;
+  }
+  return n;
+}
+
+function mergeById<T extends { id: string }>(
+  cloudItems: T[],
+  localItems: T[],
+  preferLocal: (local: T, cloud: T) => boolean,
+): T[] {
+  const map = new Map<string, T>();
+  for (const c of cloudItems) map.set(c.id, c);
+  for (const l of localItems) {
+    const existing = map.get(l.id);
+    if (!existing) map.set(l.id, l);
+    else if (preferLocal(l, existing)) map.set(l.id, l);
+  }
+  return [...map.values()];
+}
+
+/** クラウドを正本に、ローカルの未同期レコードを足し合わせる */
+function mergeCloudAndLocal(cloud: AppData, local: AppData): AppData {
+  const members = mergeById(cloud.members, local.members, (l, c) => {
+    if (l.isSelf && !c.isSelf) return true;
+    if (!l.isSelf && c.isSelf) return false;
+    return filledCount(l as unknown as Record<string, unknown>) >
+      filledCount(c as unknown as Record<string, unknown>);
+  });
+  const balls = mergeById(cloud.balls, local.balls, (l, c) =>
+    filledCount(l as unknown as Record<string, unknown>) >
+    filledCount(c as unknown as Record<string, unknown>),
   );
+  const sessions = mergeById(cloud.sessions, local.sessions, (l, c) => {
+    if ((l.games?.length ?? 0) !== (c.games?.length ?? 0)) {
+      return (l.games?.length ?? 0) > (c.games?.length ?? 0);
+    }
+    return filledCount(l as unknown as Record<string, unknown>) >
+      filledCount(c as unknown as Record<string, unknown>);
+  });
+  const maintenances = mergeById(
+    cloud.maintenances ?? [],
+    local.maintenances ?? [],
+    (l, c) =>
+      filledCount(l as unknown as Record<string, unknown>) >
+      filledCount(c as unknown as Record<string, unknown>),
+  );
+  return consolidateDuplicateMembers({
+    group: {
+      id: cloud.group.id,
+      name: cloud.group.name || local.group.name,
+      inviteCode: cloud.group.inviteCode || local.group.inviteCode,
+    },
+    members,
+    balls,
+    sessions,
+    maintenances,
+    activeMemberId: local.activeMemberId || cloud.activeMemberId,
+  });
+}
+
+/** 同名メンバーを1人にまとめ、ボール・スコアの memberId も付け替える */
+export function consolidateDuplicateMembers(data: AppData): AppData {
+  const byName = new Map<string, Member[]>();
+  for (const m of data.members) {
+    const key = m.displayName.trim().toLowerCase();
+    if (!key) continue;
+    const list = byName.get(key) ?? [];
+    list.push(m);
+    byName.set(key, list);
+  }
+  const keepIds = new Set<string>();
+  const remap = new Map<string, string>();
+  for (const list of byName.values()) {
+    if (list.length === 1) {
+      keepIds.add(list[0].id);
+      continue;
+    }
+    const canonical =
+      list.find((m) => m.isSelf) ??
+      [...list].sort((a, b) => a.id.localeCompare(b.id))[0];
+    keepIds.add(canonical.id);
+    for (const m of list) {
+      if (m.id !== canonical.id) remap.set(m.id, canonical.id);
+    }
+  }
+  // 名なし等
+  for (const m of data.members) {
+    if (!m.displayName.trim()) keepIds.add(m.id);
+  }
+  if (!remap.size) {
+    return {
+      ...data,
+      members: data.members.filter((m) => keepIds.has(m.id)),
+    };
+  }
+  const members = data.members
+    .filter((m) => keepIds.has(m.id))
+    .map((m) => {
+      if (!m.isSelf) return m;
+      return m;
+    });
+  // isSelf は canonical 側だけ残す（重複 isSelf を防ぐ）
+  let seenSelf = false;
+  const fixedMembers = members.map((m) => {
+    if (!m.isSelf) return m;
+    if (seenSelf) return { ...m, isSelf: false };
+    seenSelf = true;
+    return m;
+  });
+  return {
+    ...data,
+    members: fixedMembers,
+    balls: data.balls.map((b) => ({
+      ...b,
+      memberId: remap.get(b.memberId) ?? b.memberId,
+    })),
+    sessions: data.sessions.map((s) => ({
+      ...s,
+      memberId: remap.get(s.memberId) ?? s.memberId,
+    })),
+    maintenances: (data.maintenances ?? []).map((m) => ({
+      ...m,
+      memberId: remap.get(m.memberId) ?? m.memberId,
+    })),
+    activeMemberId: remap.get(data.activeMemberId) ?? data.activeMemberId,
+  };
+}
+
+/** 既存グループを維持したまま中身だけ空にする（端末分裂を防ぐ） */
+export function createFreshDataKeepingGroup(prev: AppData): AppData {
+  const self =
+    prev.members.find((m) => m.isSelf) ??
+    prev.members.find((m) => m.displayName.trim() === "淳司");
+  const family =
+    prev.members.find((m) => !m.isSelf && m.displayName.trim() === "はるみ") ??
+    prev.members.find((m) => !m.isSelf);
+  const selfId = self?.id ?? uid();
+  const familyId = family?.id ?? uid();
+  return {
+    group: { ...prev.group },
+    members: [
+      normalizeMember({
+        id: selfId,
+        groupId: prev.group.id,
+        displayName: self?.displayName || "淳司",
+        isSelf: true,
+        gender: self?.gender ?? "male",
+        hand: self?.hand ?? "right",
+      }),
+      normalizeMember({
+        id: familyId,
+        groupId: prev.group.id,
+        displayName: family?.displayName || "はるみ",
+        isSelf: false,
+        gender: family?.gender ?? "female",
+      }),
+    ],
+    balls: [],
+    sessions: [],
+    maintenances: [],
+    activeMemberId: selfId,
+  };
 }
 
 /**
- * Supabase 接続時:
- * - クラウドに中身があればそれを採用（ローカルへも反映）
- * - クラウドが空でローカルにデータがあればローカルをクラウドへ上げる
- *   （デプロイ後に空のクラウドがローカル名を消すのを防ぐ）
+ * Supabase 接続時はクラウドを正本にする。
+ * ローカルだけの未同期データはマージしてクラウドへ上げる。
+ * 明示削除（tombstone）以外でクラウドの球を消さない。
  */
 export async function loadAppData(): Promise<AppData> {
   const supabase = getSupabase();
@@ -472,79 +639,45 @@ export async function loadAppData(): Promise<AppData> {
   }
 
   const cloudRaw = await loadAppDataFromGroupId(cloudGroup.id, activeMemberId);
-  const boundLocal = applyTombstones(
-    rebindToGroup(local, {
-      id: cloudGroup.id,
-      name: cloudGroup.name || local.group.name,
-      inviteCode: cloudGroup.inviteCode || local.group.inviteCode,
-    }),
-  );
-  const cloud = applyTombstones(cloudRaw);
+  const boundLocal = rebindToGroup(local, {
+    id: cloudGroup.id,
+    name: cloudGroup.name || local.group.name,
+    inviteCode: cloudGroup.inviteCode || local.group.inviteCode,
+  });
 
-  // ローカルで消した球がクラウドに残っている → ローカルの削除を正としてクラウドを掃除
-  if (shouldPreferLocalDeletions(boundLocal, cloudRaw)) {
-    const localBallIds = new Set(boundLocal.balls.map((b) => b.id));
-    addTombstone(
-      "balls",
-      cloudRaw.balls.map((b) => b.id).filter((id) => !localBallIds.has(id)),
-    );
-    const droppedMaint = (cloudRaw.maintenances ?? [])
-      .filter((m) => !localBallIds.has(m.ballId))
-      .map((m) => m.id);
-    addTombstone("maintenances", droppedMaint);
-    const merged: AppData = {
-      ...cloudRaw,
-      group: boundLocal.group,
-      balls: boundLocal.balls,
-      maintenances: (cloudRaw.maintenances ?? []).filter((m) => localBallIds.has(m.ballId)),
-      activeMemberId: boundLocal.activeMemberId || cloudRaw.activeMemberId,
-    };
-    await saveAppData(applyTombstones(merged));
-    return applyTombstones(merged);
+  // クラウドが空でローカルに中身 → ローカルをクラウドへ
+  if (cloudIsEmpty(cloudRaw) && localHasContent(boundLocal)) {
+    const consolidated = consolidateDuplicateMembers(applyTombstones(boundLocal));
+    await saveAppData(consolidated);
+    return consolidateDuplicateMembers(applyTombstones(consolidated));
   }
 
-  // クラウドが空でローカルに中身がある → ローカル優先でクラウドへ同期
-  if (cloudIsEmpty(cloud) && localHasContent(boundLocal)) {
-    await saveAppData(boundLocal);
-    return boundLocal;
+  // クラウドを正本にローカル差分をマージ（削除は tombstone のみ反映）
+  const merged = applyTombstones(mergeCloudAndLocal(cloudRaw, boundLocal));
+  const needsPush =
+    merged.members.length !== cloudRaw.members.length ||
+    merged.balls.length !== cloudRaw.balls.length ||
+    merged.sessions.length !== cloudRaw.sessions.length ||
+    (merged.maintenances?.length ?? 0) !== (cloudRaw.maintenances?.length ?? 0) ||
+    merged.members.some((m) => !cloudRaw.members.some((c) => c.id === m.id)) ||
+    merged.balls.some((b) => !cloudRaw.balls.some((c) => c.id === b.id)) ||
+    JSON.stringify(merged.members.map((m) => m.id).sort()) !==
+      JSON.stringify(cloudRaw.members.map((m) => m.id).sort());
+
+  const tombs = loadTombstones();
+  const hasPendingDeletes =
+    tombs.members.length > 0 ||
+    tombs.balls.length > 0 ||
+    tombs.sessions.length > 0 ||
+    tombs.maintenances.length > 0;
+
+  if (needsPush || hasPendingDeletes) {
+    await saveAppData(merged);
+    return consolidateDuplicateMembers(applyTombstones(merged));
   }
 
-  // 両方に中身がある場合、ローカルの方が明らかに豊富ならローカルを正とする
-  // （空の Pages 初期デモがクラウドに載って、本データの名前・ボールを消すのを防ぐ）
-  if (!cloudIsEmpty(cloud) && localHasContent(boundLocal) && contentScore(boundLocal) > contentScore(cloud)) {
-    await saveAppData(boundLocal);
-    return boundLocal;
-  }
-
-  // クラウドに中身がある → 墓標適用後のクラウドを正とし、差分があれば掃除
-  if (!cloudIsEmpty(cloud) || !cloudIsEmpty(cloudRaw)) {
-    if (
-      cloud.balls.length !== cloudRaw.balls.length ||
-      cloud.sessions.length !== cloudRaw.sessions.length ||
-      (cloud.maintenances?.length ?? 0) !== (cloudRaw.maintenances?.length ?? 0) ||
-      cloud.members.length !== cloudRaw.members.length
-    ) {
-      await saveAppData(cloud);
-      return cloud;
-    }
-    saveLocal(cloud);
-    return cloud;
-  }
-
-  // 両方ほぼ空 → ローカルをクラウドへも載せる
-  await saveAppData(boundLocal);
-  return boundLocal;
-}
-
-function shouldPreferLocalDeletions(local: AppData, cloud: AppData): boolean {
-  // 空のローカルでクラウドの球を全消ししない（初回同期・別端末）
-  if (!local.balls.length) return false;
-  if (local.balls.length >= cloud.balls.length) return false;
-  const cloudBalls = new Set(cloud.balls.map((b) => b.id));
-  // ローカルの球がすべてクラウドにもある（＝ローカルは部分集合＝削除の可能性）
-  if (local.balls.some((b) => !cloudBalls.has(b.id))) return false;
-  const localBalls = new Set(local.balls.map((b) => b.id));
-  return cloud.balls.some((b) => !localBalls.has(b.id));
+  saveLocal(merged);
+  return merged;
 }
 
 const UUID_RE =
@@ -552,6 +685,23 @@ const UUID_RE =
 
 function isUuid(id: string): boolean {
   return UUID_RE.test(id);
+}
+
+const ID_MAP_KEY = "ball-manager-id-map-v1";
+
+function loadIdMap(): Map<string, string> {
+  try {
+    const raw = localStorage.getItem(ID_MAP_KEY);
+    if (!raw) return new Map();
+    const obj = JSON.parse(raw) as Record<string, string>;
+    return new Map(Object.entries(obj));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveIdMap(table: Map<string, string>) {
+  localStorage.setItem(ID_MAP_KEY, JSON.stringify(Object.fromEntries(table)));
 }
 
 function mapId(id: string, table: Map<string, string>): string {
@@ -565,7 +715,7 @@ function mapId(id: string, table: Map<string, string>): string {
 
 /** 旧 uid（mem_xxxx 等）を UUID に直して Supabase に載せる */
 function repairInvalidUuids(data: AppData): AppData {
-  const ids = new Map<string, string>();
+  const ids = loadIdMap();
   const groupId = mapId(data.group.id, ids);
   const members = data.members.map((m) =>
     normalizeMember({
@@ -605,6 +755,7 @@ function repairInvalidUuids(data: AppData): AppData {
   const activeMemberId = data.activeMemberId
     ? mapId(data.activeMemberId, ids)
     : data.activeMemberId;
+  saveIdMap(ids);
   return {
     group: { ...data.group, id: groupId },
     members,
@@ -615,17 +766,40 @@ function repairInvalidUuids(data: AppData): AppData {
   };
 }
 
+/** クラウド削除は tombstone（明示削除）だけ。他端末の未取得データを消さない */
+async function deleteTombstonedRemote(
+  table: "members" | "balls" | "score_sessions" | "surface_maintenances",
+  kind: keyof Tombstones,
+  groupId: string,
+) {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  const tombs = loadTombstones()[kind];
+  if (!tombs.length) return;
+  const { data: remote, error } = await supabase
+    .from(table)
+    .select("id")
+    .eq("group_id", groupId);
+  if (error) throw new Error(`${table}取得に失敗: ${error.message}`);
+  const remoteIds = new Set((remote ?? []).map((r) => r.id as string));
+  const gone = tombs.filter((id) => remoteIds.has(id));
+  if (!gone.length) return;
+  const { error: delErr } = await supabase.from(table).delete().in("id", gone);
+  if (delErr) throw new Error(`${table}削除に失敗: ${delErr.message}`);
+  clearTombstones(kind, gone);
+}
+
 export async function saveAppData(data: AppData): Promise<AppData> {
-  // MVP: 常にローカルへ保存。Supabase接続時は設定画面から同期を拡張予定
   const prev = readLocalRaw();
   recordDeletions(prev, data);
   clearTombstonesForPresent(data);
-  const fixed = repairInvalidUuids(applyTombstones(data));
+  const fixed = repairInvalidUuids(
+    consolidateDuplicateMembers(applyTombstones(data)),
+  );
   saveLocal(fixed);
   const supabase = getSupabase();
   if (!isSupabaseConfigured() || !supabase) return fixed;
 
-  // 簡易同期: グループが無ければ作成、あればローカル優先で upsert
   const g = fixed.group;
   {
     const { error } = await supabase.from("groups").upsert({
@@ -655,21 +829,7 @@ export async function saveAppData(data: AppData): Promise<AppData> {
     if (error) throw new Error(`メンバー同期に失敗: ${error.message}`);
   }
 
-  // ローカルで消したメンバーをクラウドからも削除（関連は DB cascade）
-  {
-    const { data: remoteMembers, error } = await supabase
-      .from("members")
-      .select("id")
-      .eq("group_id", g.id);
-    if (error) throw new Error(`メンバー取得に失敗: ${error.message}`);
-    const keep = new Set(fixed.members.map((m) => m.id));
-    const gone = (remoteMembers ?? []).map((r) => r.id as string).filter((id) => !keep.has(id));
-    if (gone.length) {
-      const { error: delErr } = await supabase.from("members").delete().in("id", gone);
-      if (delErr) throw new Error(`メンバー削除に失敗: ${delErr.message}`);
-      clearTombstones("members", gone);
-    }
-  }
+  await deleteTombstonedRemote("members", "members", g.id);
 
   if (fixed.balls.length) {
     const ballRows = fixed.balls.map((b) => ({
@@ -699,7 +859,6 @@ export async function saveAppData(data: AppData): Promise<AppData> {
     }));
     const { error } = await supabase.from("balls").upsert(ballRows);
     if (error) {
-      // 詳細カラム未追加の既存DB向けフォールバック
       const { error: fallbackErr } = await supabase.from("balls").upsert(
         ballRows.map(
           ({
@@ -719,21 +878,7 @@ export async function saveAppData(data: AppData): Promise<AppData> {
     }
   }
 
-  // ローカルで消したボールをクラウドからも削除
-  {
-    const { data: remoteBalls, error } = await supabase
-      .from("balls")
-      .select("id")
-      .eq("group_id", g.id);
-    if (error) throw new Error(`ボール取得に失敗: ${error.message}`);
-    const keep = new Set(fixed.balls.map((b) => b.id));
-    const gone = (remoteBalls ?? []).map((r) => r.id as string).filter((id) => !keep.has(id));
-    if (gone.length) {
-      const { error: delErr } = await supabase.from("balls").delete().in("id", gone);
-      if (delErr) throw new Error(`ボール削除に失敗: ${delErr.message}`);
-      clearTombstones("balls", gone);
-    }
-  }
+  await deleteTombstonedRemote("balls", "balls", g.id);
 
   for (const s of fixed.sessions) {
     await supabase.from("score_sessions").upsert({
@@ -765,21 +910,7 @@ export async function saveAppData(data: AppData): Promise<AppData> {
     }
   }
 
-  // ローカルで消したスコアセッションをクラウドからも削除
-  {
-    const { data: remoteSessions, error } = await supabase
-      .from("score_sessions")
-      .select("id")
-      .eq("group_id", g.id);
-    if (error) throw new Error(`スコア取得に失敗: ${error.message}`);
-    const keep = new Set(fixed.sessions.map((s) => s.id));
-    const gone = (remoteSessions ?? []).map((r) => r.id as string).filter((id) => !keep.has(id));
-    if (gone.length) {
-      const { error: delErr } = await supabase.from("score_sessions").delete().in("id", gone);
-      if (delErr) throw new Error(`スコア削除に失敗: ${delErr.message}`);
-      clearTombstones("sessions", gone);
-    }
-  }
+  await deleteTombstonedRemote("score_sessions", "sessions", g.id);
 
   if (fixed.maintenances?.length) {
     await supabase.from("surface_maintenances").upsert(
@@ -796,24 +927,7 @@ export async function saveAppData(data: AppData): Promise<AppData> {
     );
   }
 
-  // ローカルで消したメンテをクラウドからも削除
-  {
-    const { data: remoteMaint, error } = await supabase
-      .from("surface_maintenances")
-      .select("id")
-      .eq("group_id", g.id);
-    if (error) throw new Error(`メンテ取得に失敗: ${error.message}`);
-    const keep = new Set((fixed.maintenances ?? []).map((m) => m.id));
-    const gone = (remoteMaint ?? []).map((r) => r.id as string).filter((id) => !keep.has(id));
-    if (gone.length) {
-      const { error: delErr } = await supabase
-        .from("surface_maintenances")
-        .delete()
-        .in("id", gone);
-      if (delErr) throw new Error(`メンテ削除に失敗: ${delErr.message}`);
-      clearTombstones("maintenances", gone);
-    }
-  }
+  await deleteTombstonedRemote("surface_maintenances", "maintenances", g.id);
 
   return fixed;
 }
@@ -824,7 +938,7 @@ export function resetLocalDemo(): AppData {
   return demo;
 }
 
-/** 招待コードでグループに参加。Supabase優先、ローカルは同一コードのグループのみ。 */
+/** 招待コードでグループに参加。同名メンバーがいれば再利用（淳司二重化を防ぐ）。 */
 export async function joinByInviteCode(
   inviteCode: string,
   displayName: string,
@@ -847,24 +961,43 @@ export async function joinByInviteCode(
 
     const groupRow = groups[0];
     const groupId = groupRow.id as string;
-    const memberId = uid("mem");
 
-    const { error: memErr } = await supabase.from("members").insert({
-      id: memberId,
-      group_id: groupId,
-      display_name: name,
-      // 管理者は既存の is_self のみ。参加メンバーは一般
-      is_self: false,
-      gender: "unspecified",
-      hand: "unspecified",
-      throw_style: "unspecified",
-      profile_note: "",
-    });
-    if (memErr) throw memErr;
+    const { data: existingMembers, error: listErr } = await supabase
+      .from("members")
+      .select("*")
+      .eq("group_id", groupId);
+    if (listErr) throw listErr;
+
+    const nameKey = name.toLowerCase();
+    const existing = (existingMembers ?? []).find(
+      (m) => String(m.display_name ?? "").trim().toLowerCase() === nameKey,
+    );
+
+    let memberId: string;
+    if (existing) {
+      memberId = existing.id as string;
+    } else {
+      memberId = crypto.randomUUID();
+      const { error: memErr } = await supabase.from("members").insert({
+        id: memberId,
+        group_id: groupId,
+        display_name: name,
+        // 管理者は既存の is_self のみ。参加メンバーは一般
+        is_self: false,
+        gender: "unspecified",
+        hand: "unspecified",
+        throw_style: "unspecified",
+        profile_note: "",
+      });
+      if (memErr) throw memErr;
+    }
 
     const loaded = await loadAppDataFromGroupId(groupId, memberId);
-    saveLocal(loaded);
-    return loaded;
+    const consolidated = consolidateDuplicateMembers(loaded);
+    saveLocal(consolidated);
+    // ローカルに別グループの残骸があっても、このグループを正にする
+    await saveAppData(consolidated);
+    return consolidateDuplicateMembers(applyTombstones(consolidated));
   }
 
   const local = loadLocal();
@@ -873,8 +1006,17 @@ export async function joinByInviteCode(
       "この端末のグループとコードが一致しません。別端末からの参加は Supabase 設定か JSON 読み込みを使ってください。",
     );
   }
+  const nameKey = name.toLowerCase();
+  const existing = local.members.find(
+    (m) => m.displayName.trim().toLowerCase() === nameKey,
+  );
+  if (existing) {
+    const next = { ...local, activeMemberId: existing.id };
+    saveLocal(next);
+    return next;
+  }
   const member: Member = {
-    id: uid("mem"),
+    id: crypto.randomUUID(),
     groupId: local.group.id,
     displayName: name,
     isSelf: false,

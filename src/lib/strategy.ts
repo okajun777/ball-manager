@@ -99,22 +99,39 @@ export function lookupCatalogBall(
   return null;
 }
 
-/** メーカー＋キーワードでカタログを複数件検索（登録フォーム用） */
+function normalizeSearchText(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[!！・./_\-–—'"’`]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** ひらがな→カタカナ（日本名検索用） */
+function toKatakana(s: string): string {
+  return s.replace(/[\u3041-\u3096]/g, (ch) =>
+    String.fromCharCode(ch.charCodeAt(0) + 0x60),
+  );
+}
+
+function normalizeBallQuery(s: string): string {
+  return normalizeSearchText(toKatakana(s));
+}
+
+/** メーカー＋キーワードでカタログを複数件検索（英名・日本名） */
 export function searchCatalogBalls(
   brand: string,
   query: string,
   catalog: CatalogBall[],
-  limit = 30,
+  limit = 80,
 ): CatalogBall[] {
-  const b = brand.trim().toLowerCase();
-  const q = query.trim().toLowerCase().replace(/\s+/g, " ");
+  const b = normalizeSearchText(brand);
+  const q = normalizeBallQuery(query);
   const pool = b
-    ? catalog.filter(
-        (c) =>
-          c.brand.toLowerCase() === b ||
-          c.brand.toLowerCase().includes(b) ||
-          b.includes(c.brand.toLowerCase()),
-      )
+    ? catalog.filter((c) => {
+        const cb = normalizeSearchText(c.brand);
+        return cb === b || cb.includes(b) || b.includes(cb);
+      })
     : catalog;
 
   if (!q) {
@@ -127,14 +144,21 @@ export function searchCatalogBalls(
   const tokens = q.split(" ").filter(Boolean);
   const scored = pool
     .map((c) => {
-      const name = c.name.toLowerCase();
-      const hay = `${c.name} ${c.coverName} ${c.coreName} ${c.memo}`.toLowerCase();
+      const nameEn = normalizeSearchText(c.name);
+      const nameJa = normalizeBallQuery(c.nameJa || "");
+      const hay = normalizeBallQuery(
+        `${c.name} ${c.nameJa || ""} ${c.coverName} ${c.coreName} ${c.coverType} ${c.coreType} ${c.memo}`,
+      );
       let score = 0;
-      if (name === q) score += 100;
-      else if (name.startsWith(q)) score += 80;
-      else if (name.includes(q)) score += 60;
-      if (tokens.every((t) => hay.includes(t))) score += 20;
-      else if (tokens.some((t) => hay.includes(t))) score += 5;
+      if (nameEn === q || nameJa === q) score += 100;
+      else if (nameEn.startsWith(q) || nameJa.startsWith(q)) score += 85;
+      else if (nameEn.includes(q) || nameJa.includes(q)) score += 70;
+      else if (tokens.every((t) => nameEn.includes(t) || nameJa.includes(t))) score += 55;
+      if (tokens.length && tokens.every((t) => hay.includes(t))) score += 20;
+      else if (tokens.some((t) => hay.includes(t))) score += 8;
+      if (q.length >= 1 && (nameEn.includes(q) || nameJa.includes(q))) {
+        score = Math.max(score, 45);
+      }
       return { c, score };
     })
     .filter((x) => x.score > 0)

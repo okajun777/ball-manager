@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { DataProvider } from "./lib/store";
 import { Analysis } from "./pages/Analysis";
 import { Catalog } from "./pages/Catalog";
+import { Compare } from "./pages/Compare";
 import { Dashboard } from "./pages/Dashboard";
 import { Layout } from "./pages/Layout";
 import { MyBalls } from "./pages/MyBalls";
@@ -20,6 +21,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="balls" element={<MyBalls />} />
             <Route path="catalog" element={<Catalog />} />
+            <Route path="compare" element={<Compare />} />
             <Route path="scores" element={<Scores />} />
             <Route path="analysis" element={<Analysis />} />
             <Route path="strategy" element={<Strategy />} />

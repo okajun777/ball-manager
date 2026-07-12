@@ -10,6 +10,7 @@ const mainLinks = [
   { to: "/", label: "ダッシュボード", end: true },
   { to: "/balls", label: "マイボール" },
   { to: "/catalog", label: "カタログ" },
+  { to: "/compare", label: "比較チャート" },
   { to: "/scores", label: "スコア入力" },
   { to: "/analysis", label: "分析" },
   { to: "/strategy", label: "攻略AI" },

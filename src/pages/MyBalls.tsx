@@ -67,6 +67,7 @@ export function MyBalls() {
   const [form, setForm] = useState(emptyForm);
   const [catalogHitId, setCatalogHitId] = useState<string | null>(null);
   const [brandCustom, setBrandCustom] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<CatalogBall[] | null>(null);
   const [searchMessage, setSearchMessage] = useState("");
 
@@ -150,6 +151,7 @@ export function MyBalls() {
       mb: details.mb != null ? String(details.mb) : "",
       releaseMonth: details.releaseMonth,
     }));
+    setSearchQuery(c.nameJa ? `${c.name} / ${c.nameJa}` : c.name);
     setCatalogHitId(c.id);
     setSearchResults(null);
     setSearchMessage("");
@@ -165,22 +167,21 @@ export function MyBalls() {
   function onNameChange(name: string) {
     setForm((prev) => ({ ...prev, name }));
     setCatalogHitId(null);
-    setSearchResults(null);
-    setSearchMessage("");
   }
 
   function runBallSearch() {
-    if (!form.brand.trim()) {
+    const q = searchQuery.trim() || form.name.trim();
+    if (!q) {
       setSearchResults([]);
-      setSearchMessage("先にメーカーを選択してください。");
+      setSearchMessage("英名または日本名を入力してから検索してください。");
       return;
     }
-    const hits = searchCatalogBalls(form.brand, form.name, catalog, 40);
+    const hits = searchCatalogBalls(form.brand, q, catalog, 60);
     setSearchResults(hits);
     setSearchMessage(
       hits.length
-        ? `${hits.length}件見つかりました。選んで詳細を反映してください。`
-        : "一致する球がカタログにありません。メーカーサイトで確認するか、手入力してください。",
+        ? `${hits.length}件ヒットしました。一覧から選ぶと詳細が入ります。`
+        : "一致する球が見つかりませんでした。メーカーサイトで確認するか、手入力してください。",
     );
     setCatalogHitId(null);
   }
@@ -203,6 +204,7 @@ export function MyBalls() {
     setForm(emptyForm);
     setCatalogHitId(null);
     setBrandCustom(false);
+    setSearchQuery("");
     setSearchResults(null);
     setSearchMessage("");
     setOpen(true);
@@ -236,6 +238,7 @@ export function MyBalls() {
       releaseMonth: ball.releaseMonth ?? "",
     });
     setCatalogHitId(lookupCatalogBall(ball.brand, ball.name, catalog)?.id ?? null);
+    setSearchQuery(ball.name);
     setSearchResults(null);
     setSearchMessage("");
     setOpen(true);
@@ -361,27 +364,25 @@ export function MyBalls() {
               ) : null}
             </div>
             <div className="field">
-              <label>ボール名 *</label>
+              <label>ボール名検索（英名・日本名）</label>
               <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
                 <input
                   style={{ flex: 1, minWidth: 0 }}
-                  value={form.name}
-                  onChange={(e) => onNameChange(e.target.value)}
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    onNameChange(e.target.value);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       runBallSearch();
                     }
                   }}
-                  placeholder="例: Physix / Absolute"
+                  placeholder="例: Physix / フィジックス"
                   required
                 />
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={runBallSearch}
-                  disabled={!form.brand.trim()}
-                >
+                <button className="btn" type="button" onClick={runBallSearch}>
                   検索
                 </button>
               </div>
@@ -392,13 +393,14 @@ export function MyBalls() {
             <div style={{ marginBottom: 12 }}>
               <p style={{ color: "var(--sub)", fontSize: "0.85rem", margin: "0 0 8px" }}>
                 {searchMessage}
+                {form.brand.trim() ? `（メーカー絞り込み: ${form.brand}）` : "（全メーカー）"}
               </p>
               {searchResults.length > 0 ? (
                 <div
                   style={{
                     display: "grid",
                     gap: 8,
-                    maxHeight: 280,
+                    maxHeight: 320,
                     overflow: "auto",
                     padding: 8,
                     border: "1px solid var(--line)",
@@ -454,8 +456,13 @@ export function MyBalls() {
                         <div style={{ fontWeight: 700 }}>
                           {c.brand} {c.name}
                         </div>
+                        {c.nameJa ? (
+                          <div style={{ color: "var(--ink)", fontSize: "0.88rem" }}>{c.nameJa}</div>
+                        ) : null}
                         <div style={{ color: "var(--sub)", fontSize: "0.82rem" }}>
-                          {[c.coverType, c.coreType, c.finish].filter(Boolean).join(" · ")}
+                          {[c.coverType, c.coreType, c.releaseMonth, c.finish]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </div>
                       </div>
                       <span style={{ color: "var(--accent)", fontSize: "0.85rem", flex: "0 0 auto" }}>
@@ -488,13 +495,14 @@ export function MyBalls() {
             </div>
           ) : (
             <p style={{ color: "var(--sub)", fontSize: "0.85rem", marginTop: 0 }}>
-              メーカーを選び、ボール名を入れて「検索」を押すと候補から選べます。
+              英名または日本名を入れて「検索」を押し、ヒットした一覧から選んでください。メーカーを選ぶと絞り込めます。
             </p>
           )}
 
           {catalogHitId && catalogMatch ? (
             <p style={{ color: "var(--good)", fontSize: "0.88rem", marginTop: 0 }}>
-              選択中: {catalogMatch.brand} {catalogMatch.name}（詳細を反映済み）
+              選択中: {catalogMatch.brand} {catalogMatch.name}
+              {catalogMatch.nameJa ? `（${catalogMatch.nameJa}）` : ""}（詳細を反映済み）
             </p>
           ) : null}
 
