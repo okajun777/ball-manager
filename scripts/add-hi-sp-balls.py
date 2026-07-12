@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "src" / "data" / "catalogBalls.json"
+IMG_DIR = ROOT / "public" / "catalog-images"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; BallManagerCatalog/1.0)"}
 
 
@@ -18,6 +19,47 @@ def fetch(url: str) -> str:
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=40) as r:
         return r.read().decode("utf-8", "replace")
+
+
+def fetch_bytes(url: str) -> bytes:
+    req = urllib.request.Request(url, headers=UA)
+    with urllib.request.urlopen(req, timeout=40) as r:
+        return r.read()
+
+
+def og_image(html: str) -> str:
+    m = re.search(r'property="og:image"\s+content="([^"]+)"', html, re.I)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r'content="([^"]+)"\s+property="og:image"', html, re.I)
+    return m.group(1).strip() if m else ""
+
+
+def save_catalog_image(ball_id: str, image_url: str) -> str:
+    """Download remote image → /catalog-images/{ball_id}.jpg. Returns relative URL or ''."""
+    if not image_url:
+        return ""
+    IMG_DIR.mkdir(parents=True, exist_ok=True)
+    out = IMG_DIR / f"{ball_id}.jpg"
+    if out.exists() and out.stat().st_size > 1000:
+        return f"/catalog-images/{ball_id}.jpg"
+    try:
+        raw = fetch_bytes(image_url)
+    except Exception as exc:  # noqa: BLE001
+        print("  image fail", ball_id, exc)
+        return ""
+    try:
+        from io import BytesIO
+
+        from PIL import Image
+
+        with Image.open(BytesIO(raw)) as im:
+            rgb = im.convert("RGB")
+            rgb.thumbnail((800, 800))
+            rgb.save(out, "JPEG", quality=78, optimize=True)
+    except Exception:
+        out.write_bytes(raw)
+    return f"/catalog-images/{ball_id}.jpg"
 
 
 def clean(s: str) -> str:
@@ -136,6 +178,8 @@ def parse_hi_sp_product(url: str) -> dict | None:
         cover_name = cover or "Hard Polyester"
 
     ball_id = "hi-sp-" + re.sub(r"[^a-z0-9]+", "-", slug.lower()).strip("-")
+    img_remote = og_image(html)
+    image_url = save_catalog_image(ball_id, img_remote)
     return {
         "id": ball_id,
         "brand": "HI-SP",
@@ -153,7 +197,7 @@ def parse_hi_sp_product(url: str) -> dict | None:
         "diffClass": "",
         "memo": "スペア／カバーボール向け",
         "releaseMonth": "",
-        "imageUrl": "",
+        "imageUrl": image_url,
         "sourceUrl": url,
     }
 
@@ -228,15 +272,28 @@ def main() -> None:
             if not row:
                 continue
             if row["id"] in by_id:
-                # nameJa を補強
                 cur = by_id[row["id"]]
                 if row.get("nameJa") and not cur.get("nameJa"):
                     cur["nameJa"] = row["nameJa"]
+                if row.get("imageUrl") and not cur.get("imageUrl"):
+                    cur["imageUrl"] = row["imageUrl"]
+                    print("  img", row["name"], row["imageUrl"])
                 continue
             catalog.append(row)
             by_id[row["id"]] = row
             added += 1
-            print(" +", row["name"], "/", row.get("nameJa"))
+            print(" +", row["name"], "/", row.get("nameJa"), row.get("imageUrl") or "")
+
+    # 代表エントリに適当な色違い画像を付ける
+    for base_id, prefer in (
+        ("hi-sp-sweep-hard", "hi-sp-sweep-hard-r-wh"),
+        ("hi-sp-sweep-hard-clear", "hi-sp-sweep-hard-clear-blue-sky"),
+    ):
+        base_row = by_id.get(base_id)
+        prefer_row = by_id.get(prefer)
+        if base_row and not base_row.get("imageUrl") and prefer_row and prefer_row.get("imageUrl"):
+            base_row["imageUrl"] = prefer_row["imageUrl"]
+            print("  base img", base_id, "<-", prefer)
 
     catalog.sort(key=lambda b: ((b.get("brand") or "").lower(), (b.get("name") or "").lower()))
     CATALOG.write_text(json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
