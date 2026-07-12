@@ -57,15 +57,32 @@ export function findCatalogBall(owned: Ball, catalog: CatalogBall[]): CatalogBal
   return lookupCatalogBall(owned.brand, owned.name, catalog);
 }
 
-/** メーカー＋ボール名でカタログを探す（登録フォーム用） */
+/** 表示・登録用：日本名があればそれを優先 */
+export function catalogPrimaryName(c: Pick<CatalogBall, "name" | "nameJa">): string {
+  return (c.nameJa?.trim() || c.name).trim();
+}
+
+/** 副表示：日本名があるときの英名など */
+export function catalogSecondaryName(c: Pick<CatalogBall, "name" | "nameJa">): string | null {
+  const ja = c.nameJa?.trim();
+  const en = c.name.trim();
+  if (ja && en && ja !== en) return en;
+  return null;
+}
+
+/** メーカー＋ボール名でカタログを探す（登録フォーム用・日本名優先） */
 export function lookupCatalogBall(
   brand: string,
   name: string,
   catalog: CatalogBall[],
 ): CatalogBall | null {
-  const n = name.trim().toLowerCase();
+  const raw = name.trim();
+  if (!raw) return null;
+  // 「日本名 / 英名」形式で入っている場合は日本名側を優先
+  const primary = raw.split("/")[0]?.trim() || raw;
+  const n = primary.toLowerCase();
+  const nCompact = compactQuery(primary);
   const b = brand.trim().toLowerCase();
-  if (!n) return null;
 
   const brandOk = (c: CatalogBall) =>
     !b ||
@@ -73,28 +90,39 @@ export function lookupCatalogBall(
     n.includes(c.brand.toLowerCase()) ||
     c.brand.toLowerCase().includes(b);
 
-  const exact = catalog.find((c) => c.name.toLowerCase() === n && brandOk(c));
-  if (exact) return exact;
+  const nameMatches = (c: CatalogBall) => {
+    const en = c.name.toLowerCase();
+    const ja = normalizeBallQuery(c.nameJa || "");
+    const enC = compactQuery(c.name);
+    const jaC = compactQuery(c.nameJa || "");
+    return (
+      en === n ||
+      ja === normalizeBallQuery(primary) ||
+      enC === nCompact ||
+      jaC === nCompact ||
+      en.includes(n) ||
+      n.includes(en) ||
+      (jaC.length > 0 && (jaC.includes(nCompact) || nCompact.includes(jaC)))
+    );
+  };
+
+  const exactJa = catalog.find(
+    (c) => brandOk(c) && compactQuery(c.nameJa || "") === nCompact && nCompact.length > 0,
+  );
+  if (exactJa) return exactJa;
+
+  const exactEn = catalog.find((c) => c.name.toLowerCase() === n && brandOk(c));
+  if (exactEn) return exactEn;
 
   const sameBrand = b
     ? catalog.filter((c) => c.brand.toLowerCase() === b || c.brand.toLowerCase().includes(b))
     : catalog;
 
-  const partial = sameBrand.find(
-    (c) =>
-      n.includes(c.name.toLowerCase()) ||
-      c.name.toLowerCase().includes(n.replace(/\s+/g, " ").trim()),
-  );
+  const partial = sameBrand.find(nameMatches);
   if (partial) return partial;
 
   if (b) {
-    return (
-      catalog.find(
-        (c) =>
-          n.includes(c.name.toLowerCase()) ||
-          c.name.toLowerCase().includes(n.replace(/\s+/g, " ").trim()),
-      ) ?? null
-    );
+    return catalog.find(nameMatches) ?? null;
   }
   return null;
 }
@@ -209,7 +237,7 @@ export function searchCatalogBalls(
   if (!q) {
     return pool
       .slice()
-      .sort((a, c) => a.name.localeCompare(c.name, "ja"))
+      .sort((a, c) => catalogPrimaryName(a).localeCompare(catalogPrimaryName(c), "ja"))
       .slice(0, limit);
   }
 
@@ -241,24 +269,23 @@ export function searchCatalogBalls(
             hayC.includes(a)),
       );
       if (aliasHit) score += 90;
-      if (nameEn === q || nameJa === q || nameEnC === qCompact || nameJaC === qCompact) {
+      // 日本名一致を英名より高く評価
+      if (nameJa === q || nameJaC === qCompact) {
+        score += 120;
+      } else if (nameEn === q || nameEnC === qCompact) {
+        score += 95;
+      } else if (nameJa.startsWith(q) || nameJaC.startsWith(qCompact)) {
         score += 100;
-      } else if (
-        nameEn.startsWith(q) ||
-        nameJa.startsWith(q) ||
-        nameEnC.startsWith(qCompact) ||
-        nameJaC.startsWith(qCompact)
-      ) {
+      } else if (nameEn.startsWith(q) || nameEnC.startsWith(qCompact)) {
+        score += 80;
+      } else if (nameJa.includes(q) || nameJaC.includes(qCompact)) {
         score += 85;
-      } else if (
-        nameEn.includes(q) ||
-        nameJa.includes(q) ||
-        nameEnC.includes(qCompact) ||
-        nameJaC.includes(qCompact)
-      ) {
+      } else if (nameEn.includes(q) || nameEnC.includes(qCompact)) {
+        score += 65;
+      } else if (tokens.every((t) => nameJa.includes(t) || nameJaC.includes(compactQuery(t)))) {
         score += 70;
-      } else if (tokens.every((t) => nameEn.includes(t) || nameJa.includes(t) || hayC.includes(compactQuery(t)))) {
-        score += 55;
+      } else if (tokens.every((t) => nameEn.includes(t) || hayC.includes(compactQuery(t)))) {
+        score += 50;
       }
       if (tokens.length && tokens.every((t) => hay.includes(t) || hayC.includes(compactQuery(t)))) {
         score += 20;
@@ -267,17 +294,21 @@ export function searchCatalogBalls(
       }
       if (
         q.length >= 1 &&
-        (nameEn.includes(q) ||
-          nameJa.includes(q) ||
-          nameEnC.includes(qCompact) ||
-          nameJaC.includes(qCompact))
+        (nameJa.includes(q) ||
+          nameJaC.includes(qCompact) ||
+          nameEn.includes(q) ||
+          nameEnC.includes(qCompact))
       ) {
-        score = Math.max(score, 45);
+        score = Math.max(score, nameJa.includes(q) || nameJaC.includes(qCompact) ? 55 : 40);
       }
       return { c, score };
     })
     .filter((x) => x.score > 0)
-    .sort((a, c) => c.score - a.score || a.c.name.localeCompare(c.c.name, "ja"));
+    .sort(
+      (a, c) =>
+        c.score - a.score ||
+        catalogPrimaryName(a.c).localeCompare(catalogPrimaryName(c.c), "ja"),
+    );
 
   return scored.slice(0, limit).map((x) => x.c);
 }

@@ -20,6 +20,8 @@ import {
   catalogDetailFields,
   findCatalogBall,
   lookupCatalogBall,
+  catalogPrimaryName,
+  catalogSecondaryName,
   searchCatalogBalls,
 } from "../lib/strategy";
 import type { CatalogBall } from "../lib/catalogTypes";
@@ -110,12 +112,15 @@ export function MyBalls() {
   const brandSite = useMemo(() => findBrandSite(form.brand), [form.brand]);
   const makerSearchUrl = useMemo(() => {
     if (!form.brand.trim() || !form.name.trim()) return "";
-    return manufacturerSearchUrl(form.brand, form.name);
-  }, [form.brand, form.name]);
+    // メーカーサイト検索は英名の方が当たりやすい
+    const q = catalogMatch?.name || form.name;
+    return manufacturerSearchUrl(form.brand, q);
+  }, [form.brand, form.name, catalogMatch]);
   const makerOfficialSearchUrl = useMemo(() => {
     if (!form.brand.trim() || !form.name.trim()) return "";
-    return manufacturerOfficialSearchUrl(form.brand, form.name);
-  }, [form.brand, form.name]);
+    const q = catalogMatch?.name || form.name;
+    return manufacturerOfficialSearchUrl(form.brand, q);
+  }, [form.brand, form.name, catalogMatch]);
 
   const ballStats = useMemo(() => {
     const map = new Map<string, number[]>();
@@ -143,10 +148,12 @@ export function MyBalls() {
 
   function applyCatalog(c: CatalogBall) {
     const details = catalogDetailFields(c);
+    const primary = catalogPrimaryName(c);
+    const secondary = catalogSecondaryName(c);
     setBrandCustom(false);
     setForm((prev) => ({
       ...prev,
-      name: c.name,
+      name: primary,
       brand: c.brand,
       surfaceNote: details.surfaceNote || prev.surfaceNote,
       memo: details.memo || prev.memo,
@@ -159,7 +166,7 @@ export function MyBalls() {
       mb: details.mb != null ? String(details.mb) : "",
       releaseMonth: details.releaseMonth,
     }));
-    setSearchQuery(c.nameJa ? `${c.name} / ${c.nameJa}` : c.name);
+    setSearchQuery(secondary ? `${primary} / ${secondary}` : primary);
     setCatalogHitId(c.id);
     setSearchResults(null);
     setSearchMessage("");
@@ -181,7 +188,7 @@ export function MyBalls() {
     const q = searchQuery.trim() || form.name.trim();
     if (!q) {
       setSearchResults([]);
-      setSearchMessage("ボール名（英名または日本名）を入力してから検索してください。");
+      setSearchMessage("ボール名（日本名がおすすめ。英名でも可）を入力してから検索してください。");
       return;
     }
     // メーカー未選択でも名前だけで全カタログを検索
@@ -189,7 +196,7 @@ export function MyBalls() {
     setSearchResults(hits);
     setSearchMessage(
       hits.length
-        ? `${hits.length}件ヒットしました。一覧から選ぶとメーカー・詳細が入ります。`
+        ? `${hits.length}件ヒットしました。一覧から選ぶと日本名で登録されます。`
         : "一致する球が見つかりませんでした。メーカーサイトで確認するか、手入力してください。",
     );
     setCatalogHitId(null);
@@ -404,7 +411,7 @@ export function MyBalls() {
                     runBallSearch();
                   }
                 }}
-                placeholder="例: Physix / フィジックス（メーカーなしでも可）"
+                placeholder="例: フィジックス / Physix（日本名優先）"
                 required
                 autoFocus={!editing}
               />
@@ -413,7 +420,7 @@ export function MyBalls() {
               </button>
             </div>
             <p style={{ margin: "6px 0 0", color: "var(--sub)", fontSize: "0.78rem" }}>
-              英名・日本名どちらでも検索できます。メーカーは選ばなくても大丈夫です。
+              日本名での検索・登録を優先します（英名でも可）。メーカーは選ばなくても大丈夫です。
             </p>
           </div>
 
@@ -578,10 +585,12 @@ export function MyBalls() {
                       )}
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontWeight: 700 }}>
-                          {c.brand} {c.name}
+                          {c.brand} {catalogPrimaryName(c)}
                         </div>
-                        {c.nameJa ? (
-                          <div style={{ color: "var(--ink)", fontSize: "0.88rem" }}>{c.nameJa}</div>
+                        {catalogSecondaryName(c) ? (
+                          <div style={{ color: "var(--sub)", fontSize: "0.88rem" }}>
+                            {catalogSecondaryName(c)}
+                          </div>
                         ) : null}
                         <div style={{ color: "var(--sub)", fontSize: "0.82rem" }}>
                           {[c.coverType, c.coreType, c.releaseMonth, c.finish]
@@ -625,8 +634,11 @@ export function MyBalls() {
 
           {catalogHitId && catalogMatch ? (
             <p style={{ color: "var(--good)", fontSize: "0.88rem", marginTop: 0 }}>
-              選択中: {catalogMatch.brand} {catalogMatch.name}
-              {catalogMatch.nameJa ? `（${catalogMatch.nameJa}）` : ""}（詳細を反映済み）
+              選択中: {catalogMatch.brand} {catalogPrimaryName(catalogMatch)}
+              {catalogSecondaryName(catalogMatch)
+                ? `（${catalogSecondaryName(catalogMatch)}）`
+                : ""}
+              （詳細を反映済み）
             </p>
           ) : null}
 
