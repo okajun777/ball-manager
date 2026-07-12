@@ -62,7 +62,7 @@ export function Family() {
 
   function manage(memberId: string, path: string) {
     setActiveMemberId(memberId);
-    navigate(path);
+    navigate(path.startsWith("/admin") ? path : `/admin${path.startsWith("/") ? path : `/${path}`}`);
   }
 
   return (
@@ -71,10 +71,10 @@ export function Family() {
         <div>
           <h1>全員の登録状況</h1>
           <p>
-            各メンバーのボール・スコア・プロフィールを、管理者のPCからクラウド上のデータを直接追記・変更できます。
+            管理者画面（/admin）からのみ、各メンバーのボール・スコア・プロフィールをクラウド上で追記・変更できます。
           </p>
         </div>
-        <Link className="btn secondary" to="/settings">
+        <Link className="btn secondary" to="/admin/settings">
           メンバー追加・設定
         </Link>
       </div>
@@ -156,28 +156,28 @@ export function Family() {
                 <button
                   className="btn"
                   type="button"
-                  onClick={() => manage(row.member.id, "/balls")}
+                  onClick={() => manage(row.member.id, "/admin/balls")}
                 >
                   ボール管理
                 </button>
                 <button
                   className="btn secondary"
                   type="button"
-                  onClick={() => manage(row.member.id, "/scores")}
+                  onClick={() => manage(row.member.id, "/admin/scores")}
                 >
                   スコア入力
                 </button>
                 <button
                   className="btn secondary"
                   type="button"
-                  onClick={() => manage(row.member.id, "/analysis")}
+                  onClick={() => manage(row.member.id, "/admin/analysis")}
                 >
                   分析
                 </button>
                 <button
                   className="btn secondary"
                   type="button"
-                  onClick={() => manage(row.member.id, "/settings")}
+                  onClick={() => manage(row.member.id, "/admin/settings")}
                 >
                   プロフィール
                 </button>

@@ -13,6 +13,12 @@ export function appEntryUrl(): string {
   return `${origin}/`;
 }
 
+/** 管理者画面の入口 */
+export function appAdminUrl(base = APP_PUBLIC_URL): string {
+  const root = base.endsWith("/") ? base : `${base}/`;
+  return `${root}admin`;
+}
+
 /** 家族に送る用。公開版URL＋招待コード */
 export function appInviteUrl(inviteCode: string, base = APP_PUBLIC_URL): string {
   const url = new URL(base.endsWith("/") ? base : `${base}/`);

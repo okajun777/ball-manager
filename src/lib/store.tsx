@@ -7,13 +7,17 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useLocation } from "react-router-dom";
 import {
+  clearAdminSession,
   clearDeviceMemberId,
   findAdminMemberId,
   hasAdminPin,
+  loadAdminSession,
   loadDeviceMemberId,
   loadViewMemberId,
   saveAdminPin,
+  saveAdminSession,
   saveDeviceMemberId,
   saveViewMemberId,
   verifyAdminPin,
@@ -35,15 +39,12 @@ type Store = {
   data: AppData | null;
   loading: boolean;
   error: string | null;
-  /** 画面に表示・編集中のメンバー */
   activeMember: Member | null;
-  /** この端末にログイン中の利用者 */
   deviceMember: Member | null;
-  /** 管理者（淳司 / isSelf）として開いているか */
+  /** /admin かつ PIN 解除済みのときだけ true */
   isAdmin: boolean;
-  /** メンバー未作成 */
+  adminUnlocked: boolean;
   needsSetup: boolean;
-  /** 利用者未選択（PIN / メンバー選択が必要） */
   needsIdentity: boolean;
   memberBalls: Ball[];
   memberRetiredBalls: Ball[];
@@ -51,9 +52,9 @@ type Store = {
   memberSessions: ScoreSession[];
   memberMaintenances: SurfaceMaintenance[];
   setActiveMemberId: (id: string) => void;
-  /** 一般メンバー：表示名だけでこの端末の利用者にする（PIN不要・他人の名前は出さない） */
   claimByDisplayName: (displayName: string) => { ok: boolean; error?: string };
   unlockAdmin: (pin: string) => { ok: boolean; error?: string };
+  lockAdmin: () => void;
   setAdminPin: (pin: string) => { ok: boolean; error?: string };
   resetIdentity: () => void;
   hasAdminPin: boolean;
@@ -86,12 +87,19 @@ type Store = {
 
 const Ctx = createContext<Store | null>(null);
 
-function owns(resourceMemberId: string, deviceMemberId: string, isAdmin: boolean) {
+function owns(resourceMemberId: string, deviceMemberId: string | null, isAdmin: boolean) {
   if (isAdmin) return true;
+  if (!deviceMemberId) return false;
   return resourceMemberId === deviceMemberId;
 }
 
+function isAdminPath(pathname: string): boolean {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const onAdminRoute = isAdminPath(location.pathname);
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +108,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
   const [viewMemberId, setViewMemberId] = useState("");
   const [adminPinReady, setAdminPinReady] = useState(() => hasAdminPin());
+  const [adminUnlocked, setAdminUnlocked] = useState(() => loadAdminSession());
 
   const persist = useCallback(async (next: AppData) => {
     const saved = await saveAppData(next);
@@ -118,10 +127,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         clearDeviceMemberId();
       }
       setDeviceMemberIdState(deviceId);
+      setAdminUnlocked(loadAdminSession());
 
-      const isAdminDevice = Boolean(deviceId && adminId && deviceId === adminId);
+      const unlocked = loadAdminSession();
       let viewId = "";
-      if (isAdminDevice) {
+      if (unlocked && onAdminRoute) {
         const localView = loadViewMemberId(loaded.group.id);
         viewId =
           localView && loaded.members.some((m) => m.id === localView)
@@ -137,7 +147,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onAdminRoute]);
 
   useEffect(() => {
     void refresh();
@@ -147,24 +157,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const onVisible = () => {
       if (document.visibilityState === "visible") void refresh();
     };
-    const onFocus = () => {
-      void refresh();
-    };
     document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onFocus);
+    window.addEventListener("focus", onVisible);
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("focus", onVisible);
     };
   }, [refresh]);
 
-  const adminId = useMemo(
-    () => (data ? findAdminMemberId(data.members) : null),
-    [data],
-  );
-  const isAdmin = Boolean(deviceMemberId && adminId && deviceMemberId === adminId);
+  // /admin を離れたら表示メンバーを一般ログインに戻す
+  useEffect(() => {
+    if (onAdminRoute || !data) return;
+    if (deviceMemberId) setViewMemberId(deviceMemberId);
+  }, [onAdminRoute, data, deviceMemberId]);
+
+  const isAdmin = Boolean(adminUnlocked && onAdminRoute);
   const needsSetup = Boolean(data && !loading && data.members.length === 0);
-  const needsIdentity = Boolean(data && !loading && data.members.length > 0 && !deviceMemberId);
+  const needsIdentity = Boolean(
+    data && !loading && data.members.length > 0 && !deviceMemberId && !onAdminRoute,
+  );
 
   const activeMember = useMemo(
     () => data?.members.find((m) => m.id === viewMemberId) ?? null,
@@ -215,6 +226,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     activeMember,
     deviceMember,
     isAdmin,
+    adminUnlocked,
     needsSetup,
     needsIdentity,
     memberBalls,
@@ -234,17 +246,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const name = displayName.trim();
       if (!name) return { ok: false, error: "名前を入力してください" };
       const key = name.toLowerCase();
-      const admin = findAdminMemberId(data.members);
-      const hit = data.members.find(
-        (m) => m.displayName.trim().toLowerCase() === key && !m.isSelf,
-      );
+      const hit = data.members.find((m) => m.displayName.trim().toLowerCase() === key);
       if (!hit) {
-        const adminHit = data.members.find(
-          (m) => m.displayName.trim().toLowerCase() === key && m.isSelf,
-        );
-        if (adminHit || (admin && data.members.find((m) => m.id === admin)?.displayName.trim().toLowerCase() === key)) {
-          return { ok: false, error: "管理者は下の「管理者として開く」から入ってください" };
-        }
         return {
           ok: false,
           error: "その名前のメンバーが見つかりません。初回は招待コードで参加してください",
@@ -258,7 +261,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     unlockAdmin: (pin) => {
       if (!data) return { ok: false, error: "データ未読込" };
       const admin = findAdminMemberId(data.members);
-      if (!admin) return { ok: false, error: "管理者を開けません" };
+      if (!admin) return { ok: false, error: "管理者が未設定です" };
 
       if (!hasAdminPin()) {
         try {
@@ -271,8 +274,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: "違います" };
       }
 
-      saveDeviceMemberId(admin);
-      setDeviceMemberIdState(admin);
+      saveAdminSession();
+      setAdminUnlocked(true);
       const localView = loadViewMemberId(data.group.id);
       const viewId =
         localView && data.members.some((m) => m.id === localView) ? localView : admin;
@@ -280,8 +283,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setViewMemberId(viewId);
       return { ok: true };
     },
+    lockAdmin: () => {
+      clearAdminSession();
+      setAdminUnlocked(false);
+      if (deviceMemberId) setViewMemberId(deviceMemberId);
+      else setViewMemberId("");
+    },
     setAdminPin: (pin) => {
-      if (!isAdmin) return { ok: false, error: "管理者のみ変更できます" };
+      if (!isAdmin) return { ok: false, error: "管理画面からのみ変更できます" };
       try {
         saveAdminPin(pin);
         setAdminPinReady(true);
@@ -293,12 +302,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     resetIdentity: () => {
       clearDeviceMemberId();
       setDeviceMemberIdState(null);
-      setViewMemberId("");
+      if (!isAdmin) setViewMemberId("");
     },
     upsertBall: async (ball) => {
-      if (!data || !deviceMemberId) return;
+      if (!data) return;
+      if (!isAdmin && !deviceMemberId) return;
       if (!owns(ball.memberId, deviceMemberId, isAdmin)) return;
-      const safe = isAdmin ? ball : { ...ball, memberId: deviceMemberId };
+      const safe = isAdmin ? ball : { ...ball, memberId: deviceMemberId! };
       const exists = data.balls.some((b) => b.id === safe.id);
       const balls = exists
         ? data.balls.map((b) => (b.id === safe.id ? safe : b))
@@ -306,7 +316,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await persist({ ...data, balls });
     },
     deleteBall: async (id) => {
-      if (!data || !deviceMemberId) return;
+      if (!data) return;
+      if (!isAdmin && !deviceMemberId) return;
       const ball = data.balls.find((b) => b.id === id);
       if (!ball || !owns(ball.memberId, deviceMemberId, isAdmin)) return;
       await persist({
@@ -316,7 +327,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
     },
     setBallRetired: async (id, retired) => {
-      if (!data || !deviceMemberId) return;
+      if (!data) return;
+      if (!isAdmin && !deviceMemberId) return;
       const ball = data.balls.find((b) => b.id === id);
       if (!ball || !owns(ball.memberId, deviceMemberId, isAdmin)) return;
       await persist({
@@ -325,9 +337,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
     },
     upsertSession: async (session) => {
-      if (!data || !deviceMemberId) return;
+      if (!data) return;
+      if (!isAdmin && !deviceMemberId) return;
       if (!owns(session.memberId, deviceMemberId, isAdmin)) return;
-      const safe = isAdmin ? session : { ...session, memberId: deviceMemberId };
+      const safe = isAdmin ? session : { ...session, memberId: deviceMemberId! };
       const exists = data.sessions.some((s) => s.id === safe.id);
       const sessions = exists
         ? data.sessions.map((s) => (s.id === safe.id ? safe : s))
@@ -335,7 +348,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await persist({ ...data, sessions });
     },
     deleteSession: async (id) => {
-      if (!data || !deviceMemberId) return;
+      if (!data) return;
+      if (!isAdmin && !deviceMemberId) return;
       const session = data.sessions.find((s) => s.id === id);
       if (!session || !owns(session.memberId, deviceMemberId, isAdmin)) return;
       await persist({
@@ -344,9 +358,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
     },
     addMaintenance: async (item) => {
-      if (!data || !deviceMemberId) return;
+      if (!data) return;
+      if (!isAdmin && !deviceMemberId) return;
       if (!owns(item.memberId, deviceMemberId, isAdmin)) return;
-      const safe = isAdmin ? item : { ...item, memberId: deviceMemberId };
+      const safe = isAdmin ? item : { ...item, memberId: deviceMemberId! };
       const ball = data.balls.find((b) => b.id === safe.ballId);
       const balls = ball
         ? data.balls.map((b) =>
@@ -368,7 +383,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
     },
     deleteMaintenance: async (id) => {
-      if (!data || !deviceMemberId) return;
+      if (!data) return;
+      if (!isAdmin && !deviceMemberId) return;
       const item = (data.maintenances ?? []).find((m) => m.id === id);
       if (!item || !owns(item.memberId, deviceMemberId, isAdmin)) return;
       await persist({
@@ -407,7 +423,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
     },
     updateMemberName: async (id, name) => {
-      if (!data || !name.trim() || !deviceMemberId) return;
+      if (!data || !name.trim()) return;
       if (!isAdmin && id !== deviceMemberId) return;
       await persist({
         ...data,
@@ -417,7 +433,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
     },
     updateMemberProfile: async (id, patch) => {
-      if (!data || !deviceMemberId) return;
+      if (!data) return;
       if (!isAdmin && id !== deviceMemberId) return;
       await persist({
         ...data,

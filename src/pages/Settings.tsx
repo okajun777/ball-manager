@@ -1,5 +1,6 @@
 import {
   APP_PUBLIC_URL,
+  appAdminUrl,
   appEntryUrl,
   appInviteUrl,
   clearInviteFromLocation,
@@ -90,7 +91,6 @@ export function Settings() {
     updateGroupName,
     replaceAppData,
     joinGroup,
-    unlockAdmin,
     setAdminPin,
     resetIdentity,
     refresh,
@@ -108,13 +108,11 @@ export function Settings() {
   );
   const [prefs, setPrefs] = useState<UserPrefs>(() => loadUserPrefs());
   const [adminPinDraft, setAdminPinDraft] = useState("");
-  const [switchPin, setSwitchPin] = useState("");
-  const [switchPinError, setSwitchPinError] = useState("");
-  const [pendingOwner, setPendingOwner] = useState(false);
   const sharedLlm = hasSharedLlmKey();
   const publicUrl = APP_PUBLIC_URL;
   const inviteLink = data ? appInviteUrl(data.group.inviteCode) : publicUrl;
   const thisDeviceUrl = appEntryUrl();
+  const adminUrl = appAdminUrl();
 
   useEffect(() => {
     const code = readInviteFromLocation();
@@ -236,7 +234,7 @@ export function Settings() {
         <div>
           <h1>設定・共有</h1>
           <p>
-            データはクラウドに保存されます。全員分の追記・変更は管理者（淳司）のみです。一般メンバーは自分のデータだけ編集できます。
+            データはクラウドに保存されます。全員の追記・変更は管理者画面（/admin）からのみ可能です。
           </p>
         </div>
       </div>
@@ -256,14 +254,21 @@ export function Settings() {
 
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginTop: 0 }}>利用者</h3>
-        <p style={{ marginTop: 0 }}>
-          <strong>{deviceMember?.displayName ?? "—"}</strong>
-          {isAdmin ? "（管理者・全員のクラウドデータを編集可）" : "（自分のデータのみ）"}
-        </p>
         {isAdmin ? (
-          <div>
+          <>
+            <p style={{ marginTop: 0 }}>
+              <strong>管理者画面</strong>
+              {" · "}編集中: {activeMember?.displayName ?? "—"}
+            </p>
+            <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>
+              全員の変更はこのアドレスからのみ可能です。
+            </p>
             <div className="field">
-              <label>ロック番号（4桁）</label>
+              <label>管理画面URL</label>
+              <input readOnly value={adminUrl} onFocus={(e) => e.currentTarget.select()} />
+            </div>
+            <div className="field">
+              <label>ロック番号（4桁）の変更</label>
               <input
                 type="password"
                 inputMode="numeric"
@@ -291,69 +296,25 @@ export function Settings() {
                 </button>
               </div>
             </div>
-            <button className="btn secondary" type="button" onClick={() => resetIdentity()}>
-              利用者を選び直す
-            </button>
-          </div>
-        ) : pendingOwner ? (
-          <div>
-            <div className="field">
-              <label>管理者ロック番号（4桁）</label>
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={switchPin}
-                onChange={(e) => {
-                  setSwitchPin(e.target.value.replace(/\D/g, "").slice(0, 4));
-                  setSwitchPinError("");
-                }}
-                placeholder="••••"
-                autoComplete="off"
-                autoFocus
-              />
-            </div>
-            {switchPinError ? (
-              <p style={{ color: "#b42318", fontSize: "0.88rem" }}>{switchPinError}</p>
-            ) : null}
-            <div className="form-actions" style={{ justifyContent: "flex-start" }}>
-              <button
-                className="btn"
-                type="button"
-                onClick={() => {
-                  const res = unlockAdmin(switchPin);
-                  if (!res.ok) {
-                    setSwitchPinError(res.error || "違います");
-                    return;
-                  }
-                  setPendingOwner(false);
-                  setSwitchPin("");
-                }}
-              >
-                管理者で開く
-              </button>
-              <button
-                className="btn secondary"
-                type="button"
-                onClick={() => {
-                  setPendingOwner(false);
-                  setSwitchPin("");
-                  setSwitchPinError("");
-                }}
-              >
-                戻る
-              </button>
-            </div>
-          </div>
+          </>
         ) : (
-          <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
-            <button className="btn secondary" type="button" onClick={() => resetIdentity()}>
-              名前を入れ直す
-            </button>
-            <button className="btn secondary" type="button" onClick={() => setPendingOwner(true)}>
-              管理者として開く
-            </button>
-          </div>
+          <>
+            <p style={{ marginTop: 0 }}>
+              <strong>{deviceMember?.displayName ?? "—"}</strong>
+              （自分のデータのみ）
+            </p>
+            <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>
+              全員の管理は管理者画面から行います。
+            </p>
+            <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+              <button className="btn secondary" type="button" onClick={() => resetIdentity()}>
+                名前を入れ直す
+              </button>
+              <a className="btn secondary" href={adminUrl}>
+                管理者画面を開く
+              </a>
+            </div>
+          </>
         )}
       </div>
 

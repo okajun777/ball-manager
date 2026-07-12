@@ -484,7 +484,7 @@ export function Scores() {
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {isAdmin ? (
-            <Link className="btn secondary" to="/family">
+            <Link className="btn secondary" to="/admin">
               全員の状況
             </Link>
           ) : null}

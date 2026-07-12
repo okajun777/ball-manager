@@ -1,8 +1,10 @@
-/** この端末の利用者（権限用。データ本体はクラウド） */
+/** この端末の利用者（一般ログイン用。データ本体はクラウド） */
 const DEVICE_MEMBER_KEY = "ball-manager-device-member-v1";
 const ADMIN_PIN_KEY = "ball-manager-admin-pin-v1";
+/** 管理画面（/admin）用セッション。タブを閉じると切れる */
+const ADMIN_SESSION_KEY = "ball-manager-admin-session-v1";
 
-/** 管理者（淳司）がいま編集中のメンバー表示（端末ローカル） */
+/** 管理画面でいま編集中のメンバー表示 */
 const VIEW_MEMBER_KEY = "ball-manager-view-member-v1";
 
 type ViewMap = Record<string, string>;
@@ -78,5 +80,25 @@ export function verifyAdminPin(pin: string): boolean {
     return saved === pin.trim();
   } catch {
     return false;
+  }
+}
+
+export function loadAdminSession(): boolean {
+  try {
+    return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function saveAdminSession() {
+  sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+}
+
+export function clearAdminSession() {
+  try {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  } catch {
+    /* ignore */
   }
 }

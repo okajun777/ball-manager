@@ -2,82 +2,17 @@ import { useMemo, useState } from "react";
 import { clearInviteFromLocation, readInviteFromLocation } from "../lib/appUrl";
 import { useStore } from "../lib/store";
 
-type Mode = "home" | "start" | "join" | "ownerPin";
+type Mode = "home" | "start" | "join";
 
-/** 初回セットアップ、またはこの端末の利用者選択（一般は名前のみ／管理者はPIN） */
+/** 通常画面：名前だけ / 招待参加。管理者は /admin へ */
 export function IdentityGate() {
-  const {
-    claimByDisplayName,
-    unlockAdmin,
-    hasAdminPin,
-    joinGroup,
-    startPersonalGroup,
-    needsSetup,
-  } = useStore();
+  const { claimByDisplayName, joinGroup, startPersonalGroup, needsSetup } = useStore();
   const inviteFromUrl = useMemo(() => readInviteFromLocation() ?? "", []);
   const [mode, setMode] = useState<Mode>(() => (inviteFromUrl ? "join" : "home"));
-  const [pin, setPin] = useState("");
-  const [pinError, setPinError] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [joinCode, setJoinCode] = useState(inviteFromUrl);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
-
-  if (mode === "ownerPin") {
-    return (
-      <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
-        <h2 style={{ marginTop: 0 }}>管理者として開く</h2>
-        <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
-          全員のボール・スコアをクラウド上で管理できます。ロック番号（4桁）を入力してください。
-        </p>
-        <div className="field">
-          <label>ロック番号（4桁）</label>
-          <input
-            type="password"
-            inputMode="numeric"
-            maxLength={4}
-            value={pin}
-            onChange={(e) => {
-              setPin(e.target.value.replace(/\D/g, "").slice(0, 4));
-              setPinError("");
-            }}
-            placeholder="••••"
-            autoComplete="off"
-            autoFocus
-          />
-        </div>
-        {pinError ? (
-          <p style={{ color: "#b42318", fontSize: "0.88rem" }}>{pinError}</p>
-        ) : null}
-        <div className="form-actions" style={{ justifyContent: "flex-start" }}>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => {
-              const res = unlockAdmin(pin);
-              if (!res.ok) {
-                setPinError(res.error || "違います");
-                return;
-              }
-            }}
-          >
-            {hasAdminPin ? "開く" : "設定して開く"}
-          </button>
-          <button
-            type="button"
-            className="btn secondary"
-            onClick={() => {
-              setMode("home");
-              setPin("");
-              setPinError("");
-            }}
-          >
-            戻る
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (mode === "start") {
     return (
@@ -205,7 +140,7 @@ export function IdentityGate() {
         データはクラウドに保存されます。
         {needsSetup
           ? "新規作成か招待コードで参加してください。"
-          : "一般の方は自分の名前だけ入力してください。管理者だけがロック番号を使います。"}
+          : "自分の名前だけ入力してください。全員の管理は管理者画面（/admin）から行います。"}
       </p>
 
       {needsSetup ? (
@@ -253,9 +188,6 @@ export function IdentityGate() {
             </button>
             <button type="button" className="btn secondary" onClick={() => setMode("join")}>
               招待コードで参加
-            </button>
-            <button type="button" className="btn secondary" onClick={() => setMode("ownerPin")}>
-              管理者として開く
             </button>
           </div>
         </>

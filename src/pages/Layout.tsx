@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { APP_PUBLIC_URL, readInviteFromLocation } from "../lib/appUrl";
+import { APP_PUBLIC_URL, appAdminUrl, readInviteFromLocation } from "../lib/appUrl";
 import { consumeOsakaDeepLink } from "../lib/osakaBowling";
 import { ROUND1_QUEUE_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
@@ -8,7 +8,6 @@ import { IdentityGate } from "./IdentityGate";
 
 const mainLinks = [
   { to: "/", label: "ダッシュボード", end: true },
-  { to: "/family", label: "全員の状況", adminOnly: true },
   { to: "/balls", label: "マイボール" },
   { to: "/catalog", label: "カタログ" },
   { to: "/compare", label: "比較チャート" },
@@ -18,17 +17,7 @@ const mainLinks = [
 ];
 
 export function Layout() {
-  const {
-    data,
-    activeMember,
-    deviceMember,
-    isAdmin,
-    needsSetup,
-    needsIdentity,
-    setActiveMemberId,
-    loading,
-    error,
-  } = useStore();
+  const { data, deviceMember, needsSetup, needsIdentity, loading, error } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
   const blocked = needsSetup || needsIdentity;
@@ -41,12 +30,6 @@ export function Layout() {
       navigate(`/settings?invite=${encodeURIComponent(code)}`, { replace: true });
     }
   }, [location.pathname, navigate, blocked]);
-
-  useEffect(() => {
-    if (!isAdmin && location.pathname.replace(/\/$/, "").endsWith("/family")) {
-      navigate("/", { replace: true });
-    }
-  }, [isAdmin, location.pathname, navigate]);
 
   useEffect(() => {
     const linked = consumeOsakaDeepLink(location.search);
@@ -81,13 +64,11 @@ export function Layout() {
         </div>
         <div className="nav-row">
           <nav className="nav">
-            {mainLinks
-              .filter((l) => !l.adminOnly || isAdmin)
-              .map((l) => (
-                <NavLink key={l.to} to={l.to} end={l.end}>
-                  {l.label}
-                </NavLink>
-              ))}
+            {mainLinks.map((l) => (
+              <NavLink key={l.to} to={l.to} end={l.end}>
+                {l.label}
+              </NavLink>
+            ))}
           </nav>
           <NavLink to="/settings" className="nav-settings">
             設定・共有
@@ -100,30 +81,11 @@ export function Layout() {
               <label>この端末</label>
               <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
                 {deviceMember?.displayName ?? "—"}
-                {isAdmin ? "（管理者）" : ""}
               </div>
+              <p style={{ margin: "6px 0 0", fontSize: "0.72rem", opacity: 0.7 }}>
+                自分のデータのみ。全員の管理は管理画面から
+              </p>
             </div>
-
-            {isAdmin ? (
-              <div className="member-switch">
-                <label htmlFor="member">管理するメンバー</label>
-                <select
-                  id="member"
-                  value={activeMember?.id ?? ""}
-                  onChange={(e) => setActiveMemberId(e.target.value)}
-                  disabled={!data}
-                >
-                  {data?.members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.displayName}
-                    </option>
-                  ))}
-                </select>
-                <p style={{ margin: "6px 0 0", fontSize: "0.72rem", opacity: 0.7 }}>
-                  保存はクラウドへ。管理者の淳司のみ全員を編集可
-                </p>
-              </div>
-            ) : null}
           </div>
         ) : null}
 
@@ -132,6 +94,9 @@ export function Layout() {
         </a>
         <a className="ext-link" href={ROUND1_QUEUE_URL} target="_blank" rel="noreferrer">
           ラウンドワン ↗
+        </a>
+        <a className="ext-link" href={appAdminUrl()} style={{ opacity: 0.55 }}>
+          管理者画面
         </a>
       </aside>
       <main className="main">
