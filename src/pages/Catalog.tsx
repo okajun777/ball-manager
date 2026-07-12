@@ -72,6 +72,14 @@ export function Catalog() {
       layoutNote: "",
       surfaceNote: details.surfaceNote,
       memo: details.memo,
+      coverName: details.coverName,
+      coverType: details.coverType,
+      coreName: details.coreName,
+      coreType: details.coreType,
+      rg: details.rg,
+      diff: details.diff,
+      mb: details.mb,
+      releaseMonth: details.releaseMonth,
     });
     alert(`${ball.name} をマイボールに追加しました`);
   }

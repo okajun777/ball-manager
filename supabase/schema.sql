@@ -49,6 +49,14 @@ create table if not exists balls (
 
 -- 既存DB向け
 -- alter table balls add column if not exists retired boolean not null default false;
+alter table balls add column if not exists cover_name text not null default '';
+alter table balls add column if not exists cover_type text not null default '';
+alter table balls add column if not exists core_name text not null default '';
+alter table balls add column if not exists core_type text not null default '';
+alter table balls add column if not exists rg numeric;
+alter table balls add column if not exists diff numeric;
+alter table balls add column if not exists mb numeric;
+alter table balls add column if not exists release_month text not null default '';
 
 create table if not exists score_sessions (
   id uuid primary key default gen_random_uuid(),

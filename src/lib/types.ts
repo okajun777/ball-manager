@@ -89,9 +89,46 @@ export type Ball = {
   layoutNote: string;
   surfaceNote: string;
   memo: string;
+  /** カバー名（例: R2S パール） */
+  coverName?: string;
+  /** カバータイプ（例: パール・リアクティブ） */
+  coverType?: string;
+  /** コア名 */
+  coreName?: string;
+  /** コアタイプ（対称／非対称など） */
+  coreType?: string;
+  /** RG */
+  rg?: number | null;
+  /** Diff */
+  diff?: number | null;
+  /** MB / PSA */
+  mb?: number | null;
+  /** 発売年月（YYYY-MM） */
+  releaseMonth?: string;
   /** true のときバッグから外した扱い（スコア選択・攻略から除外） */
   retired?: boolean;
 };
+
+export function normalizeBall(b: Ball): Ball {
+  return {
+    ...b,
+    brand: b.brand ?? "",
+    shopName: b.shopName ?? "",
+    drillerName: b.drillerName ?? "",
+    layoutNote: b.layoutNote ?? "",
+    surfaceNote: b.surfaceNote ?? "",
+    memo: b.memo ?? "",
+    coverName: b.coverName ?? "",
+    coverType: b.coverType ?? "",
+    coreName: b.coreName ?? "",
+    coreType: b.coreType ?? "",
+    rg: b.rg ?? null,
+    diff: b.diff ?? null,
+    mb: b.mb ?? null,
+    releaseMonth: b.releaseMonth ?? "",
+    retired: Boolean(b.retired),
+  };
+}
 
 /** 表面メンテ履歴 */
 export type SurfaceMaintenance = {

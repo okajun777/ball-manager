@@ -99,21 +99,31 @@ export function lookupCatalogBall(
   return null;
 }
 
-/** カタログヒットを表面・メモ欄向けの文言にする */
-export function catalogDetailFields(c: CatalogBall): { surfaceNote: string; memo: string } {
-  const surfaceNote = [c.finish, c.coverType].filter(Boolean).join(" / ");
-  const memo = [
-    c.coverName ? `カバー: ${c.coverName}` : c.coverType ? `カバー: ${c.coverType}` : "",
-    c.coreName ? `コア: ${c.coreName}` : c.coreType ? `コア: ${c.coreType}` : "",
-    c.rg != null ? `RG ${c.rg}` : "",
-    c.diff != null ? `Diff ${c.diff}` : "",
-    c.mb != null ? `MB ${c.mb}` : "",
-    c.releaseMonth ? `発売 ${c.releaseMonth}` : "",
-    c.memo,
-  ]
-    .filter(Boolean)
-    .join(" / ");
-  return { surfaceNote, memo };
+/** カタログヒットをマイボール詳細欄へ展開する */
+export function catalogDetailFields(c: CatalogBall): {
+  surfaceNote: string;
+  memo: string;
+  coverName: string;
+  coverType: string;
+  coreName: string;
+  coreType: string;
+  rg: number | null;
+  diff: number | null;
+  mb: number | null;
+  releaseMonth: string;
+} {
+  return {
+    surfaceNote: c.finish || "",
+    memo: c.memo || "",
+    coverName: c.coverName || "",
+    coverType: c.coverType || "",
+    coreName: c.coreName || "",
+    coreType: c.coreType || "",
+    rg: c.rg,
+    diff: c.diff,
+    mb: c.mb,
+    releaseMonth: c.releaseMonth || "",
+  };
 }
 
 type Candidate = {
@@ -136,11 +146,14 @@ function toCandidates(owned: Ball[], catalog: CatalogBall[], ownedOnly: boolean)
       name: b.name,
       brand: b.brand || cat?.brand || "",
       source: "owned" as const,
-      rg: cat?.rg ?? null,
-      diff: cat?.diff ?? null,
-      coverType: cat?.coverType || inferCoverFromText(b.name, b.surfaceNote, b.memo),
-      coreType: cat?.coreType || "",
-      memo: cat?.memo || b.memo || "",
+      rg: b.rg ?? cat?.rg ?? null,
+      diff: b.diff ?? cat?.diff ?? null,
+      coverType:
+        b.coverType ||
+        cat?.coverType ||
+        inferCoverFromText(b.name, b.surfaceNote, b.memo),
+      coreType: b.coreType || cat?.coreType || "",
+      memo: b.memo || cat?.memo || "",
     };
   });
 

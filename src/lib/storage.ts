@@ -7,7 +7,7 @@ import type {
   ScoreSession,
   SurfaceMaintenance,
 } from "./types";
-import { normalizeMember, today, uid } from "./types";
+import { normalizeMember, normalizeBall, today, uid } from "./types";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
 
 const LOCAL_KEY = "ball-manager-data-v1";
@@ -347,10 +347,7 @@ function normalizeAppData(data: AppData): AppData {
   return {
     ...data,
     members: remapDemoMemberNames(data.members).map(normalizeMember),
-    balls: (data.balls ?? []).map((b) => ({
-      ...b,
-      retired: Boolean(b.retired),
-    })),
+    balls: (data.balls ?? []).map((b) => normalizeBall(b)),
     sessions: (data.sessions ?? []).map((s) => ({
       ...s,
       laneNote: s.laneNote ?? "",
@@ -675,25 +672,51 @@ export async function saveAppData(data: AppData): Promise<AppData> {
   }
 
   if (fixed.balls.length) {
-    await supabase.from("balls").upsert(
-      fixed.balls.map((b) => ({
-        id: b.id,
-        group_id: b.groupId,
-        member_id: b.memberId,
-        name: b.name,
-        brand: b.brand,
-        weight_lb: b.weightLb,
-        purchased_on: b.purchasedOn || null,
-        shop_name: b.shopName,
-        driller_name: b.drillerName,
-        drilled_on: b.drilledOn || null,
-        price: b.price,
-        layout_note: b.layoutNote,
-        surface_note: b.surfaceNote,
-        memo: b.memo,
-        retired: Boolean(b.retired),
-      })),
-    );
+    const ballRows = fixed.balls.map((b) => ({
+      id: b.id,
+      group_id: b.groupId,
+      member_id: b.memberId,
+      name: b.name,
+      brand: b.brand,
+      weight_lb: b.weightLb,
+      purchased_on: b.purchasedOn || null,
+      shop_name: b.shopName,
+      driller_name: b.drillerName,
+      drilled_on: b.drilledOn || null,
+      price: b.price,
+      layout_note: b.layoutNote,
+      surface_note: b.surfaceNote,
+      memo: b.memo,
+      cover_name: b.coverName ?? "",
+      cover_type: b.coverType ?? "",
+      core_name: b.coreName ?? "",
+      core_type: b.coreType ?? "",
+      rg: b.rg ?? null,
+      diff: b.diff ?? null,
+      mb: b.mb ?? null,
+      release_month: b.releaseMonth ?? "",
+      retired: Boolean(b.retired),
+    }));
+    const { error } = await supabase.from("balls").upsert(ballRows);
+    if (error) {
+      // 詳細カラム未追加の既存DB向けフォールバック
+      const { error: fallbackErr } = await supabase.from("balls").upsert(
+        ballRows.map(
+          ({
+            cover_name: _c1,
+            cover_type: _c2,
+            core_name: _c3,
+            core_type: _c4,
+            rg: _rg,
+            diff: _diff,
+            mb: _mb,
+            release_month: _rm,
+            ...rest
+          }) => rest,
+        ),
+      );
+      if (fallbackErr) throw new Error(`ボール同期に失敗: ${fallbackErr.message}`);
+    }
   }
 
   // ローカルで消したボールをクラウドからも削除
@@ -925,6 +948,14 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
     layoutNote: b.layout_note ?? "",
     surfaceNote: b.surface_note ?? "",
     memo: b.memo ?? "",
+    coverName: b.cover_name ?? "",
+    coverType: b.cover_type ?? "",
+    coreName: b.core_name ?? "",
+    coreType: b.core_type ?? "",
+    rg: b.rg == null ? null : Number(b.rg),
+    diff: b.diff == null ? null : Number(b.diff),
+    mb: b.mb == null ? null : Number(b.mb),
+    releaseMonth: b.release_month ?? "",
     retired: Boolean(b.retired),
   }));
 

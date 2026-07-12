@@ -38,6 +38,14 @@ const emptyForm = {
   layoutNote: "",
   surfaceNote: "",
   memo: "",
+  coverName: "",
+  coverType: "",
+  coreName: "",
+  coreType: "",
+  rg: "",
+  diff: "",
+  mb: "",
+  releaseMonth: "",
 };
 
 export function MyBalls() {
@@ -131,6 +139,14 @@ export function MyBalls() {
       brand: c.brand,
       surfaceNote: details.surfaceNote || prev.surfaceNote,
       memo: details.memo || prev.memo,
+      coverName: details.coverName,
+      coverType: details.coverType,
+      coreName: details.coreName,
+      coreType: details.coreType,
+      rg: details.rg != null ? String(details.rg) : "",
+      diff: details.diff != null ? String(details.diff) : "",
+      mb: details.mb != null ? String(details.mb) : "",
+      releaseMonth: details.releaseMonth,
     }));
     setCatalogHitId(c.id);
   }
@@ -185,6 +201,14 @@ export function MyBalls() {
       layoutNote: ball.layoutNote,
       surfaceNote: ball.surfaceNote,
       memo: ball.memo,
+      coverName: ball.coverName ?? "",
+      coverType: ball.coverType ?? "",
+      coreName: ball.coreName ?? "",
+      coreType: ball.coreType ?? "",
+      rg: ball.rg != null ? String(ball.rg) : "",
+      diff: ball.diff != null ? String(ball.diff) : "",
+      mb: ball.mb != null ? String(ball.mb) : "",
+      releaseMonth: ball.releaseMonth ?? "",
     });
     setCatalogHitId(lookupCatalogBall(ball.brand, ball.name, catalog)?.id ?? null);
     setOpen(true);
@@ -209,6 +233,10 @@ export function MyBalls() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) return;
+    const num = (v: string) => {
+      const n = Number(v);
+      return v.trim() && Number.isFinite(n) ? n : null;
+    };
     const ball: Ball = {
       id: editing?.id ?? uid("ball"),
       groupId: data!.group.id,
@@ -224,6 +252,14 @@ export function MyBalls() {
       layoutNote: form.layoutNote.trim(),
       surfaceNote: form.surfaceNote.trim(),
       memo: form.memo.trim(),
+      coverName: form.coverName.trim(),
+      coverType: form.coverType.trim(),
+      coreName: form.coreName.trim(),
+      coreType: form.coreType.trim(),
+      rg: num(form.rg),
+      diff: num(form.diff),
+      mb: num(form.mb),
+      releaseMonth: form.releaseMonth.trim(),
       retired: editing?.retired ?? false,
     };
     await upsertBall(ball);
@@ -398,6 +434,108 @@ export function MyBalls() {
             </p>
           ) : null}
 
+          <h4 style={{ margin: "8px 0 10px" }}>詳細情報</h4>
+          <div className="row">
+            <div className="field">
+              <label>カバー名</label>
+              <input
+                value={form.coverName}
+                onChange={(e) => setForm({ ...form, coverName: e.target.value })}
+                placeholder="例: R2S パール"
+              />
+            </div>
+            <div className="field">
+              <label>カバータイプ</label>
+              <input
+                list="myball-cover-type-list"
+                value={form.coverType}
+                onChange={(e) => setForm({ ...form, coverType: e.target.value })}
+                placeholder="例: パール・リアクティブ"
+              />
+              <datalist id="myball-cover-type-list">
+                {[
+                  "ソリッド・リアクティブ",
+                  "パール・リアクティブ",
+                  "ハイブリッド・リアクティブ",
+                  "ソリッド・ウレタン",
+                  "ポリエステル",
+                ].map((t) => (
+                  <option key={t} value={t} />
+                ))}
+              </datalist>
+            </div>
+          </div>
+          <div className="row">
+            <div className="field">
+              <label>コア名</label>
+              <input
+                value={form.coreName}
+                onChange={(e) => setForm({ ...form, coreName: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label>コアタイプ</label>
+              <input
+                list="myball-core-type-list"
+                value={form.coreType}
+                onChange={(e) => setForm({ ...form, coreType: e.target.value })}
+                placeholder="対称コア / 非対称コア"
+              />
+              <datalist id="myball-core-type-list">
+                <option value="対称コア" />
+                <option value="非対称コア" />
+              </datalist>
+            </div>
+          </div>
+          <div className="row three">
+            <div className="field">
+              <label>RG</label>
+              <input
+                value={form.rg}
+                onChange={(e) => setForm({ ...form, rg: e.target.value })}
+                placeholder="2.48"
+                inputMode="decimal"
+              />
+            </div>
+            <div className="field">
+              <label>Diff</label>
+              <input
+                value={form.diff}
+                onChange={(e) => setForm({ ...form, diff: e.target.value })}
+                placeholder="0.050"
+                inputMode="decimal"
+              />
+            </div>
+            <div className="field">
+              <label>MB / PSA</label>
+              <input
+                value={form.mb}
+                onChange={(e) => setForm({ ...form, mb: e.target.value })}
+                placeholder="0.021"
+                inputMode="decimal"
+              />
+            </div>
+          </div>
+          <div className="row">
+            <div className="field">
+              <label>表面仕上げ</label>
+              <input
+                value={form.surfaceNote}
+                onChange={(e) => setForm({ ...form, surfaceNote: e.target.value })}
+                placeholder="例: 1500 grit / Power Edge"
+              />
+            </div>
+            <div className="field">
+              <label>発売年月</label>
+              <input
+                value={form.releaseMonth}
+                onChange={(e) => setForm({ ...form, releaseMonth: e.target.value })}
+                placeholder="YYYY-MM"
+              />
+            </div>
+          </div>
+
+          <h4 style={{ margin: "14px 0 10px" }}>購入・ドリル</h4>
           <div className="row three">
             <div className="field">
               <label>重量 (lb)</label>
@@ -449,27 +587,19 @@ export function MyBalls() {
               />
             </div>
             <div className="field">
-              <label>表面</label>
+              <label>レイアウト</label>
               <input
-                value={form.surfaceNote}
-                onChange={(e) => setForm({ ...form, surfaceNote: e.target.value })}
-                placeholder="カタログから自動入力"
+                value={form.layoutNote}
+                onChange={(e) => setForm({ ...form, layoutNote: e.target.value })}
               />
             </div>
           </div>
           <div className="field">
-            <label>レイアウト</label>
-            <input
-              value={form.layoutNote}
-              onChange={(e) => setForm({ ...form, layoutNote: e.target.value })}
-            />
-          </div>
-          <div className="field">
-            <label>メモ（カバー・コア・RGなど）</label>
+            <label>メモ</label>
             <textarea
               value={form.memo}
               onChange={(e) => setForm({ ...form, memo: e.target.value })}
-              placeholder="カタログ一致時に詳細が入ります"
+              placeholder="使い方のメモなど"
             />
           </div>
           <div className="form-actions">
@@ -589,6 +719,20 @@ export function MyBalls() {
                           {due.status === "never" ? "メンテ未記録" : "要メンテ"}
                         </span>
                       ) : null}
+                    </div>
+                    <div className="ball-meta" style={{ marginBottom: 4 }}>
+                      {[
+                        b.coverType || cat?.coverType,
+                        b.coreType || cat?.coreType,
+                        b.rg != null || cat?.rg != null
+                          ? `RG ${b.rg ?? cat?.rg}`
+                          : "",
+                        b.diff != null || cat?.diff != null
+                          ? `Diff ${b.diff ?? cat?.diff}`
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "詳細未入力"}
                     </div>
                     <div className="ball-meta">
                       {b.weightLb ? `${b.weightLb}lb` : "重量—"}
