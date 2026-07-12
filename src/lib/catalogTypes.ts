@@ -18,6 +18,8 @@ export type CatalogBall = {
   releaseMonth: string;
   imageUrl: string;
   sourceUrl: string;
+  /** 日本代理店商品ページ（サンブリッジ等） */
+  japanUrl?: string;
 };
 
 export type OilPresetId =

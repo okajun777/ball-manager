@@ -6,7 +6,7 @@ import type { CatalogBall } from "../lib/catalogTypes";
 import { publicUrl } from "../lib/paths";
 import { ROUND1_VIEWER_URL, round1SearchUrl } from "../lib/round1";
 import { manufacturerOfficialSearchUrl, manufacturerSearchUrl } from "../lib/brandSites";
-import { catalogDetailFields, catalogPrimaryName } from "../lib/strategy";
+import { catalogDetailFields, catalogPrimaryName, searchCatalogBalls } from "../lib/strategy";
 import { today, uid } from "../lib/types";
 
 const balls = catalogBalls as CatalogBall[];
@@ -38,15 +38,16 @@ export function Catalog() {
   );
 
   const filtered = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    return balls.filter((b) => {
+    const query = q.trim();
+    const base = query
+      ? searchCatalogBalls(brand, query, balls, balls.length)
+      : brand
+        ? balls.filter((b) => b.brand === brand)
+        : balls;
+    return base.filter((b) => {
       if (brand && b.brand !== brand) return false;
       if (cover && b.coverType !== cover) return false;
       if (core && b.coreType !== core) return false;
-      if (query) {
-        const hay = `${b.name} ${b.brand} ${b.coverName} ${b.coreName}`.toLowerCase();
-        if (!hay.includes(query)) return false;
-      }
       return true;
     });
   }, [brand, cover, core, q]);
@@ -147,7 +148,7 @@ export function Catalog() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="名前・ブランド"
+              placeholder="日本名・英名・ブランド"
             />
           </div>
           <div className="field">
@@ -237,7 +238,12 @@ export function Catalog() {
                   ) : null}
                 </div>
                 <div className="ball-brand">{b.brand}</div>
-                <div className="ball-title">{b.name}</div>
+                <div className="ball-title">{catalogPrimaryName(b)}</div>
+                {catalogPrimaryName(b) !== b.name ? (
+                  <div className="ball-meta" style={{ marginTop: 2 }}>
+                    {b.name}
+                  </div>
+                ) : null}
                 <div className="ball-meta">
                   {b.coreType || "コア—"} · {b.coverType || "カバー—"}
                   <br />
@@ -291,7 +297,10 @@ export function Catalog() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="ball-brand">{selected.brand}</div>
-            <h2 style={{ margin: "4px 0 10px" }}>{selected.name}</h2>
+            <h2 style={{ margin: "4px 0 10px" }}>{catalogPrimaryName(selected)}</h2>
+            {catalogPrimaryName(selected) !== selected.name ? (
+              <p style={{ margin: "0 0 10px", color: "var(--sub)" }}>{selected.name}</p>
+            ) : null}
             {selected.imageUrl && (
               <img
                 src={publicUrl(selected.imageUrl)}

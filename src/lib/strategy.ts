@@ -356,6 +356,8 @@ export function searchCatalogBalls(
       ) {
         score = Math.max(score, nameJa.includes(q) || nameJaC.includes(qCompact) ? 55 : 40);
       }
+      // 国内取扱（日本名／代理店URLあり）を優先
+      if ((c.nameJa || "").trim() || (c.japanUrl || "").trim()) score += 12;
       return { c, score };
     })
     .filter((x) => x.score > 0)

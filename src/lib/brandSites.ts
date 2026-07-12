@@ -43,21 +43,25 @@ const BRAND_SITES: BrandSiteInfo[] = [
     brand: "Hammer",
     aliases: ["ハンマー"],
     officialUrl: "https://www.hammerbowling.com/",
+    japanUrl: "https://www.sunbridge-group.com/",
   },
   {
     brand: "Brunswick",
     aliases: ["ブランズウィック"],
     officialUrl: "https://www.brunswickbowling.com/",
+    japanUrl: "https://www.sunbridge-group.com/",
   },
   {
     brand: "Track",
     aliases: ["トラック"],
     officialUrl: "https://www.trackbowling.com/",
+    japanUrl: "https://www.sunbridge-group.com/",
   },
   {
     brand: "Radical",
     aliases: ["ラジカル"],
     officialUrl: "https://www.radicalbowling.com/",
+    japanUrl: "https://www.sunbridge-group.com/",
   },
   {
     brand: "ABS 300",
@@ -69,11 +73,13 @@ const BRAND_SITES: BrandSiteInfo[] = [
     brand: "DV8",
     aliases: ["ディーブイエイト"],
     officialUrl: "https://www.dv8bowling.com/",
+    japanUrl: "https://www.sunbridge-group.com/",
   },
   {
     brand: "Ebonite",
     aliases: ["エボナイト"],
     officialUrl: "https://www.ebonite.com/",
+    japanUrl: "https://www.sunbridge-group.com/",
   },
   {
     brand: "Columbia 300",
@@ -141,6 +147,10 @@ export function manufacturerJapanSearchUrl(brand: string, ballName: string): str
   // ハイスポーツは ?s= でサイト内検索
   if (host.includes("hi-sp.co.jp")) {
     return `https://hi-sp.co.jp/?s=${encodeURIComponent(q)}`;
+  }
+  // サンブリッジも ?s=
+  if (host.includes("sunbridge-group.com")) {
+    return `https://www.sunbridge-group.com/?s=${encodeURIComponent(q)}`;
   }
   return `https://www.google.com/search?q=${encodeURIComponent(`site:${host} ${q}`)}`;
 }
