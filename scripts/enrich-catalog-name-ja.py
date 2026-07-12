@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """カタログ球に日本名 (nameJa) を付与する。
 
+⚠️ 注意: このスクリプトの「英名→カタカナ自動生成」は誤訳が多い
+（例: Purple Pearl → プルプルエ ペアルル）。
+再実行しないこと。日本名の修正は scripts/sanitize-catalog-name-ja.py を使う。
+
 1) 英名からカタカナ読みを生成
 2) ハイスポーツ商品ページがあれば公式日本名で上書き
 """
@@ -8,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -17,6 +22,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / "src" / "data" / "catalogBalls.json"
+
+if __name__ == "__main__" and "--force" not in sys.argv:
+    print(
+        "ERROR: enrich-catalog-name-ja.py は自動カタカナ生成で誤訳を量産します。\n"
+        "日本名の修正は scripts/sanitize-catalog-name-ja.py を使ってください。\n"
+        "どうしても再実行する場合のみ: python scripts/enrich-catalog-name-ja.py --force",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 UA = {"User-Agent": "Mozilla/5.0 (compatible; BallManagerCatalog/1.0)"}
 WORKERS = 10

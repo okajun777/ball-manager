@@ -399,6 +399,8 @@ ${summary}
 export type CompareCandidate = {
   key: string;
   name: string;
+  /** カタログ英名（AI向け。勝手なカタカナ化を防ぐ） */
+  nameEn?: string;
   brand: string;
   rg: number;
   diff: number;
@@ -425,12 +427,14 @@ export async function generateCompareConsultation(input: {
   const concern = input.concern.trim();
   if (!concern) throw new Error("悩み・相談内容を入力してください。");
 
-  const fmt = (c: CompareCandidate, i: number) =>
-    [
-      `${i + 1}. [${c.key}] ${c.brand} ${c.name}`,
+  const fmt = (c: CompareCandidate, i: number) => {
+    const label = (c.nameEn || c.name).trim();
+    return [
+      `${i + 1}. [${c.key}] ${c.brand} ${label}`,
       `  RG=${c.rg.toFixed(3)} Diff=${c.diff.toFixed(3)}${c.mb != null ? ` MB=${c.mb.toFixed(3)}` : ""}`,
       `  ${c.coverType || "カバー不明"} / ${c.coreType || "コア不明"} / ${c.owned ? "所持" : "カタログ"}`,
     ].join("\n");
+  };
 
   const ownedBlock = input.owned.length
     ? input.owned.slice(0, 20).map((c, i) => fmt(c, i)).join("\n")
@@ -448,6 +452,8 @@ export async function generateCompareConsultation(input: {
 
 必須:
 ・候補リストにある球だけを勧める（リストにない球名を作らない）
+・球名は必ず英名のまま書く（例: Hammer Purple Pearl Urethane）。勝手なカタカナ変換は禁止
+・カバー種別名（パール・ソリッド・ウレタン等）だけ日本語にしてよい
 ・可能なら所持球を優先し、足りない役割だけカタログを勧める
 ・「なぜそのRG/Diff帯か」を悩みに結びつけて説明する
 ・最終出力は必ず次のJSONのみ（前後に説明文やコードフェンスを付けない）:

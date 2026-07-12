@@ -20,6 +20,7 @@ type ChartPoint = {
   id: string;
   key: string;
   name: string;
+  nameEn: string;
   brand: string;
   rg: number;
   diff: number;
@@ -92,6 +93,7 @@ function ownedToPoint(ball: Ball): ChartPoint | null {
     id: ball.id,
     key: `owned:${ball.id}`,
     name: catalogPrimaryName({ name: ball.name, nameJa: cat?.nameJa }) || ball.name,
+    nameEn: cat?.name || ball.name,
     brand: ball.brand,
     rg: s.rg,
     diff: s.diff,
@@ -116,6 +118,7 @@ function catalogToPoint(ball: CatalogBall, ownedKeys: Set<string>): ChartPoint |
     id: ball.id,
     key: `catalog:${ball.id}`,
     name: catalogPrimaryName(ball),
+    nameEn: ball.name,
     brand: ball.brand,
     rg: ball.rg,
     diff: ball.diff,
@@ -136,6 +139,7 @@ function toCandidate(p: ChartPoint): CompareCandidate {
   return {
     key: p.key,
     name: p.name,
+    nameEn: p.nameEn,
     brand: p.brand,
     rg: p.rg,
     diff: p.diff,

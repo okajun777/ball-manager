@@ -72,17 +72,46 @@ export function resolveBallImageUrl(
   return (owned.imageUrl || "").trim();
 }
 
-/** 表示・登録用：日本名があればそれを優先 */
-export function catalogPrimaryName(c: Pick<CatalogBall, "name" | "nameJa">): string {
-  return (c.nameJa?.trim() || c.name).trim();
+/** 自動生成の誤カタカナを日本名として使わない */
+export function isTrustedNameJa(nameJa?: string): boolean {
+  const ja = (nameJa || "").trim();
+  if (!ja) return false;
+  if (
+    /プルプルエ|ペアルル|ウレサネ|アフテル|フェヴェル|デエプ|インプアクト|アククウ|ドルイヴェ|フルエエゼ|グルアヴィトイ/.test(
+      ja,
+    )
+  ) {
+    return false;
+  }
+  // スペース区切りカタカナだらけで中黒なし → 自動生成っぽい
+  const parts = ja.split(/\s+/).filter(Boolean);
+  if (parts.length >= 3 && !ja.includes("・") && parts.every((p) => /^[ァ-ヶー]+$/.test(p))) {
+    return false;
+  }
+  return true;
 }
 
-/** 副表示：日本名があるときの英名など */
+/** 表示・登録用：信頼できる日本名があれば優先、なければ英名 */
+export function catalogPrimaryName(c: Pick<CatalogBall, "name" | "nameJa">): string {
+  const ja = c.nameJa?.trim() || "";
+  if (isTrustedNameJa(ja)) return ja;
+  return (c.name || "").trim();
+}
+
+/** 副表示：日本名を主表示しているときの英名 */
 export function catalogSecondaryName(c: Pick<CatalogBall, "name" | "nameJa">): string | null {
-  const ja = c.nameJa?.trim();
+  const ja = c.nameJa?.trim() || "";
   const en = c.name.trim();
-  if (ja && en && ja !== en) return en;
+  if (isTrustedNameJa(ja) && en && ja !== en) return en;
   return null;
+}
+
+/** AI／ログ用: 英名を主に、信頼できる日本名があれば併記 */
+export function catalogLabelForAi(c: Pick<CatalogBall, "brand" | "name" | "nameJa">): string {
+  const en = `${c.brand} ${c.name}`.trim();
+  const ja = c.nameJa?.trim() || "";
+  if (isTrustedNameJa(ja) && ja !== c.name) return `${en}（${ja}）`;
+  return en;
 }
 
 /** メーカー＋ボール名でカタログを探す（登録フォーム用・日本名優先） */
