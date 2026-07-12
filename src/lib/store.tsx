@@ -7,7 +7,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { clearDeviceMemberId, findAdminMemberId } from "./identity";
+import {
+  clearDeviceMemberId,
+  findAdminMemberId,
+  loadViewMemberId,
+  saveViewMemberId,
+} from "./identity";
 import { loadAppData, saveAppData, joinByInviteCode, createPersonalGroup } from "./storage";
 import type {
   AppData,
@@ -25,9 +30,8 @@ type Store = {
   data: AppData | null;
   loading: boolean;
   error: string | null;
-  /** 画面に表示中のメンバー（クラウドの activeMemberId。全端末で共通） */
+  /** この端末で管理・表示中のメンバー（端末ローカル。他端末には影響しない） */
   activeMember: Member | null;
-  /** メンバーがいない初回だけセットアップ */
   needsSetup: boolean;
   memberBalls: Ball[];
   memberRetiredBalls: Ball[];
@@ -64,10 +68,20 @@ type Store = {
 
 const Ctx = createContext<Store | null>(null);
 
+function pickViewMemberId(data: AppData): string {
+  const local = loadViewMemberId(data.group.id);
+  if (local && data.members.some((m) => m.id === local)) return local;
+  if (data.activeMemberId && data.members.some((m) => m.id === data.activeMemberId)) {
+    return data.activeMemberId;
+  }
+  return findAdminMemberId(data.members) ?? data.members[0]?.id ?? "";
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMemberId, setViewMemberId] = useState("");
 
   const persist = useCallback(async (next: AppData) => {
     const saved = await saveAppData(next);
@@ -78,19 +92,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      // 旧・端末ごとの利用者選択は使わない
       clearDeviceMemberId();
       const loaded = await loadAppData();
-      const activeOk = loaded.members.some((m) => m.id === loaded.activeMemberId);
-      const fixed =
-        activeOk || loaded.members.length === 0
-          ? loaded
-          : {
-              ...loaded,
-              activeMemberId:
-                findAdminMemberId(loaded.members) ?? loaded.members[0]?.id ?? "",
-            };
-      setData(fixed);
+      const viewId = pickViewMemberId(loaded);
+      if (viewId) saveViewMemberId(loaded.group.id, viewId);
+      setViewMemberId(viewId);
+      setData(loaded);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -118,8 +125,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const needsSetup = Boolean(data && !loading && data.members.length === 0);
-
-  const viewMemberId = data?.activeMemberId ?? "";
 
   const activeMember = useMemo(
     () => data?.members.find((m) => m.id === viewMemberId) ?? null,
@@ -177,7 +182,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setActiveMemberId: (id) => {
       if (!data) return;
       if (!data.members.some((m) => m.id === id)) return;
-      void persist({ ...data, activeMemberId: id });
+      saveViewMemberId(data.group.id, id);
+      setViewMemberId(id);
     },
     upsertBall: async (ball) => {
       if (!data) return;
@@ -261,13 +267,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const target = data.members.find((m) => m.id === id);
       if (!target || target.isSelf) return;
       const admin = findAdminMemberId(data.members);
-      const nextActive =
-        data.activeMemberId === id
+      const nextView =
+        viewMemberId === id
           ? admin ?? data.members.find((m) => m.id !== id)?.id ?? ""
-          : data.activeMemberId;
+          : viewMemberId;
+      if (nextView) saveViewMemberId(data.group.id, nextView);
+      setViewMemberId(nextView);
       await persist({
         ...data,
-        activeMemberId: nextActive,
+        activeMemberId: data.activeMemberId === id ? nextView : data.activeMemberId,
         members: data.members.filter((m) => m.id !== id),
         balls: data.balls.filter((b) => b.memberId !== id),
         sessions: data.sessions.filter((s) => s.memberId !== id),
@@ -306,13 +314,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await persist({ ...data, group: { ...data.group, name: name.trim() } });
     },
     replaceAppData: async (next) => {
-      await persist({
+      const saved = await saveAppData({
         ...next,
         maintenances: next.maintenances ?? [],
       });
+      const viewId = pickViewMemberId(saved);
+      if (viewId) saveViewMemberId(saved.group.id, viewId);
+      setViewMemberId(viewId);
+      setData(saved);
     },
     joinGroup: async (inviteCode, displayName) => {
       const next = await joinByInviteCode(inviteCode, displayName);
+      const viewId = pickViewMemberId(next);
+      if (viewId) saveViewMemberId(next.group.id, viewId);
+      setViewMemberId(viewId);
       setData(next);
     },
     startPersonalGroup: async (displayName) => {
@@ -320,6 +335,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!name) throw new Error("表示名を入力してください");
       const next = createPersonalGroup(name);
       const saved = await saveAppData(next);
+      saveViewMemberId(saved.group.id, saved.activeMemberId);
+      setViewMemberId(saved.activeMemberId);
       setData(saved);
     },
     refresh,

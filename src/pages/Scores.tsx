@@ -19,6 +19,7 @@ import {
   type OsakaEvent,
 } from "../lib/osakaBowling";
 import { loadUserPrefs } from "../lib/prefs";
+import { MemberPicker } from "../components/MemberPicker";
 import { useStore } from "../lib/store";
 import type { ScoreGame, ScoreSession, SessionType } from "../lib/types";
 import { today, uid } from "../lib/types";
@@ -141,8 +142,16 @@ function FrameSheet({
 }
 
 export function Scores() {
-  const { data, activeMember, memberBalls, memberAllBalls, upsertSession, memberSessions, deleteSession } =
-    useStore();
+  const {
+    data,
+    activeMember,
+    setActiveMemberId,
+    memberBalls,
+    memberAllBalls,
+    upsertSession,
+    memberSessions,
+    deleteSession,
+  } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const prefs = useMemo(() => loadUserPrefs(), []);
@@ -468,13 +477,29 @@ export function Scores() {
       <div className="page-title">
         <div>
           <h1>スコア入力</h1>
-          <p>合計点 or フレーム入力。ボールは所持ボールから選択</p>
+          <p>
+            {activeMember.displayName} の記録。合計点 or フレーム入力。保存先はクラウドです。
+          </p>
         </div>
-        {memberSessions.length > 0 && memberBalls.length > 0 ? (
-          <button className="btn secondary" type="button" onClick={copyLastSession}>
-            前回をコピー
-          </button>
-        ) : null}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link className="btn secondary" to="/family">
+            全員の状況
+          </Link>
+          {memberSessions.length > 0 && memberBalls.length > 0 ? (
+            <button className="btn secondary" type="button" onClick={copyLastSession}>
+              前回をコピー
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <MemberPicker
+          members={data.members}
+          value={activeMember.id}
+          onChange={setActiveMemberId}
+          label="登録するメンバー（クラウド上のその人の記録を書き換え）"
+        />
       </div>
 
       {!memberBalls.length ? (

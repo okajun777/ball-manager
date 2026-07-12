@@ -22,8 +22,15 @@ const catalog = catalogBalls as CatalogBall[];
 const houseOil = OIL_PRESETS.find((p) => p.id === "house") ?? OIL_PRESETS[0];
 
 export function Dashboard() {
-  const { activeMember, memberBalls, memberAllBalls, memberSessions, memberMaintenances } =
-    useStore();
+  const {
+    data,
+    activeMember,
+    setActiveMemberId,
+    memberBalls,
+    memberAllBalls,
+    memberSessions,
+    memberMaintenances,
+  } = useStore();
 
   const practiceScores = memberSessions
     .filter((s) => s.sessionType === "practice")
@@ -130,6 +137,9 @@ export function Dashboard() {
           <p>{activeMember?.displayName} の概要</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link className="btn secondary" to="/family">
+            全員の状況
+          </Link>
           <a className="btn secondary" href={OSAKA_BOWLING_URL} target="_blank" rel="noreferrer">
             大阪府大会情報
           </a>
@@ -150,6 +160,56 @@ export function Dashboard() {
           </Link>
         </div>
       </div>
+
+      {data && data.members.length > 0 ? (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 8,
+              alignItems: "baseline",
+              flexWrap: "wrap",
+            }}
+          >
+            <h3 style={{ margin: 0 }}>全員の登録状況（クラウド）</h3>
+            <Link className="btn secondary" to="/family">
+              詳しく管理
+            </Link>
+          </div>
+          <p style={{ color: "var(--sub)", fontSize: "0.88rem", margin: "6px 0 10px" }}>
+            ボールやスコアの追記・変更はクラウド上のデータを書き換えます。PCをつけっぱなしにする必要はありません。
+          </p>
+          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 8 }}>
+            {data.members.map((m) => {
+              const ballCount = data.balls.filter((b) => b.memberId === m.id && !b.retired).length;
+              const gameCount = data.sessions
+                .filter((s) => s.memberId === m.id)
+                .reduce((n, s) => n + s.games.length, 0);
+              const selected = m.id === activeMember?.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="btn secondary"
+                  style={{
+                    textAlign: "left",
+                    height: "auto",
+                    padding: "10px 12px",
+                    borderColor: selected ? "var(--accent)" : undefined,
+                  }}
+                  onClick={() => setActiveMemberId(m.id)}
+                >
+                  <div style={{ fontWeight: 700 }}>{m.displayName}</div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--sub)", marginTop: 4 }}>
+                    ボール {ballCount} · ゲーム {gameCount}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <Round1QueueWidget />
 

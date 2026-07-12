@@ -4,6 +4,7 @@ import { Analysis } from "./pages/Analysis";
 import { Catalog } from "./pages/Catalog";
 import { Compare } from "./pages/Compare";
 import { Dashboard } from "./pages/Dashboard";
+import { Family } from "./pages/Family";
 import { Layout } from "./pages/Layout";
 import { MyBalls } from "./pages/MyBalls";
 import { Scores } from "./pages/Scores";
@@ -19,6 +20,7 @@ export default function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<Dashboard />} />
+            <Route path="family" element={<Family />} />
             <Route path="balls" element={<MyBalls />} />
             <Route path="catalog" element={<Catalog />} />
             <Route path="compare" element={<Compare />} />

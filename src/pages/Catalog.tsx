@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import catalogBalls from "../data/catalogBalls.json";
+import { MemberPicker } from "../components/MemberPicker";
 import { useStore } from "../lib/store";
 import type { CatalogBall } from "../lib/catalogTypes";
 import { publicUrl } from "../lib/paths";
@@ -11,7 +12,7 @@ import { today, uid } from "../lib/types";
 const balls = catalogBalls as CatalogBall[];
 
 export function Catalog() {
-  const { data, activeMember, memberBalls, upsertBall } = useStore();
+  const { data, activeMember, setActiveMemberId, memberBalls, upsertBall } = useStore();
   const [brand, setBrand] = useState("");
   const [cover, setCover] = useState("");
   const [core, setCore] = useState("");
@@ -95,6 +96,17 @@ export function Catalog() {
           ROUND1商品を見る
         </a>
       </div>
+
+      {data && activeMember ? (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <MemberPicker
+            members={data.members}
+            value={activeMember.id}
+            onChange={setActiveMemberId}
+            label="マイボールに追加するメンバー（クラウドへ保存）"
+          />
+        </div>
+      ) : null}
 
       <div className="card" style={{ marginBottom: 14, background: "#fff5f5", borderColor: "#fecaca" }}>
         <strong style={{ color: "#9a0c22" }}>ROUND1 プロショップ</strong>

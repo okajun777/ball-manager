@@ -8,6 +8,7 @@ import { IdentityGate } from "./IdentityGate";
 
 const mainLinks = [
   { to: "/", label: "ダッシュボード", end: true },
+  { to: "/family", label: "全員の状況" },
   { to: "/balls", label: "マイボール" },
   { to: "/catalog", label: "カタログ" },
   { to: "/compare", label: "比較チャート" },
@@ -77,7 +78,7 @@ export function Layout() {
         {!needsSetup ? (
           <div className="sidebar-member-row">
             <div className="member-switch">
-              <label htmlFor="member">メンバー</label>
+              <label htmlFor="member">管理するメンバー</label>
               <select
                 id="member"
                 value={activeMember?.id ?? ""}
@@ -90,6 +91,9 @@ export function Layout() {
                   </option>
                 ))}
               </select>
+              <p style={{ margin: "6px 0 0", fontSize: "0.72rem", opacity: 0.7 }}>
+                ボール・スコアはクラウドへ保存。誰を表示するかだけこの端末
+              </p>
             </div>
           </div>
         ) : null}
