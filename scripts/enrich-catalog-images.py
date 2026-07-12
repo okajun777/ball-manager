@@ -49,7 +49,28 @@ def fetch_bytes(url: str) -> bytes:
         return r.read()
 
 
-def og_image(html: str, page_url: str = "") -> str:
+def og_image(html: str, page_url: str = "", prefer_slug: str = "") -> str:
+    prefer_slug = (prefer_slug or "").lower()
+    candidates: list[tuple[int, str]] = []
+
+    def add(url: str, base_score: int = 0) -> None:
+        url = urljoin(page_url, url.strip()) if page_url else url.strip()
+        if not url or not is_ball_like_image(url):
+            return
+        low = url.lower()
+        score = base_score
+        if "/balls/" in low:
+            score += 40
+        if prefer_slug and prefer_slug in low:
+            score += 100
+        if "ball_image_main" in low:
+            score += 20
+        if "ball_grid" in low:
+            score += 10
+        if "/uploads/" in low:
+            score += 15
+        candidates.append((score, url))
+
     for pat in (
         r'property=["\']og:image["\']\s+content=["\']([^"\']+)["\']',
         r'content=["\']([^"\']+)["\']\s+property=["\']og:image["\']',
@@ -57,31 +78,47 @@ def og_image(html: str, page_url: str = "") -> str:
     ):
         m = re.search(pat, html, re.I)
         if m:
-            url = m.group(1).strip()
-            if page_url:
-                url = urljoin(page_url, url)
-            if is_ball_like_image(url):
-                return url
-    # bowwwl ball grid / main
-    m = re.search(
+            add(m.group(1), 30)
+
+    for m in re.findall(
         r'src=["\']([^"\']*styles/ball_(?:image_main|grid)/[^"\']+)["\']',
         html,
         re.I,
-    )
-    if m:
-        url = m.group(1).strip()
-        return urljoin(page_url or "https://www.bowwwl.com", url)
-    # ABS / WordPress uploads（商品写真）
+    ):
+        add(m, 50)
+
+    for m in re.findall(r'src=["\']([^"\']+/balls/[^"\']+\.(?:png|jpe?g|webp)[^"\']*)["\']', html, re.I):
+        add(m, 60)
+
     host = urlparse(page_url).netloc if page_url else ""
     if "absbowling" in host or "hi-sp" in host:
         imgs = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', html, re.I)
         for src in imgs:
             full = urljoin(page_url, src.strip())
             low = full.lower()
-            if "/uploads/" in low and is_ball_like_image(full):
-                if any(ext in low for ext in (".png", ".jpg", ".jpeg", ".webp")):
-                    return full
-    return ""
+            if "/uploads/" in low and any(ext in low for ext in (".png", ".jpg", ".jpeg", ".webp")):
+                add(full, 25)
+
+    # constructed bowwwl path from prefer_slug
+    if prefer_slug and "bowwwl.com" in (page_url or ""):
+        m = re.search(r"/bowling-ball-database/([^/]+)/([^/?#]+)", page_url)
+        if m:
+            base = f"{m.group(1)}-{m.group(2)}"
+            for style in ("ball_image_main", "ball_grid"):
+                add(
+                    f"https://www.bowwwl.com/sites/default/files/styles/{style}/public/balls/{base}.png",
+                    80,
+                )
+
+    if not candidates:
+        return ""
+    candidates.sort(key=lambda x: -x[0])
+    # If we have a prefer_slug, require it in path when any /balls/ candidates exist
+    if prefer_slug:
+        matched = [u for s, u in candidates if prefer_slug in u.lower() and "/balls/" in u.lower()]
+        if matched:
+            return matched[0]
+    return candidates[0][1]
 
 
 def is_ball_like_image(url: str) -> bool:
@@ -163,7 +200,13 @@ def enrich_one(ball: dict) -> tuple[str, str, str]:
             html = fetch(page)
         except Exception as exc:  # noqa: BLE001
             return bid, "", f"page-fail:{type(exc).__name__}"
-        img = og_image(html, page)
+        img = og_image(html, page, prefer_slug=(ball.get("id") or "").split("-", 1)[-1])
+        # also pass full id slug from sourceUrl
+        m = re.search(r"/bowling-ball-database/[^/]+/([^/?#]+)", page)
+        if m:
+            img2 = og_image(html, page, prefer_slug=m.group(1))
+            if img2:
+                img = img2
         if not img or not is_ball_like_image(img):
             continue
         local = save_jpeg(bid, img)
