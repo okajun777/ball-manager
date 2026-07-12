@@ -107,6 +107,10 @@ export type Ball = {
   mb?: number | null;
   /** 発売年月（YYYY-MM） */
   releaseMonth?: string;
+  /** 大会用の管理記号（シール記号など） */
+  manageMark?: string;
+  /** 大会管理の有効期限（YYYY-MM-DD） */
+  manageExpireOn?: string;
   /** true のときバッグから外した扱い（スコア選択・攻略から除外） */
   retired?: boolean;
 };
@@ -129,8 +133,25 @@ export function normalizeBall(b: Ball): Ball {
     mb: b.mb ?? null,
     weightOz: b.weightOz ?? null,
     releaseMonth: b.releaseMonth ?? "",
+    manageMark: b.manageMark ?? "",
+    manageExpireOn: b.manageExpireOn ?? "",
     retired: Boolean(b.retired),
   };
+}
+
+/** 大会管理の有効期限表示 */
+export function manageExpireStatus(expireOn: string | undefined, todayKey: string): {
+  label: string;
+  tone: "ok" | "soon" | "expired" | "none";
+} {
+  const d = (expireOn || "").trim();
+  if (!d) return { label: "有効期限なし", tone: "none" };
+  if (d < todayKey) return { label: `期限切れ ${d}`, tone: "expired" };
+  const soon = new Date(todayKey + "T12:00:00");
+  soon.setDate(soon.getDate() + 30);
+  const soonKey = soon.toISOString().slice(0, 10);
+  if (d <= soonKey) return { label: `期限間近 ${d}`, tone: "soon" };
+  return { label: `有効期限 ${d}`, tone: "ok" };
 }
 
 /** 表示用: 15lb / 15lb 2oz */

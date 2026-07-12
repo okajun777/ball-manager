@@ -73,6 +73,8 @@ export function Catalog() {
       layoutNote: "",
       surfaceNote: details.surfaceNote,
       memo: details.memo,
+      manageMark: "",
+      manageExpireOn: "",
       coverName: details.coverName,
       coverType: details.coverType,
       coreName: details.coreName,

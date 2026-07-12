@@ -24,7 +24,7 @@ import {
 } from "../lib/strategy";
 import type { CatalogBall } from "../lib/catalogTypes";
 import type { Ball, MaintenanceKind, SurfaceMaintenance } from "../lib/types";
-import { MAINTENANCE_KIND_LABEL, avg, formatBallWeight, today, uid } from "../lib/types";
+import { MAINTENANCE_KIND_LABEL, avg, formatBallWeight, manageExpireStatus, today, uid } from "../lib/types";
 
 const catalog = catalogBalls as CatalogBall[];
 
@@ -41,6 +41,8 @@ const emptyForm = {
   layoutNote: "",
   surfaceNote: "",
   memo: "",
+  manageMark: "",
+  manageExpireOn: "",
   coverName: "",
   coverType: "",
   coreName: "",
@@ -239,6 +241,8 @@ export function MyBalls() {
       layoutNote: ball.layoutNote,
       surfaceNote: ball.surfaceNote,
       memo: ball.memo,
+      manageMark: ball.manageMark ?? "",
+      manageExpireOn: ball.manageExpireOn ?? "",
       coverName: ball.coverName ?? "",
       coverType: ball.coverType ?? "",
       coreName: ball.coreName ?? "",
@@ -298,6 +302,8 @@ export function MyBalls() {
       layoutNote: form.layoutNote.trim(),
       surfaceNote: form.surfaceNote.trim(),
       memo: form.memo.trim(),
+      manageMark: form.manageMark.trim(),
+      manageExpireOn: form.manageExpireOn.trim(),
       coverName: form.coverName.trim(),
       coverType: form.coverType.trim(),
       coreName: form.coreName.trim(),
@@ -778,6 +784,27 @@ export function MyBalls() {
               />
             </div>
           </div>
+          <div className="row">
+            <div className="field">
+              <label>大会・管理記号</label>
+              <input
+                value={form.manageMark}
+                onChange={(e) => setForm({ ...form, manageMark: e.target.value })}
+                placeholder="例: A-12 / ★赤"
+              />
+            </div>
+            <div className="field">
+              <label>有効期限</label>
+              <input
+                type="date"
+                value={form.manageExpireOn}
+                onChange={(e) => setForm({ ...form, manageExpireOn: e.target.value })}
+              />
+            </div>
+          </div>
+          <p style={{ margin: "-4px 0 10px", color: "var(--sub)", fontSize: "0.78rem" }}>
+            大会のボール管理シール記号と、検定・登録の有効期限です。
+          </p>
           <div className="field">
             <label>メモ</label>
             <textarea
@@ -922,6 +949,23 @@ export function MyBalls() {
                       {formatBallWeight(b)}
                       {" · "}購入 {b.purchasedOn || "—"}
                       <br />
+                      {b.manageMark || b.manageExpireOn ? (
+                        <>
+                          {b.manageMark ? `管理記号 ${b.manageMark}` : "管理記号 —"}
+                          {" · "}
+                          {(() => {
+                            const st = manageExpireStatus(b.manageExpireOn, today());
+                            const color =
+                              st.tone === "expired"
+                                ? "#b42318"
+                                : st.tone === "soon"
+                                  ? "var(--warn)"
+                                  : "inherit";
+                            return <span style={{ color }}>{st.label}</span>;
+                          })()}
+                          <br />
+                        </>
+                      ) : null}
                       ショップ {b.shopName || "—"}
                       <br />
                       ドリラー {b.drillerName || "—"}
