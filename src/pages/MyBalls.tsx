@@ -13,6 +13,7 @@ import { round1SearchUrl } from "../lib/round1";
 import {
   findBrandSite,
   listKnownBrands,
+  manufacturerLookupLinks,
   manufacturerOfficialSearchUrl,
   manufacturerSearchUrl,
 } from "../lib/brandSites";
@@ -222,7 +223,7 @@ export function MyBalls() {
     setSearchMessage(
       hits.length
         ? `${hits.length}件ヒットしました。一覧から選ぶと日本名で登録されます。`
-        : "一致する球が見つかりませんでした。メーカーサイトで確認するか、手入力してください。",
+        : "一致する球が見つかりませんでした。下のメーカー／代理店サイトで確認するか、手入力してください。",
     );
     setCatalogHitId(null);
   }
@@ -556,6 +557,25 @@ export function MyBalls() {
                 {searchMessage}
                 {form.brand.trim() ? `（メーカー絞り込み: ${form.brand}）` : "（全メーカー）"}
               </p>
+              {searchResults.length === 0 ? (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                  {manufacturerLookupLinks(
+                    searchQuery.trim() || form.name.trim(),
+                    form.brand.trim(),
+                  ).map((l) => (
+                    <a
+                      key={l.url}
+                      className="btn secondary"
+                      href={l.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ fontSize: "0.85rem" }}
+                    >
+                      {l.label}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
               {searchResults.length > 0 ? (
                 <div
                   style={{

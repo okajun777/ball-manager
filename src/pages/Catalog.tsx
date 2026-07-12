@@ -5,7 +5,7 @@ import { useStore } from "../lib/store";
 import type { CatalogBall } from "../lib/catalogTypes";
 import { publicUrl } from "../lib/paths";
 import { ROUND1_VIEWER_URL, round1SearchUrl } from "../lib/round1";
-import { manufacturerOfficialSearchUrl, manufacturerSearchUrl } from "../lib/brandSites";
+import { manufacturerOfficialSearchUrl, manufacturerLookupLinks, manufacturerSearchUrl } from "../lib/brandSites";
 import { catalogDetailFields, catalogPrimaryName, searchCatalogBalls } from "../lib/strategy";
 import { today, uid } from "../lib/types";
 
@@ -203,6 +203,21 @@ export function Catalog() {
           </div>
         </div>
       </div>
+
+      {!filtered.length && q.trim() ? (
+        <div className="card empty" style={{ marginBottom: 14 }}>
+          <p style={{ margin: "0 0 10px" }}>
+            カタログに「{q.trim()}」はありません。メーカー／代理店サイトで確認してください。
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+            {manufacturerLookupLinks(q.trim(), brand).map((l) => (
+              <a key={l.url} className="btn" href={l.url} target="_blank" rel="noreferrer">
+                {l.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid cards">
         {filtered.map((b) => {

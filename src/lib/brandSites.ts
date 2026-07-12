@@ -38,6 +38,7 @@ const BRAND_SITES: BrandSiteInfo[] = [
     brand: "Motiv",
     aliases: ["モーティブ"],
     officialUrl: "https://www.motivbowling.com/",
+    japanUrl: "https://www.absbowling.co.jp/",
   },
   {
     brand: "Hammer",
@@ -152,6 +153,10 @@ export function manufacturerJapanSearchUrl(brand: string, ballName: string): str
   if (host.includes("sunbridge-group.com")) {
     return `https://www.sunbridge-group.com/?s=${encodeURIComponent(q)}`;
   }
+  // ABS
+  if (host.includes("absbowling.co.jp")) {
+    return `https://www.absbowling.co.jp/?s=${encodeURIComponent(q)}`;
+  }
   return `https://www.google.com/search?q=${encodeURIComponent(`site:${host} ${q}`)}`;
 }
 
@@ -165,4 +170,47 @@ export function manufacturerSearchUrl(brand: string, ballName: string): string {
 
 export function manufacturerHomeUrl(brand: string): string | null {
   return findBrandSite(brand)?.officialUrl ?? null;
+}
+
+export type DealerSearchLink = {
+  label: string;
+  url: string;
+};
+
+/** カタログで分からないときの国内代理店／メーカー検索リンク */
+export function manufacturerLookupLinks(ballName: string, brand = ""): DealerSearchLink[] {
+  const q = ballName.trim();
+  if (!q) return [];
+  const site = brand.trim() ? findBrandSite(brand) : null;
+  const links: DealerSearchLink[] = [];
+  const push = (label: string, url: string) => {
+    if (!links.some((l) => l.url === url)) links.push({ label, url });
+  };
+
+  if (site) {
+    const jp = manufacturerJapanSearchUrl(site.brand, q);
+    if (jp) {
+      const host = hostOf(site.japanUrl || "");
+      const label = host.includes("hi-sp")
+        ? "HI-SPで検索"
+        : host.includes("sunbridge")
+          ? "サンブリッジで検索"
+          : host.includes("absbowling")
+            ? "ABSで検索"
+            : "代理店で検索";
+      push(label, jp);
+    }
+    push("公式サイトで検索", manufacturerOfficialSearchUrl(site.brand, q));
+    return links;
+  }
+
+  // メーカー不明 → 国内主要3代理店＋一般検索
+  push("サンブリッジで検索", `https://www.sunbridge-group.com/?s=${encodeURIComponent(q)}`);
+  push("HI-SPで検索", `https://hi-sp.co.jp/?s=${encodeURIComponent(q)}`);
+  push("ABSで検索", `https://www.absbowling.co.jp/?s=${encodeURIComponent(q)}`);
+  push(
+    "Googleで検索",
+    `https://www.google.com/search?q=${encodeURIComponent(`${q} ボウリング ボール`)}`,
+  );
+  return links;
 }

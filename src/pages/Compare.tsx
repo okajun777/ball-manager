@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import catalogBalls from "../data/catalogBalls.json";
 import type { CatalogBall } from "../lib/catalogTypes";
-import { findCatalogBall, catalogPrimaryName, resolveBallImageUrl } from "../lib/strategy";
+import { findCatalogBall, catalogPrimaryName, resolveBallImageUrl, searchCatalogBalls } from "../lib/strategy";
 import {
   generateCompareConsultation,
   isLlmConfigured,
   type CompareCandidate,
 } from "../lib/llm";
+import { manufacturerLookupLinks } from "../lib/brandSites";
 import { useStore } from "../lib/store";
 import type { Ball } from "../lib/types";
 import { publicUrl } from "../lib/paths";
@@ -210,17 +211,21 @@ export function Compare() {
 
   const points = useMemo(() => {
     const list: ChartPoint[] = [];
-    const query = q.trim().toLowerCase();
+    const query = q.trim();
+
+    const catalogHits = query
+      ? new Set(searchCatalogBalls(brand, query, catalog, catalog.length).map((b) => b.id))
+      : null;
 
     const pass = (p: ChartPoint) => {
       if (brand && p.brand !== brand) return false;
       if (cover && p.coverType !== cover) return false;
       if (core && p.coreType !== core) return false;
-      if (query) {
-        const hay = `${p.name} ${p.brand} ${p.coverName} ${p.coreName}`.toLowerCase();
-        if (!hay.includes(query)) return false;
-      }
-      return true;
+      if (!query) return true;
+      if (p.source === "catalog" && catalogHits) return catalogHits.has(p.id);
+      const hay = `${p.name} ${p.nameEn} ${p.brand} ${p.coverName} ${p.coreName}`.toLowerCase();
+      const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+      return tokens.every((t) => hay.includes(t));
     };
 
     if (source === "owned" || source === "both") {
@@ -241,6 +246,11 @@ export function Compare() {
     }
     return list;
   }, [source, memberBalls, ownedKeys, brand, cover, core, q]);
+
+  const dealerLinks = useMemo(
+    () => (q.trim() ? manufacturerLookupLinks(q.trim(), brand) : []),
+    [q, brand],
+  );
 
   const colorMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -440,7 +450,7 @@ export function Compare() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="球名・カバー・コア"
+              placeholder="日本名・英名・カバー・コア"
             />
           </div>
           <div className="field">
@@ -455,6 +465,16 @@ export function Compare() {
             </select>
           </div>
         </div>
+        {dealerLinks.length > 0 ? (
+          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: "0.85rem", color: "var(--sub)" }}>メーカー／代理店で確認:</span>
+            {dealerLinks.map((l) => (
+              <a key={l.url} className="btn secondary" href={l.url} target="_blank" rel="noreferrer" style={{ fontSize: "0.85rem" }}>
+                {l.label}
+              </a>
+            ))}
+          </div>
+        ) : null}
         <label style={{ display: "inline-flex", gap: 8, alignItems: "center", marginTop: 10, fontSize: "0.9rem" }}>
           <input
             type="checkbox"
@@ -471,7 +491,18 @@ export function Compare() {
             <div className="empty" style={{ padding: 40 }}>
               {source === "owned"
                 ? "スペック付きのマイボールがありません。カタログ表示に切り替えるか、ボールを登録してください。"
-                : "条件に合うボールがありません。フィルタを緩めてください。"}
+                : q.trim()
+                  ? "カタログに一致する球がありません。メーカー／代理店サイトで確認してください。"
+                  : "条件に合うボールがありません。フィルタを緩めてください。"}
+              {dealerLinks.length > 0 ? (
+                <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                  {dealerLinks.map((l) => (
+                    <a key={l.url} className="btn" href={l.url} target="_blank" rel="noreferrer">
+                      {l.label}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="compare-chart-wrap">
