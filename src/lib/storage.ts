@@ -839,6 +839,7 @@ export async function saveAppData(data: AppData): Promise<AppData> {
       name: b.name,
       brand: b.brand,
       weight_lb: b.weightLb,
+      weight_oz: b.weightOz ?? null,
       purchased_on: b.purchasedOn || null,
       shop_name: b.shopName,
       driller_name: b.drillerName,
@@ -870,6 +871,7 @@ export async function saveAppData(data: AppData): Promise<AppData> {
             diff: _diff,
             mb: _mb,
             release_month: _rm,
+            weight_oz: _oz,
             ...rest
           }) => rest,
         ),
@@ -1082,6 +1084,7 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
     name: b.name,
     brand: b.brand ?? "",
     weightLb: b.weight_lb == null ? null : Number(b.weight_lb),
+    weightOz: b.weight_oz == null ? null : Number(b.weight_oz),
     purchasedOn: b.purchased_on ?? "",
     shopName: b.shop_name ?? "",
     drillerName: b.driller_name ?? "",

@@ -81,6 +81,8 @@ export type Ball = {
   name: string;
   brand: string;
   weightLb: number | null;
+  /** ポンドに足すオンス（0〜15。例: 15lb 2oz） */
+  weightOz?: number | null;
   purchasedOn: string;
   shopName: string;
   drillerName: string;
@@ -125,9 +127,24 @@ export function normalizeBall(b: Ball): Ball {
     rg: b.rg ?? null,
     diff: b.diff ?? null,
     mb: b.mb ?? null,
+    weightOz: b.weightOz ?? null,
     releaseMonth: b.releaseMonth ?? "",
     retired: Boolean(b.retired),
   };
+}
+
+/** 表示用: 15lb / 15lb 2oz */
+export function formatBallWeight(ball: {
+  weightLb?: number | null;
+  weightOz?: number | null;
+}): string {
+  if (ball.weightLb == null && (ball.weightOz == null || ball.weightOz === 0)) {
+    return "重量—";
+  }
+  const lb = ball.weightLb != null ? `${ball.weightLb}lb` : "";
+  const oz =
+    ball.weightOz != null && ball.weightOz > 0 ? `${ball.weightOz}oz` : "";
+  return [lb, oz].filter(Boolean).join(" ") || "重量—";
 }
 
 /** 表面メンテ履歴 */
