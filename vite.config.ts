@@ -46,12 +46,12 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: /\/catalog-images\/.*/i,
-            handler: "CacheFirst",
+            handler: "StaleWhileRevalidate",
             options: {
-              cacheName: "catalog-images",
+              cacheName: "catalog-images-v2",
               expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
+                maxEntries: 400,
+                maxAgeSeconds: 60 * 60 * 24 * 14,
               },
             },
           },

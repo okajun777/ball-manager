@@ -61,15 +61,15 @@ export function findCatalogBall(owned: Ball, catalog: CatalogBall[]): CatalogBal
   return lookupCatalogBall(owned.brand, owned.name, catalog);
 }
 
-/** マイボール表示用の写真URL（保存済み → カタログ照合） */
+/** マイボール表示用の写真URL（カタログ照合を優先 → 保存済み） */
 export function resolveBallImageUrl(
   owned: Pick<Ball, "brand" | "name" | "catalogId" | "imageUrl">,
   catalog: CatalogBall[],
 ): string {
-  const stored = (owned.imageUrl || "").trim();
-  if (stored) return stored;
   const hit = findCatalogBall(owned as Ball, catalog);
-  return (hit?.imageUrl || "").trim();
+  const fromCat = (hit?.imageUrl || "").trim();
+  if (fromCat) return fromCat;
+  return (owned.imageUrl || "").trim();
 }
 
 /** 表示・登録用：日本名があればそれを優先 */
