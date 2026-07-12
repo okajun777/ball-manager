@@ -57,6 +57,68 @@ export async function fetchRound1Queue(): Promise<Round1QueueData> {
   return (await res.json()) as Round1QueueData;
 }
 
+export type Round1StoreWaitPatch = Pick<
+  Round1QueueStore,
+  "ok" | "available" | "wait_time" | "wait_group_num" | "update_time" | "detail"
+>;
+
+/**
+ * 指定店舗だけの最新待ち時間を取得する。
+ * ブラウザから公式APIは呼べないため、ページ内容経由で読む。
+ */
+export async function fetchRound1StoreWait(storeId: string): Promise<Round1StoreWaitPatch> {
+  const page =
+    "https://www.round1.co.jp/yoyaku/queue/bowling/index.php" +
+    `?service_department_id=1&store_id=${encodeURIComponent(storeId)}`;
+  const res = await fetch(`https://r.jina.ai/${page}`, {
+    headers: { Accept: "text/plain" },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`店舗の混雑を取得できません (${res.status})`);
+  const text = await res.text();
+
+  const timeMatch = text.match(/(\d{1,2}:\d{2})/);
+  const update_time = timeMatch?.[1] ?? null;
+
+  if (text.includes("営業時間外") || /ご利用できません/.test(text)) {
+    const detailMatch = text.match(/営業時間外[^\n。]*。?/);
+    return {
+      ok: true,
+      available: false,
+      wait_time: null,
+      wait_group_num: null,
+      update_time,
+      detail: detailMatch?.[0] ?? "ご利用できません",
+    };
+  }
+
+  const groupMatch = text.match(/順番待ち組数\s*(\d+)\s*組/);
+  const waitMatch = text.match(/待ち時間目安\s*約\s*(\d+)\s*分/);
+  if (groupMatch && waitMatch) {
+    return {
+      ok: true,
+      available: true,
+      wait_time: Number(waitMatch[1]),
+      wait_group_num: Number(groupMatch[1]),
+      update_time,
+      detail: null,
+    };
+  }
+
+  if (text.includes("待ち時間はございません")) {
+    return {
+      ok: true,
+      available: true,
+      wait_time: 0,
+      wait_group_num: 0,
+      update_time,
+      detail: null,
+    };
+  }
+
+  throw new Error("混雑状況を読み取れませんでした");
+}
+
 export function normalizeShopQuery(text: string): string {
   return text
     .normalize("NFKC")

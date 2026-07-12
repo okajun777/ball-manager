@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ROUND1_QUEUE_URL,
   fetchRound1Queue,
+  fetchRound1StoreWait,
   formatWait,
   loadRound1FavoriteStoreIds,
   waitLevelOf,
   type Round1QueueData,
   type Round1QueueStore,
+  type Round1StoreWaitPatch,
 } from "../lib/round1";
 
 function levelColor(store: Round1QueueStore): string {
@@ -19,38 +21,58 @@ function levelColor(store: Round1QueueStore): string {
 
 export function Round1QueueWidget() {
   const [data, setData] = useState<Round1QueueData | null>(null);
+  const [overrides, setOverrides] = useState<Record<string, Round1StoreWaitPatch>>({});
   const [error, setError] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [favIds, setFavIds] = useState(() => loadRound1FavoriteStoreIds());
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
       setFavIds(loadRound1FavoriteStoreIds());
       const q = await fetchRound1Queue();
       setData(q);
+      setOverrides({});
       setError(null);
+      setRowError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "読み込みに失敗しました");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    void load(false);
+    void load();
   }, [load]);
 
   const favorites = useMemo(() => {
     if (!data) return [] as Round1QueueStore[];
     const byId = new Map(data.stores.map((s) => [s.id, s]));
     return favIds
-      .map((id) => byId.get(id))
+      .map((id) => {
+        const base = byId.get(id);
+        if (!base) return null;
+        const patch = overrides[id];
+        return patch ? { ...base, ...patch } : base;
+      })
       .filter((s): s is Round1QueueStore => Boolean(s));
-  }, [data, favIds]);
+  }, [data, favIds, overrides]);
+
+  const refreshStore = async (storeId: string) => {
+    setRefreshingId(storeId);
+    setRowError(null);
+    try {
+      const patch = await fetchRound1StoreWait(storeId);
+      setOverrides((prev) => ({ ...prev, [storeId]: patch }));
+    } catch (e) {
+      setRowError(e instanceof Error ? e.message : "更新に失敗しました");
+    } finally {
+      setRefreshingId(null);
+    }
+  };
 
   return (
     <div className="card" style={{ marginBottom: 14 }}>
@@ -70,7 +92,7 @@ export function Round1QueueWidget() {
               ? "読み込み中…"
               : data
                 ? `お気に入り ${favorites.length} 店舗${
-                    data.updated_at_display ? ` ／ 更新 ${data.updated_at_display}` : ""
+                    data.updated_at_display ? ` ／ 一覧更新 ${data.updated_at_display}` : ""
                   }`
                 : "混雑状況を表示できません"}
           </p>
@@ -83,6 +105,9 @@ export function Round1QueueWidget() {
       {error && (
         <p style={{ color: "#b42318", fontSize: "0.88rem", marginBottom: 0 }}>{error}</p>
       )}
+      {rowError && (
+        <p style={{ color: "#b42318", fontSize: "0.88rem", marginBottom: 0 }}>{rowError}</p>
+      )}
 
       {!error && !loading && data && (
         <>
@@ -90,6 +115,7 @@ export function Round1QueueWidget() {
             <ul style={{ listStyle: "none", margin: "12px 0 0", padding: 0 }}>
               {favorites.map((store) => {
                 const wait = formatWait(store);
+                const busy = refreshingId === store.id;
                 return (
                   <li
                     key={store.id}
@@ -127,15 +153,16 @@ export function Round1QueueWidget() {
                             fontSize: "0.75rem",
                             borderRadius: 999,
                           }}
-                          disabled={refreshing}
-                          onClick={() => void load(true)}
+                          disabled={busy}
+                          onClick={() => void refreshStore(store.id)}
                         >
-                          {refreshing ? "更新中…" : "更新"}
+                          {busy ? "更新中…" : "更新"}
                         </button>
                       </div>
                       <div style={{ fontSize: "0.78rem", color: "var(--sub)", marginTop: 2 }}>
                         {store.prefecture}
                         {store.update_time ? ` · ${store.update_time}` : ""}
+                        {overrides[store.id] ? " · たった今取得" : ""}
                       </div>
                     </div>
                     <a
