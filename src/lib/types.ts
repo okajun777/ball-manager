@@ -17,6 +17,10 @@ export type Member = {
   groupId: string;
   displayName: string;
   isSelf: boolean;
+  /** ログインID（端末共通。英小文字で比較） */
+  loginId?: string;
+  /** パスワードハッシュ（pbkdf2$…）。平文は保存しない */
+  passwordHash?: string;
   /** 性別 */
   gender?: MemberGender;
   /** 利き手（投球手）右 / 左 */
@@ -56,6 +60,8 @@ export function normalizeMember(m: Member): Member {
 
   return {
     ...m,
+    loginId: (m.loginId || "").trim().toLowerCase(),
+    passwordHash: (m.passwordHash || "").trim(),
     gender: m.gender ?? "unspecified",
     hand,
     throwStyle,

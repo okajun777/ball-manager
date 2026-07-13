@@ -32,6 +32,13 @@ create table if not exists members (
 -- alter table members add column if not exists throw_style text not null default 'unspecified';
 -- alter table members add column if not exists profile_note text not null default '';
 
+-- ログインID／パスワード（グループ招待の代わり）
+alter table members add column if not exists login_id text;
+alter table members add column if not exists password_hash text;
+create unique index if not exists idx_members_login_id
+  on members (lower(login_id))
+  where login_id is not null and login_id <> '';
+
 create table if not exists balls (
   id uuid primary key default gen_random_uuid(),
   group_id uuid not null references groups(id) on delete cascade,

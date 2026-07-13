@@ -85,8 +85,8 @@ export function AdminLayout() {
   if (needsSetup) {
     return (
       <div className="card" style={{ maxWidth: 420, margin: "40px auto" }}>
-        <h2 style={{ marginTop: 0 }}>グループがありません</h2>
-        <p style={{ color: "var(--sub)" }}>先に通常画面ではじめてください。</p>
+        <h2 style={{ marginTop: 0 }}>データがありません</h2>
+        <p style={{ color: "var(--sub)" }}>先に通常画面で管理者アカウントを作成してください。</p>
         <Link className="btn" to="/">
           通常画面へ
         </Link>
@@ -103,7 +103,7 @@ export function AdminLayout() {
       <aside className="sidebar" style={{ background: "#1a1028" }}>
         <div className="brand">
           管理画面
-          <small>{data?.group.name ?? "—"} · 淳司専用</small>
+          <small>淳司専用 · アカウント管理</small>
         </div>
         <div className="nav-row">
           <nav className="nav">

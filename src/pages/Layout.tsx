@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { APP_PUBLIC_URL, appAdminUrl, readInviteFromLocation } from "../lib/appUrl";
+import { APP_PUBLIC_URL, appAdminUrl } from "../lib/appUrl";
 import { consumeOsakaDeepLink } from "../lib/osakaBowling";
 import { ROUND1_QUEUE_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
@@ -17,19 +17,10 @@ const mainLinks = [
 ];
 
 export function Layout() {
-  const { data, deviceMember, needsSetup, needsIdentity, loading, error } = useStore();
+  const { deviceMember, needsSetup, needsIdentity, loading, error, logout } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
   const blocked = needsSetup || needsIdentity;
-
-  useEffect(() => {
-    const code = readInviteFromLocation();
-    if (!code) return;
-    if (blocked) return;
-    if (!/\/settings\/?$/.test(location.pathname)) {
-      navigate(`/settings?invite=${encodeURIComponent(code)}`, { replace: true });
-    }
-  }, [location.pathname, navigate, blocked]);
 
   useEffect(() => {
     const linked = consumeOsakaDeepLink(location.search);
@@ -60,7 +51,7 @@ export function Layout() {
       <aside className="sidebar">
         <div className="brand">
           Ball Manager
-          <small>{data?.group.name ?? "読み込み中…"}</small>
+          <small>ログインIDで端末共通</small>
         </div>
         <div className="nav-row">
           <nav className="nav">
@@ -71,20 +62,28 @@ export function Layout() {
             ))}
           </nav>
           <NavLink to="/settings" className="nav-settings">
-            設定・共有
+            設定
           </NavLink>
         </div>
 
         {!blocked ? (
           <div className="sidebar-member-row">
             <div className="member-switch">
-              <label>この端末</label>
+              <label>ログイン中</label>
               <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
                 {deviceMember?.displayName ?? "—"}
               </div>
               <p style={{ margin: "6px 0 0", fontSize: "0.72rem", opacity: 0.7 }}>
-                自分のデータのみ。全員の管理は管理画面から
+                {deviceMember?.loginId ? `ID: ${deviceMember.loginId}` : "アカウント"}
               </p>
+              <button
+                type="button"
+                className="btn secondary"
+                style={{ marginTop: 8, width: "100%", fontSize: "0.8rem" }}
+                onClick={() => logout()}
+              >
+                ログアウト
+              </button>
             </div>
           </div>
         ) : null}

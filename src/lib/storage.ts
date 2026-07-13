@@ -9,6 +9,7 @@ import type {
 } from "./types";
 import { normalizeMember, normalizeBall, today, uid } from "./types";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
+import { suggestLoginId } from "./authCrypto";
 
 const LOCAL_KEY = "ball-manager-data-v1";
 const TOMBSTONE_KEY = "ball-manager-tombstones-v1";
@@ -133,12 +134,37 @@ function randomInviteCode(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** 初回起動用（メンバーなし。ゲートで新規 or 招待） */
+/** ログインID未設定メンバーへ、表示名から仮IDを付ける（保存は呼び出し側） */
+export function ensureMemberLoginIds(data: AppData): { data: AppData; changed: boolean } {
+  const used = new Set(
+    data.members
+      .map((m) => (m.loginId || "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+  let changed = false;
+  const members = data.members.map((m) => {
+    const cur = (m.loginId || "").trim().toLowerCase();
+    if (cur) return normalizeMember({ ...m, loginId: cur });
+    let base = suggestLoginId(m.displayName) || `user${m.id.slice(-4)}`;
+    let candidate = base;
+    let n = 2;
+    while (used.has(candidate)) {
+      candidate = `${base}${n}`;
+      n += 1;
+    }
+    used.add(candidate);
+    changed = true;
+    return normalizeMember({ ...m, loginId: candidate });
+  });
+  return { data: changed ? { ...data, members } : data, changed };
+}
+
+/** 初回起動用（メンバーなし） */
 export function createBlankData(): AppData {
   return {
     group: {
       id: uid(),
-      name: "マイグループ",
+      name: "ボール管理",
       inviteCode: randomInviteCode(),
     },
     members: [],
@@ -149,15 +175,19 @@ export function createBlankData(): AppData {
   };
 }
 
-/** 初めて使う人が自分のグループを作る */
-export function createPersonalGroup(displayName: string): AppData {
+/** 初めて使う人が管理者アカウントを作る（内部グループは隠す） */
+export function createPersonalGroup(
+  displayName: string,
+  opts?: { loginId?: string; passwordHash?: string },
+): AppData {
   const groupId = uid();
   const selfId = uid();
-  const name = displayName.trim();
+  const name = displayName.trim() || "淳司";
+  const loginId = (opts?.loginId || "").trim().toLowerCase();
   return {
     group: {
       id: groupId,
-      name: `${name}のグループ`,
+      name: "ボール管理",
       inviteCode: randomInviteCode(),
     },
     members: [
@@ -166,6 +196,8 @@ export function createPersonalGroup(displayName: string): AppData {
         groupId,
         displayName: name,
         isSelf: true,
+        loginId,
+        passwordHash: opts?.passwordHash || "",
       }),
     ],
     balls: [],
@@ -452,6 +484,10 @@ function mergeCloudAndLocal(cloud: AppData, local: AppData): AppData {
   const members = mergeById(cloud.members, local.members, (l, c) => {
     if (l.isSelf && !c.isSelf) return true;
     if (!l.isSelf && c.isSelf) return false;
+    if ((l.passwordHash || "") && !(c.passwordHash || "")) return true;
+    if (!(l.passwordHash || "") && (c.passwordHash || "")) return false;
+    if ((l.loginId || "") && !(c.loginId || "")) return true;
+    if (!(l.loginId || "") && (c.loginId || "")) return false;
     return filledCount(l as unknown as Record<string, unknown>) >
       filledCount(c as unknown as Record<string, unknown>);
   });
@@ -812,22 +848,28 @@ export async function saveAppData(data: AppData): Promise<AppData> {
   }
 
   {
-    const { error } = await supabase.from("members").upsert(
-      fixed.members.map((m) => {
-        const n = normalizeMember(m);
-        return {
-          id: n.id,
-          group_id: n.groupId,
-          display_name: n.displayName,
-          is_self: n.isSelf,
-          gender: n.gender ?? "unspecified",
-          hand: n.hand ?? "unspecified",
-          throw_style: n.throwStyle ?? "unspecified",
-          profile_note: n.profileNote ?? "",
-        };
-      }),
-    );
-    if (error) throw new Error(`メンバー同期に失敗: ${error.message}`);
+    const rows = fixed.members.map((m) => {
+      const n = normalizeMember(m);
+      return {
+        id: n.id,
+        group_id: n.groupId,
+        display_name: n.displayName,
+        is_self: n.isSelf,
+        gender: n.gender ?? "unspecified",
+        hand: n.hand ?? "unspecified",
+        throw_style: n.throwStyle ?? "unspecified",
+        profile_note: n.profileNote ?? "",
+        login_id: n.loginId || null,
+        password_hash: n.passwordHash || null,
+      };
+    });
+    const { error } = await supabase.from("members").upsert(rows);
+    if (error) {
+      const { error: fallbackErr } = await supabase.from("members").upsert(
+        rows.map(({ login_id: _l, password_hash: _p, ...rest }) => rest),
+      );
+      if (fallbackErr) throw new Error(`メンバー同期に失敗: ${fallbackErr.message}`);
+    }
   }
 
   await deleteTombstonedRemote("members", "members", g.id);
@@ -1083,6 +1125,8 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
       groupId: m.group_id,
       displayName: m.display_name,
       isSelf: Boolean(m.is_self),
+      loginId: (m.login_id as string | null | undefined) ?? "",
+      passwordHash: (m.password_hash as string | null | undefined) ?? "",
       gender: m.gender ?? "unspecified",
       hand: m.hand ?? "unspecified",
       throwStyle: m.throw_style ?? "unspecified",

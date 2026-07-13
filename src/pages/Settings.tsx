@@ -2,9 +2,6 @@ import {
   APP_PUBLIC_URL,
   appAdminUrl,
   appEntryUrl,
-  appInviteUrl,
-  clearInviteFromLocation,
-  readInviteFromLocation,
 } from "../lib/appUrl";
 import { createFreshDataKeepingGroup } from "../lib/storage";
 import {
@@ -26,7 +23,7 @@ import {
   type MemberHand,
   type MemberThrowStyle,
 } from "../lib/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import { downloadBackupJson, readBackupFile } from "../lib/backup";
 import { downloadScoresCsv } from "../lib/csvExport";
@@ -45,6 +42,7 @@ import {
 
 type MemberDraft = {
   displayName: string;
+  loginId: string;
   gender: MemberGender;
   hand: MemberHand;
   throwStyle: MemberThrowStyle;
@@ -53,6 +51,7 @@ type MemberDraft = {
 
 function draftFromMember(m: {
   displayName: string;
+  loginId?: string;
   gender?: MemberGender;
   hand?: MemberHand;
   throwStyle?: MemberThrowStyle;
@@ -63,6 +62,7 @@ function draftFromMember(m: {
     groupId: "",
     displayName: m.displayName,
     isSelf: false,
+    loginId: m.loginId,
     gender: m.gender,
     hand: m.hand,
     throwStyle: m.throwStyle,
@@ -70,6 +70,7 @@ function draftFromMember(m: {
   });
   return {
     displayName: n.displayName,
+    loginId: n.loginId ?? "",
     gender: n.gender ?? "unspecified",
     hand: n.hand ?? "unspecified",
     throwStyle: n.throwStyle ?? "unspecified",
@@ -90,16 +91,17 @@ export function Settings() {
     updateMemberProfile,
     updateGroupName,
     replaceAppData,
-    joinGroup,
+    setMemberPassword,
     setAdminPin,
-    resetIdentity,
+    logout,
     refresh,
   } = useStore();
   const [groupName, setGroupName] = useState(data?.group.name ?? "");
   const [memberName, setMemberName] = useState("");
+  const [memberLoginId, setMemberLoginId] = useState("");
+  const [memberPassword, setMemberPasswordDraft] = useState("");
   const [editingMembers, setEditingMembers] = useState<Record<string, MemberDraft>>({});
-  const [joinCode, setJoinCode] = useState("");
-  const [joinName, setJoinName] = useState("");
+  const [passwordDrafts, setPasswordDrafts] = useState<Record<string, string>>({});
   const [llm, setLlm] = useState<LlmSettings>(() => loadLlmSettings());
   const [supabaseForm, setSupabaseForm] = useState<SupabaseSettings>(() => loadSupabaseSettings());
   const [supabaseReady, setSupabaseReady] = useState(() => isSupabaseConfigured());
@@ -110,16 +112,8 @@ export function Settings() {
   const [adminPinDraft, setAdminPinDraft] = useState("");
   const sharedLlm = hasSharedLlmKey();
   const publicUrl = APP_PUBLIC_URL;
-  const inviteLink = data ? appInviteUrl(data.group.inviteCode) : publicUrl;
   const thisDeviceUrl = appEntryUrl();
   const adminUrl = appAdminUrl();
-
-  useEffect(() => {
-    const code = readInviteFromLocation();
-    if (!code) return;
-    setJoinCode(code);
-    clearInviteFromLocation();
-  }, []);
 
   if (!data) return null;
 
@@ -131,7 +125,7 @@ export function Settings() {
     e.preventDefault();
     if (!isAdmin) return;
     await updateGroupName(groupName);
-    alert("グループ名を保存しました");
+    alert("名称を保存しました");
   }
 
   function savePrefs(e: FormEvent) {
@@ -146,22 +140,15 @@ export function Settings() {
     const name = memberName.trim();
     if (!name) return;
     try {
-      await addMember(name);
+      await addMember(name, {
+        loginId: memberLoginId.trim() || undefined,
+        password: memberPassword.trim() || undefined,
+      });
       setMemberName("");
+      setMemberLoginId("");
+      setMemberPasswordDraft("");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "メンバー追加に失敗しました");
-    }
-  }
-
-  async function onJoin(e: FormEvent) {
-    e.preventDefault();
-    try {
-      await joinGroup(joinCode, joinName);
-      setJoinCode("");
-      setJoinName("");
-      alert("グループに参加しました");
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "参加に失敗しました");
+      alert(err instanceof Error ? err.message : "アカウント追加に失敗しました");
     }
   }
 
@@ -213,11 +200,9 @@ export function Settings() {
     }
   }
 
-  const inviteText = `Bowling Ball Manager
-すぐ開く: ${inviteLink}
-グループ: ${data.group.name}
-招待コード: ${data.group.inviteCode}
-（リンクを開いて、表示名を入れて参加してください）`;
+  const shareText = `Bowling Ball Manager
+すぐ開く: ${publicUrl}
+ログインIDとパスワードでどの端末からでも入れます。`;
 
   async function copyText(label: string, text: string) {
     try {
@@ -232,21 +217,20 @@ export function Settings() {
     <div>
       <div className="page-title">
         <div>
-          <h1>設定・共有</h1>
+          <h1>設定</h1>
           <p>
-            データはクラウドに保存されます。全員の追記・変更は管理者画面（/admin）からのみ可能です。
+            ログインIDとパスワードで端末をまたいで同じアカウントを使えます。管理者は淳司（/admin）です。
           </p>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 14, background: "#eef6ff", borderColor: "#bfdbfe" }}>
-        <strong>同期の正本</strong>
+        <strong>クラウド同期</strong>
         <p style={{ margin: "6px 0 0", color: "var(--sub)", fontSize: "0.9rem" }}>
-          グループ「{data.group.name}」／招待コード{" "}
-          <code style={{ fontWeight: 700 }}>{data.group.inviteCode}</code>
-          {" · "}メンバー {data.members.length} 人・ボール {data.balls.length} 個
+          アカウント {data.members.length} 人・ボール {data.balls.length} 個
           {isSupabaseConfigured() ? " · クラウド接続中" : " · クラウド未設定（端末内のみ）"}
-          {" · "}この端末: {deviceMember?.displayName ?? "—"}
+          {" · "}ログイン中: {deviceMember?.displayName ?? "—"}
+          {deviceMember?.loginId ? `（ID: ${deviceMember.loginId}）` : ""}
           {isAdmin ? "（管理者）" : ""}
           {isAdmin ? ` · 編集中: ${activeMember?.displayName ?? "—"}` : ""}
         </p>
@@ -307,8 +291,8 @@ export function Settings() {
               全員の管理は管理者画面から行います。
             </p>
             <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
-              <button className="btn secondary" type="button" onClick={() => resetIdentity()}>
-                名前を入れ直す
+              <button className="btn secondary" type="button" onClick={() => logout()}>
+                ログアウト
               </button>
               <a className="btn secondary" href={adminUrl}>
                 管理者画面を開く
@@ -321,15 +305,11 @@ export function Settings() {
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginTop: 0 }}>アプリをすぐ開くURL</h3>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
-          ブックマークやLINE・メールに貼ると、すぐ Ball Manager を開けます。
+          ブックマークやLINE・メールに貼ると、すぐ Ball Manager を開けます。ログインは各自のIDとパスワードです。
         </p>
         <div className="field">
           <label>公開版（おすすめ）</label>
           <input readOnly value={publicUrl} onFocus={(e) => e.currentTarget.select()} />
-        </div>
-        <div className="field">
-          <label>招待リンク（公開版＋招待コード）</label>
-          <input readOnly value={inviteLink} onFocus={(e) => e.currentTarget.select()} />
         </div>
         <div className="field">
           <label>この端末で開いているURL</label>
@@ -342,9 +322,9 @@ export function Settings() {
           <button
             className="btn secondary"
             type="button"
-            onClick={() => void copyText("招待リンク", inviteLink)}
+            onClick={() => void copyText("案内文", shareText)}
           >
-            招待リンクをコピー
+            案内文をコピー
           </button>
           <a className="btn secondary" href={publicUrl} target="_blank" rel="noreferrer">
             公開版を開く
@@ -354,18 +334,14 @@ export function Settings() {
 
       <div className="grid two">
         <form className="card" onSubmit={saveGroup}>
-          <h3 style={{ marginTop: 0 }}>グループ</h3>
+          <h3 style={{ marginTop: 0 }}>表示名（データ空間）</h3>
           <div className="field">
-            <label>グループ名</label>
+            <label>名称</label>
             <input
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
               disabled={!isAdmin}
             />
-          </div>
-          <div className="field">
-            <label>招待コード</label>
-            <input value={data.group.inviteCode} readOnly />
           </div>
           {isAdmin ? (
             <div className="form-actions">
@@ -395,6 +371,7 @@ export function Settings() {
           </p>
           <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>
             Edge で Supabase の Bowling を開き、左の歯車 → API にある2つを下に貼って保存してください。
+            また SQL Editor で schema.sql の login_id / password_hash 追加分も実行してください。
           </p>
           <div className="field">
             <label>Project URL</label>
@@ -525,39 +502,6 @@ export function Settings() {
           </button>
           <button className="btn" type="submit">
             リマインダーを保存
-          </button>
-        </div>
-      </form>
-
-      <form className="card" style={{ marginTop: 14 }} onSubmit={onJoin}>
-        <h3 style={{ marginTop: 0 }}>招待コードで参加</h3>
-          <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
-            家族からもらった招待コードと、自分の表示名だけで参加できます（PINは不要です）。
-            {isSupabaseConfigured()
-              ? "クラウド上のグループを検索して参加します。"
-              : "ローカルでは、この端末のグループコードと一致する場合のみメンバー追加できます。別端末は JSON 読み込みか Supabase を使ってください。"}
-          </p>
-        <div className="grid two">
-          <div className="field">
-            <label>招待コード</label>
-            <input
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value)}
-              placeholder="招待コード"
-            />
-          </div>
-          <div className="field">
-            <label>あなたの表示名</label>
-            <input
-              value={joinName}
-              onChange={(e) => setJoinName(e.target.value)}
-              placeholder="父 / 友人A"
-            />
-          </div>
-        </div>
-        <div className="form-actions">
-          <button className="btn" type="submit">
-            参加する
           </button>
         </div>
       </form>
@@ -707,21 +651,42 @@ export function Settings() {
       <div className="grid two" style={{ marginTop: 14 }}>
         <div className="card">
           <h3 style={{ marginTop: 0 }}>
-            {isAdmin ? "メンバー・プロフィール" : "プロフィール"}
+            {isAdmin ? "アカウント・プロフィール" : "プロフィール"}
           </h3>
           {isAdmin ? (
           <form onSubmit={onAddMember} style={{ marginBottom: 14 }}>
+            <div className="grid two">
+              <div className="field">
+                <label>表示名</label>
+                <input
+                  value={memberName}
+                  onChange={(e) => setMemberName(e.target.value)}
+                  placeholder="父 / 友人A"
+                />
+              </div>
+              <div className="field">
+                <label>ログインID（任意）</label>
+                <input
+                  value={memberLoginId}
+                  onChange={(e) => setMemberLoginId(e.target.value)}
+                  placeholder="自動採番可"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
             <div className="field">
-              <label>表示名を追加</label>
+              <label>初期パスワード（任意・4文字以上）</label>
               <input
-                value={memberName}
-                onChange={(e) => setMemberName(e.target.value)}
-                placeholder="父 / 友人A"
+                type="password"
+                value={memberPassword}
+                onChange={(e) => setMemberPasswordDraft(e.target.value)}
+                placeholder="未入力なら初回設定待ち"
+                autoComplete="new-password"
               />
             </div>
             <div className="form-actions">
               <button className="btn" type="submit">
-                追加
+                アカウント追加
               </button>
             </div>
           </form>
@@ -732,10 +697,12 @@ export function Settings() {
               const saved = draftFromMember(m);
               const dirty =
                 draft.displayName.trim() !== saved.displayName ||
+                draft.loginId.trim().toLowerCase() !== saved.loginId.trim().toLowerCase() ||
                 draft.gender !== saved.gender ||
                 draft.hand !== saved.hand ||
                 draft.throwStyle !== saved.throwStyle ||
                 draft.profileNote.trim() !== saved.profileNote.trim();
+              const pwDraft = passwordDrafts[m.id] ?? "";
               return (
                 <div
                   key={m.id}
@@ -766,9 +733,29 @@ export function Settings() {
                       style={{ flex: "1 1 120px", minWidth: 0 }}
                       aria-label={`${m.displayName}の表示名`}
                     />
+                    {m.isSelf ? (
+                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>管理者</span>
+                    ) : null}
                     {m.id === activeMember?.id ? (
                       <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>表示中</span>
                     ) : null}
+                  </div>
+                  <div className="field">
+                    <label>ログインID</label>
+                    <input
+                      value={draft.loginId}
+                      onChange={(e) =>
+                        setEditingMembers((prev) => ({
+                          ...prev,
+                          [m.id]: { ...draft, loginId: e.target.value },
+                        }))
+                      }
+                      placeholder="英数字"
+                      autoComplete="off"
+                    />
+                    <p style={{ margin: "4px 0 0", color: "var(--sub)", fontSize: "0.78rem" }}>
+                      {m.passwordHash ? "パスワード設定済み" : "パスワード未設定（初回設定が必要）"}
+                    </p>
                   </div>
                   <p style={{ margin: "0 0 8px", color: "var(--sub)", fontSize: "0.82rem" }}>
                     現在: {formatMemberProfile(m)}
@@ -854,15 +841,49 @@ export function Settings() {
                       type="button"
                       disabled={!draft.displayName.trim() || !dirty}
                       onClick={async () => {
-                        await updateMemberProfile(m.id, draft);
-                        setEditingMembers((prev) => {
+                        try {
+                          await updateMemberProfile(m.id, draft);
+                          setEditingMembers((prev) => {
+                            const next = { ...prev };
+                            delete next[m.id];
+                            return next;
+                          });
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : "保存に失敗しました");
+                        }
+                      }}
+                    >
+                      プロフィールを保存
+                    </button>
+                    <input
+                      type="password"
+                      value={pwDraft}
+                      onChange={(e) =>
+                        setPasswordDrafts((prev) => ({ ...prev, [m.id]: e.target.value }))
+                      }
+                      placeholder="新しいパスワード"
+                      style={{ maxWidth: 160 }}
+                      autoComplete="new-password"
+                    />
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      disabled={pwDraft.length < 4}
+                      onClick={async () => {
+                        const res = await setMemberPassword(m.id, pwDraft);
+                        if (!res.ok) {
+                          alert(res.error || "変更できませんでした");
+                          return;
+                        }
+                        setPasswordDrafts((prev) => {
                           const next = { ...prev };
                           delete next[m.id];
                           return next;
                         });
+                        alert("パスワードを保存しました");
                       }}
                     >
-                      プロフィールを保存
+                      パスワード変更
                     </button>
                     {isAdmin && !m.isSelf ? (
                       <button
@@ -871,7 +892,7 @@ export function Settings() {
                         onClick={() => {
                           if (
                             !confirm(
-                              `${m.displayName} を削除しますか？\nこのメンバーのボール・スコア・メンテ記録も消えます。`,
+                              `${m.displayName} を削除しますか？\nこのアカウントのボール・スコア・メンテ記録も消えます。`,
                             )
                           ) {
                             return;
@@ -895,21 +916,19 @@ export function Settings() {
           </div>
         </div>
 
-        {isAdmin ? (
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>招待文</h3>
-          <textarea readOnly value={inviteText} style={{ minHeight: 140 }} />
+          <h3 style={{ marginTop: 0 }}>ログイン案内</h3>
+          <textarea readOnly value={shareText} style={{ minHeight: 120 }} />
           <div className="form-actions">
             <button
               className="btn secondary"
               type="button"
-              onClick={() => void copyText("招待文", inviteText)}
+              onClick={() => void copyText("案内文", shareText)}
             >
               コピー
             </button>
           </div>
         </div>
-        ) : null}
       </div>
     </div>
   );

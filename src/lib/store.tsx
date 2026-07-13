@@ -22,7 +22,13 @@ import {
   saveViewMemberId,
   verifyAdminPin,
 } from "./identity";
-import { loadAppData, saveAppData, joinByInviteCode, createPersonalGroup } from "./storage";
+import { loadAppData, saveAppData, createPersonalGroup, ensureMemberLoginIds, joinByInviteCode } from "./storage";
+import {
+  hashPassword,
+  normalizeLoginId,
+  suggestLoginId,
+  verifyPassword,
+} from "./authCrypto";
 import type {
   AppData,
   Ball,
@@ -52,7 +58,27 @@ type Store = {
   memberSessions: ScoreSession[];
   memberMaintenances: SurfaceMaintenance[];
   setActiveMemberId: (id: string) => void;
+  /** @deprecated ログインID/パスワードへ移行。互換のため残すが UI では使わない */
   claimByDisplayName: (displayName: string) => { ok: boolean; error?: string };
+  login: (loginId: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  /** 初回（パスワード未設定）用。ログインID一致でパスワードを設定して入る */
+  setPasswordAndLogin: (
+    loginId: string,
+    password: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => void;
+  /** 初回: 管理者（淳司）アカウント作成 */
+  bootstrapAdmin: (
+    loginId: string,
+    password: string,
+    displayName?: string,
+  ) => Promise<void>;
+  /** 一般ユーザー新規登録（同じデータ空間に追加） */
+  registerAccount: (
+    loginId: string,
+    password: string,
+    displayName: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
   unlockAdmin: (pin: string) => { ok: boolean; error?: string };
   lockAdmin: () => void;
   setAdminPin: (pin: string) => { ok: boolean; error?: string };
@@ -65,7 +91,7 @@ type Store = {
   deleteSession: (id: string) => Promise<void>;
   addMaintenance: (item: SurfaceMaintenance) => Promise<void>;
   deleteMaintenance: (id: string) => Promise<void>;
-  addMember: (name: string) => Promise<void>;
+  addMember: (name: string, opts?: { loginId?: string; password?: string }) => Promise<void>;
   deleteMember: (id: string) => Promise<void>;
   updateMemberName: (id: string, name: string) => Promise<void>;
   updateMemberProfile: (
@@ -76,8 +102,10 @@ type Store = {
       hand?: MemberHand;
       throwStyle?: MemberThrowStyle;
       profileNote?: string;
+      loginId?: string;
     },
   ) => Promise<void>;
+  setMemberPassword: (id: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   updateGroupName: (name: string) => Promise<void>;
   replaceAppData: (next: AppData) => Promise<void>;
   joinGroup: (inviteCode: string, displayName: string) => Promise<void>;
@@ -119,7 +147,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const loaded = await loadAppData();
+      let loaded = await loadAppData();
+      const ensured = ensureMemberLoginIds(loaded);
+      if (ensured.changed) {
+        loaded = await saveAppData(ensured.data);
+      } else {
+        loaded = ensured.data;
+      }
       const adminId = findAdminMemberId(loaded.members);
       let deviceId = loadDeviceMemberId();
       if (deviceId && !loaded.members.some((m) => m.id === deviceId)) {
@@ -250,12 +284,109 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!hit) {
         return {
           ok: false,
-          error: "その名前のメンバーが見つかりません。初回は招待コードで参加してください",
+          error: "そのアカウントが見つかりません。ログインIDとパスワードで入ってください",
         };
+      }
+      if (hit.passwordHash) {
+        return { ok: false, error: "パスワード付きアカウントです。ログインIDとパスワードで入ってください" };
       }
       saveDeviceMemberId(hit.id);
       setDeviceMemberIdState(hit.id);
       setViewMemberId(hit.id);
+      return { ok: true };
+    },
+    login: async (loginId, password) => {
+      if (!data) return { ok: false, error: "データ未読込" };
+      const id = normalizeLoginId(loginId);
+      if (!id) return { ok: false, error: "ログインIDを入力してください" };
+      if (!password) return { ok: false, error: "パスワードを入力してください" };
+      const hit = data.members.find((m) => normalizeLoginId(m.loginId || "") === id);
+      if (!hit) return { ok: false, error: "ログインIDまたはパスワードが違います" };
+      if (!hit.passwordHash) {
+        return {
+          ok: false,
+          error: "初回パスワード未設定です。「初回パスワード設定」から登録してください",
+        };
+      }
+      const ok = await verifyPassword(password, hit.passwordHash);
+      if (!ok) return { ok: false, error: "ログインIDまたはパスワードが違います" };
+      saveDeviceMemberId(hit.id);
+      setDeviceMemberIdState(hit.id);
+      setViewMemberId(hit.id);
+      return { ok: true };
+    },
+    setPasswordAndLogin: async (loginId, password) => {
+      if (!data) return { ok: false, error: "データ未読込" };
+      const id = normalizeLoginId(loginId);
+      if (!id) return { ok: false, error: "ログインIDを入力してください" };
+      if (password.length < 4) return { ok: false, error: "パスワードは4文字以上にしてください" };
+      const hit = data.members.find((m) => normalizeLoginId(m.loginId || "") === id);
+      if (!hit) return { ok: false, error: "そのログインIDは見つかりません" };
+      if (hit.passwordHash) {
+        return { ok: false, error: "すでにパスワード設定済みです。通常ログインしてください" };
+      }
+      const passwordHash = await hashPassword(password);
+      const next = {
+        ...data,
+        members: data.members.map((m) =>
+          m.id === hit.id ? normalizeMember({ ...m, loginId: id, passwordHash }) : m,
+        ),
+      };
+      await persist(next);
+      saveDeviceMemberId(hit.id);
+      setDeviceMemberIdState(hit.id);
+      setViewMemberId(hit.id);
+      return { ok: true };
+    },
+    logout: () => {
+      clearDeviceMemberId();
+      setDeviceMemberIdState(null);
+      if (!isAdmin) setViewMemberId("");
+    },
+    bootstrapAdmin: async (loginId, password, displayName) => {
+      const id = normalizeLoginId(loginId);
+      if (!id) throw new Error("ログインIDを入力してください");
+      if (password.length < 4) throw new Error("パスワードは4文字以上にしてください");
+      const name = (displayName || "淳司").trim() || "淳司";
+      const passwordHash = await hashPassword(password);
+      const next = createPersonalGroup(name, { loginId: id, passwordHash });
+      const saved = await saveAppData(next);
+      setData(saved);
+      saveDeviceMemberId(saved.activeMemberId);
+      setDeviceMemberIdState(saved.activeMemberId);
+      setViewMemberId(saved.activeMemberId);
+    },
+    registerAccount: async (loginId, password, displayName) => {
+      if (!data) return { ok: false, error: "データ未読込" };
+      const id = normalizeLoginId(loginId);
+      const name = displayName.trim();
+      if (!id) return { ok: false, error: "ログインIDを入力してください" };
+      if (!/^[a-z0-9._-]{2,32}$/.test(id)) {
+        return { ok: false, error: "ログインIDは英数字・._- の2〜32文字にしてください" };
+      }
+      if (password.length < 4) return { ok: false, error: "パスワードは4文字以上にしてください" };
+      if (!name) return { ok: false, error: "表示名を入力してください" };
+      if (data.members.some((m) => normalizeLoginId(m.loginId || "") === id)) {
+        return { ok: false, error: "そのログインIDは既に使われています" };
+      }
+      const passwordHash = await hashPassword(password);
+      const member = normalizeMember({
+        id: uid("mem"),
+        groupId: data.group.id,
+        displayName: name,
+        isSelf: false,
+        loginId: id,
+        passwordHash,
+      });
+      const next = {
+        ...data,
+        members: [...data.members, member],
+        activeMemberId: member.id,
+      };
+      await persist(next);
+      saveDeviceMemberId(member.id);
+      setDeviceMemberIdState(member.id);
+      setViewMemberId(member.id);
       return { ok: true };
     },
     unlockAdmin: (pin) => {
@@ -392,13 +523,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
         maintenances: (data.maintenances ?? []).filter((m) => m.id !== id),
       });
     },
-    addMember: async (name) => {
+    addMember: async (name, opts) => {
       if (!data || !isAdmin || !name.trim()) return;
+      let loginId = normalizeLoginId(opts?.loginId || suggestLoginId(name.trim()));
+      if (!loginId) loginId = `user${Date.now().toString(36).slice(-4)}`;
+      const used = new Set(
+        data.members.map((m) => normalizeLoginId(m.loginId || "")).filter(Boolean),
+      );
+      let candidate = loginId;
+      let n = 2;
+      while (used.has(candidate)) {
+        candidate = `${loginId}${n}`;
+        n += 1;
+      }
+      const password = opts?.password?.trim() || "";
+      const passwordHash = password.length >= 4 ? await hashPassword(password) : "";
       const member: Member = normalizeMember({
         id: uid("mem"),
         groupId: data.group.id,
         displayName: name.trim(),
         isSelf: false,
+        loginId: candidate,
+        passwordHash,
       });
       await persist({ ...data, members: [...data.members, member] });
     },
@@ -435,6 +581,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     updateMemberProfile: async (id, patch) => {
       if (!data) return;
       if (!isAdmin && id !== deviceMemberId) return;
+      const nextLogin = patch.loginId !== undefined ? normalizeLoginId(patch.loginId) : undefined;
+      if (nextLogin) {
+        const clash = data.members.some(
+          (m) => m.id !== id && normalizeLoginId(m.loginId || "") === nextLogin,
+        );
+        if (clash) throw new Error("そのログインIDは既に使われています");
+      }
       await persist({
         ...data,
         members: data.members.map((m) => {
@@ -447,9 +600,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
             throwStyle: patch.throwStyle ?? m.throwStyle,
             profileNote:
               patch.profileNote !== undefined ? patch.profileNote : m.profileNote,
+            loginId: nextLogin !== undefined ? nextLogin : m.loginId,
           });
         }),
       });
+    },
+    setMemberPassword: async (id, password) => {
+      if (!data) return { ok: false, error: "データ未読込" };
+      if (!isAdmin && id !== deviceMemberId) {
+        return { ok: false, error: "自分のパスワードだけ変更できます" };
+      }
+      if (password.length < 4) return { ok: false, error: "パスワードは4文字以上にしてください" };
+      const passwordHash = await hashPassword(password);
+      await persist({
+        ...data,
+        members: data.members.map((m) =>
+          m.id === id ? normalizeMember({ ...m, passwordHash }) : m,
+        ),
+      });
+      return { ok: true };
     },
     updateGroupName: async (name) => {
       if (!data || !isAdmin || !name.trim()) return;
@@ -473,9 +642,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setData(next);
     },
     startPersonalGroup: async (displayName) => {
-      const name = displayName.trim();
-      if (!name) throw new Error("表示名を入力してください");
-      const next = createPersonalGroup(name);
+      const name = displayName.trim() || "淳司";
+      const loginId = suggestLoginId(name) || "junji";
+      const passwordHash = await hashPassword("changeme");
+      const next = createPersonalGroup(name, { loginId, passwordHash });
       const saved = await saveAppData(next);
       saveDeviceMemberId(saved.activeMemberId);
       setDeviceMemberIdState(saved.activeMemberId);
