@@ -234,12 +234,15 @@ export function Settings() {
         </p>
       </div>
 
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div
+        className={`card${isAdmin ? " desktop-only" : ""}`}
+        style={{ marginBottom: 14 }}
+      >
         <h3 style={{ marginTop: 0 }}>利用者</h3>
         {isAdmin ? (
           <>
-            <p style={{ marginTop: 0 }}>
-              編集中: {activeMember?.displayName ?? "—"}
+            <p style={{ marginTop: 0, color: "var(--sub)", fontSize: "0.9rem" }}>
+              ロック番号の変更はこちらから行えます。
             </p>
             <div className="field">
               <label>ロック番号（4桁）の変更</label>

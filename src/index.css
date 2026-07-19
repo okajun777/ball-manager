@@ -124,6 +124,10 @@ button, input, select, textarea { font: inherit; }
   display: none;
 }
 
+.desktop-only {
+  display: none !important;
+}
+
 .nav-row {
   display: flex;
   flex-direction: row;
@@ -719,6 +723,10 @@ button, input, select, textarea { font: inherit; }
     color: #9a0c22;
     background: #fff5f5;
     border: 1px solid #fecaca;
+  }
+
+  .desktop-only {
+    display: block !important;
   }
 
   .main { padding: 22px; }
