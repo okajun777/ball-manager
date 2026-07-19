@@ -1,19 +1,19 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { APP_PUBLIC_URL } from "../lib/appUrl";
+import { APP_PUBLIC_URL, stripLegacyInviteFromLocation } from "../lib/appUrl";
 import { consumeOsakaDeepLink } from "../lib/osakaBowling";
 import { ROUND1_QUEUE_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
 import { IdentityGate } from "./IdentityGate";
 
 const mainLinks = [
-  { to: "/", label: "ダッシュボード", end: true },
-  { to: "/balls", label: "マイボール" },
+  { to: "/", label: "ホーム", end: true },
+  { to: "/balls", label: "ボール" },
   { to: "/catalog", label: "カタログ" },
-  { to: "/compare", label: "比較チャート" },
-  { to: "/scores", label: "スコア入力" },
+  { to: "/compare", label: "比較" },
+  { to: "/scores", label: "スコア" },
   { to: "/analysis", label: "分析" },
-  { to: "/strategy", label: "攻略AI" },
+  { to: "/strategy", label: "攻略" },
 ];
 
 export function Layout() {
@@ -21,6 +21,10 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const blocked = needsSetup || needsIdentity;
+
+  useEffect(() => {
+    stripLegacyInviteFromLocation();
+  }, []);
 
   useEffect(() => {
     const linked = consumeOsakaDeepLink(location.search);
@@ -49,9 +53,19 @@ export function Layout() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand">
-          Ball Manager
-          <small>ログインIDで端末共通</small>
+        <div className="sidebar-top">
+          <div className="brand">
+            Ball Manager
+            <small>ログインIDで端末共通</small>
+          </div>
+          {!blocked ? (
+            <div className="sidebar-user">
+              <span className="sidebar-user-name">{deviceMember?.displayName ?? "—"}</span>
+              <button type="button" className="sidebar-logout" onClick={() => logout()}>
+                ログアウト
+              </button>
+            </div>
+          ) : null}
         </div>
         <div className="nav-row">
           <nav className="nav">
@@ -66,46 +80,12 @@ export function Layout() {
           </NavLink>
         </div>
 
-        {!blocked ? (
-          <div className="sidebar-member-row">
-            <div className="member-switch">
-              <label>ログイン中</label>
-              <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                {deviceMember?.displayName ?? "—"}
-              </div>
-              <p style={{ margin: "6px 0 0", fontSize: "0.72rem", opacity: 0.7 }}>
-                {deviceMember?.loginId ? `ID: ${deviceMember.loginId}` : "アカウント"}
-              </p>
-            </div>
-          </div>
-        ) : null}
-
         <a className="ext-link" href={APP_PUBLIC_URL} target="_blank" rel="noreferrer">
           公開URLを開く ↗
         </a>
         <a className="ext-link" href={ROUND1_QUEUE_URL} target="_blank" rel="noreferrer">
           ラウンドワン ↗
         </a>
-        {!blocked ? (
-          <button
-            type="button"
-            onClick={() => logout()}
-            style={{
-              marginTop: "auto",
-              alignSelf: "flex-end",
-              background: "none",
-              border: "none",
-              padding: "4px 2px",
-              fontSize: "0.68rem",
-              color: "inherit",
-              opacity: 0.4,
-              cursor: "pointer",
-              textDecoration: "underline",
-            }}
-          >
-            ログアウト
-          </button>
-        ) : null}
       </aside>
       <main className="main">
         {loading && <div className="card empty">読み込み中…</div>}

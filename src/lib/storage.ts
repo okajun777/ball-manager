@@ -669,7 +669,7 @@ export async function loadAppData(): Promise<AppData> {
     }
   }
 
-  // 初めての端末は他人のグループに引き込まない（招待参加は別経路）
+  // 初めての端末は他人のグループに引き込まない（ログイン後に同期）
   if (!cloudGroup) {
     return applyTombstones(local);
   }
@@ -989,102 +989,6 @@ export function resetLocalDemo(): AppData {
   const demo = createDemoData();
   saveLocal(demo);
   return demo;
-}
-
-/** 招待コードでグループに参加。同名メンバーがいれば再利用（淳司二重化を防ぐ）。 */
-export async function joinByInviteCode(
-  inviteCode: string,
-  displayName: string,
-): Promise<AppData> {
-  const code = inviteCode.trim();
-  const name = displayName.trim();
-  if (!code) throw new Error("招待コードを入力してください");
-  if (!name) throw new Error("表示名を入力してください");
-
-  if (isSupabaseConfigured()) {
-    const supabase = getSupabase();
-    if (!supabase) throw new Error("Supabase未設定");
-    const { data: groups, error } = await supabase
-      .from("groups")
-      .select("*")
-      .eq("invite_code", code)
-      .limit(1);
-    if (error) throw error;
-    if (!groups?.length) throw new Error("招待コードが見つかりません");
-
-    const groupRow = groups[0];
-    const groupId = groupRow.id as string;
-
-    const { data: existingMembers, error: listErr } = await supabase
-      .from("members")
-      .select("*")
-      .eq("group_id", groupId);
-    if (listErr) throw listErr;
-
-    const nameKey = name.toLowerCase();
-    const existing = (existingMembers ?? []).find(
-      (m) => String(m.display_name ?? "").trim().toLowerCase() === nameKey,
-    );
-
-    let memberId: string;
-    if (existing) {
-      memberId = existing.id as string;
-    } else {
-      memberId = crypto.randomUUID();
-      const { error: memErr } = await supabase.from("members").insert({
-        id: memberId,
-        group_id: groupId,
-        display_name: name,
-        // 管理者は既存の is_self のみ。参加メンバーは一般
-        is_self: false,
-        gender: "unspecified",
-        hand: "unspecified",
-        throw_style: "unspecified",
-        profile_note: "",
-      });
-      if (memErr) throw memErr;
-    }
-
-    const loaded = await loadAppDataFromGroupId(groupId, memberId);
-    const consolidated = consolidateDuplicateMembers(loaded);
-    saveLocal(consolidated);
-    // ローカルに別グループの残骸があっても、このグループを正にする
-    await saveAppData(consolidated);
-    return consolidateDuplicateMembers(applyTombstones(consolidated));
-  }
-
-  const local = loadLocal();
-  if (local.group.inviteCode !== code) {
-    throw new Error(
-      "この端末のグループとコードが一致しません。別端末からの参加は Supabase 設定か JSON 読み込みを使ってください。",
-    );
-  }
-  const nameKey = name.toLowerCase();
-  const existing = local.members.find(
-    (m) => m.displayName.trim().toLowerCase() === nameKey,
-  );
-  if (existing) {
-    const next = { ...local, activeMemberId: existing.id };
-    saveLocal(next);
-    return next;
-  }
-  const member: Member = {
-    id: crypto.randomUUID(),
-    groupId: local.group.id,
-    displayName: name,
-    isSelf: false,
-    gender: "unspecified",
-    hand: "unspecified",
-    throwStyle: "unspecified",
-    profileNote: "",
-  };
-  const next: AppData = {
-    ...local,
-    members: [...local.members, member],
-    activeMemberId: member.id,
-  };
-  saveLocal(next);
-  return next;
 }
 
 async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): Promise<AppData> {

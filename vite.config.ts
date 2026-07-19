@@ -39,6 +39,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ["**/*.{js,css,html,ico,svg,woff2,webmanifest}"],
         globIgnores: ["**/catalog-images/**"],
         navigateFallback: "index.html",
@@ -48,7 +51,7 @@ export default defineConfig({
             urlPattern: /\/catalog-images\/.*/i,
             handler: "StaleWhileRevalidate",
             options: {
-              cacheName: "catalog-images-v2",
+              cacheName: "catalog-images-v3",
               expiration: {
                 maxEntries: 400,
                 maxAgeSeconds: 60 * 60 * 24 * 14,

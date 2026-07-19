@@ -1,6 +1,8 @@
 import {
   APP_PUBLIC_URL,
   appEntryUrl,
+  appShareUrl,
+  forceAppUpdate,
 } from "../lib/appUrl";
 import { createFreshDataKeepingGroup } from "../lib/storage";
 import {
@@ -112,6 +114,7 @@ export function Settings() {
   const thisDeviceUrl = appEntryUrl();
   const sharedLlm = hasSharedLlmKey();
   const publicUrl = APP_PUBLIC_URL;
+  const shareUrl = appShareUrl(publicUrl);
 
   if (!data) return null;
 
@@ -199,7 +202,7 @@ export function Settings() {
   }
 
   const shareText = `Bowling Ball Manager
-すぐ開く: ${publicUrl}
+すぐ開く: ${shareUrl}
 ログインIDとパスワードでどの端末からでも入れます。`;
 
   async function copyText(label: string, text: string) {
@@ -287,9 +290,14 @@ export function Settings() {
         <h3 style={{ marginTop: 0 }}>アプリをすぐ開くURL</h3>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem", marginTop: 0 }}>
           ブックマークやLINE・メールに貼ると、すぐ Ball Manager を開けます。ログインは各自のIDとパスワードです。
+          LINEでは外部ブラウザ用のURLをお使いください。
         </p>
         <div className="field">
-          <label>公開版（おすすめ）</label>
+          <label>公開版（LINE向け・おすすめ）</label>
+          <input readOnly value={shareUrl} onFocus={(e) => e.currentTarget.select()} />
+        </div>
+        <div className="field">
+          <label>公開版（通常）</label>
           <input readOnly value={publicUrl} onFocus={(e) => e.currentTarget.select()} />
         </div>
         <div className="field">
@@ -297,8 +305,8 @@ export function Settings() {
           <input readOnly value={thisDeviceUrl} onFocus={(e) => e.currentTarget.select()} />
         </div>
         <div className="form-actions">
-          <button className="btn" type="button" onClick={() => void copyText("公開版URL", publicUrl)}>
-            公開版をコピー
+          <button className="btn" type="button" onClick={() => void copyText("LINE向けURL", shareUrl)}>
+            LINE向けURLをコピー
           </button>
           <button
             className="btn secondary"
@@ -307,8 +315,18 @@ export function Settings() {
           >
             案内文をコピー
           </button>
-          <a className="btn secondary" href={publicUrl} target="_blank" rel="noreferrer">
-            公開版を開く
+          <button
+            className="btn secondary"
+            type="button"
+            onClick={() => {
+              if (!confirm("古いキャッシュを消して最新版を読み込みます。よろしいですか？")) return;
+              void forceAppUpdate();
+            }}
+          >
+            最新版に更新
+          </button>
+          <a className="btn secondary" href={shareUrl} target="_blank" rel="noreferrer">
+            外部ブラウザで開く
           </a>
         </div>
       </div>
@@ -534,7 +552,7 @@ export function Settings() {
             onClick={async () => {
               if (
                 !confirm(
-                  "ボール・スコア・メンテを空にします。グループと招待コード、淳司・はるみのIDは維持します（他端末と別れません）。よろしいですか？（先にJSON書き出し推奨）",
+                  "ボール・スコア・メンテを空にします。アカウント（ログインID）は維持します。よろしいですか？（先にJSON書き出し推奨）",
                 )
               ) {
                 return;
@@ -542,7 +560,7 @@ export function Settings() {
               const fresh = createFreshDataKeepingGroup(data);
               await replaceAppData(fresh);
               setGroupName(fresh.group.name);
-              alert("中身を空にしました。招待コードはそのままです。");
+              alert("中身を空にしました。ログインIDはそのままです。");
             }}
           >
             空データでやり直す

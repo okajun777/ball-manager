@@ -19,23 +19,42 @@ export function appAdminUrl(base = APP_PUBLIC_URL): string {
   return `${root}admin`;
 }
 
-/** 家族に送る用。公開版URL＋招待コード */
-export function appInviteUrl(inviteCode: string, base = APP_PUBLIC_URL): string {
+/** LINE等に貼る用。外部ブラウザで開かせて古いキャッシュを避ける */
+export function appShareUrl(base = APP_PUBLIC_URL): string {
   const url = new URL(base.endsWith("/") ? base : `${base}/`);
-  url.searchParams.set("invite", inviteCode.trim());
+  url.searchParams.set("openExternalBrowser", "1");
   return url.toString();
 }
 
-export function readInviteFromLocation(): string | null {
-  if (typeof window === "undefined") return null;
-  const code = new URLSearchParams(window.location.search).get("invite");
-  return code?.trim() || null;
-}
-
-export function clearInviteFromLocation() {
+/** 昔の招待リンク (?invite=) をアドレスから消す */
+export function stripLegacyInviteFromLocation() {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   if (!url.searchParams.has("invite")) return;
   url.searchParams.delete("invite");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+/** Service Worker / Cache Storage を捨てて最新版を取り直す（LINE内ブラウザ向け） */
+export async function forceAppUpdate(): Promise<void> {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    /* ignore */
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.delete("invite");
+  url.searchParams.set("_v", String(Date.now()));
+  window.location.replace(url.toString());
 }

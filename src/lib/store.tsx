@@ -22,7 +22,7 @@ import {
   saveViewMemberId,
   verifyAdminPin,
 } from "./identity";
-import { loadAppData, saveAppData, createPersonalGroup, ensureMemberLoginIds, joinByInviteCode } from "./storage";
+import { loadAppData, saveAppData, createPersonalGroup, ensureMemberLoginIds } from "./storage";
 import {
   hashPassword,
   normalizeLoginId,
@@ -58,8 +58,6 @@ type Store = {
   memberSessions: ScoreSession[];
   memberMaintenances: SurfaceMaintenance[];
   setActiveMemberId: (id: string) => void;
-  /** @deprecated ログインID/パスワードへ移行。互換のため残すが UI では使わない */
-  claimByDisplayName: (displayName: string) => { ok: boolean; error?: string };
   login: (loginId: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   /** 初回（パスワード未設定）用。ログインID一致でパスワードを設定して入る */
   setPasswordAndLogin: (
@@ -108,8 +106,6 @@ type Store = {
   setMemberPassword: (id: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   updateGroupName: (name: string) => Promise<void>;
   replaceAppData: (next: AppData) => Promise<void>;
-  joinGroup: (inviteCode: string, displayName: string) => Promise<void>;
-  startPersonalGroup: (displayName: string) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -274,26 +270,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!data.members.some((m) => m.id === id)) return;
       saveViewMemberId(data.group.id, id);
       setViewMemberId(id);
-    },
-    claimByDisplayName: (displayName) => {
-      if (!data) return { ok: false, error: "データ未読込" };
-      const name = displayName.trim();
-      if (!name) return { ok: false, error: "名前を入力してください" };
-      const key = name.toLowerCase();
-      const hit = data.members.find((m) => m.displayName.trim().toLowerCase() === key);
-      if (!hit) {
-        return {
-          ok: false,
-          error: "そのアカウントが見つかりません。ログインIDとパスワードで入ってください",
-        };
-      }
-      if (hit.passwordHash) {
-        return { ok: false, error: "パスワード付きアカウントです。ログインIDとパスワードで入ってください" };
-      }
-      saveDeviceMemberId(hit.id);
-      setDeviceMemberIdState(hit.id);
-      setViewMemberId(hit.id);
-      return { ok: true };
     },
     login: async (loginId, password) => {
       if (!data) return { ok: false, error: "データ未読込" };
@@ -630,26 +606,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...next,
         maintenances: next.maintenances ?? [],
       });
-      setData(saved);
-    },
-    joinGroup: async (inviteCode, displayName) => {
-      const next = await joinByInviteCode(inviteCode, displayName);
-      if (next.activeMemberId) {
-        saveDeviceMemberId(next.activeMemberId);
-        setDeviceMemberIdState(next.activeMemberId);
-        setViewMemberId(next.activeMemberId);
-      }
-      setData(next);
-    },
-    startPersonalGroup: async (displayName) => {
-      const name = displayName.trim() || "淳司";
-      const loginId = suggestLoginId(name) || "junji";
-      const passwordHash = await hashPassword("changeme");
-      const next = createPersonalGroup(name, { loginId, passwordHash });
-      const saved = await saveAppData(next);
-      saveDeviceMemberId(saved.activeMemberId);
-      setDeviceMemberIdState(saved.activeMemberId);
-      setViewMemberId(saved.activeMemberId);
       setData(saved);
     },
     refresh,

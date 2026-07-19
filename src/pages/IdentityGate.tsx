@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { forceAppUpdate } from "../lib/appUrl";
 import { useStore } from "../lib/store";
 
 type Mode = "login" | "register" | "bootstrap" | "firstPassword";
@@ -253,7 +254,7 @@ export function IdentityGate() {
     <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
       <h2 style={{ marginTop: 0 }}>ログイン</h2>
       <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
-        ログインIDとパスワードで入ります。端末が変わっても同じアカウントを使えます。
+        ログインIDとパスワードで入ります。招待コードは使いません。端末が変わっても同じアカウントを使えます。
       </p>
       <div className="field">
         <label>ログインID</label>
@@ -323,6 +324,17 @@ export function IdentityGate() {
           }}
         >
           初回パスワード設定
+        </button>
+        <button
+          type="button"
+          className="btn secondary"
+          disabled={busy}
+          onClick={() => {
+            if (!confirm("古い表示のままのときは、キャッシュを消して最新版を読み込みます。")) return;
+            void forceAppUpdate();
+          }}
+        >
+          最新版に更新
         </button>
       </div>
     </div>
