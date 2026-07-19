@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useStore } from "../lib/store";
 
 type Mode = "login" | "register" | "bootstrap" | "firstPassword";
@@ -37,9 +36,9 @@ export function IdentityGate() {
   if (mode === "bootstrap" || needsSetup) {
     return (
       <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
-        <h2 style={{ marginTop: 0 }}>管理者アカウント作成</h2>
+        <h2 style={{ marginTop: 0 }}>最初のアカウント作成</h2>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
-          最初の管理者（淳司）を作ります。このIDとパスワードでどの端末からも入れます。
+          表示名とログインID・パスワードを設定します。どの端末からも同じIDで入れます。
         </p>
         <div className="field">
           <label>表示名</label>
@@ -255,7 +254,6 @@ export function IdentityGate() {
       <h2 style={{ marginTop: 0 }}>ログイン</h2>
       <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
         ログインIDとパスワードで入ります。端末が変わっても同じアカウントを使えます。
-        管理者画面は <Link to="/admin">/admin</Link> です。
       </p>
       <div className="field">
         <label>ログインID</label>

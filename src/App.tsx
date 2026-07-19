@@ -38,7 +38,7 @@ export default function App() {
             <Route path="analysis" element={<Analysis />} />
             <Route path="strategy" element={<Strategy />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="family" element={<Navigate to="/admin" replace />} />
+            <Route path="family" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { APP_PUBLIC_URL, appAdminUrl } from "../lib/appUrl";
+import { APP_PUBLIC_URL } from "../lib/appUrl";
 import { consumeOsakaDeepLink } from "../lib/osakaBowling";
 import { ROUND1_QUEUE_URL } from "../lib/round1";
 import { useStore } from "../lib/store";
@@ -85,9 +85,6 @@ export function Layout() {
         </a>
         <a className="ext-link" href={ROUND1_QUEUE_URL} target="_blank" rel="noreferrer">
           ラウンドワン ↗
-        </a>
-        <a className="ext-link" href={appAdminUrl()} style={{ opacity: 0.55 }}>
-          管理者画面
         </a>
         {!blocked ? (
           <button

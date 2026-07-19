@@ -502,7 +502,7 @@ export function Scores() {
             members={data.members}
             value={activeMember.id}
             onChange={setActiveMemberId}
-            label="登録するメンバー（管理者のみ・クラウドへ保存）"
+            label="登録するメンバー（クラウドへ保存）"
           />
         </div>
       ) : null}

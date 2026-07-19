@@ -108,7 +108,7 @@ export function Catalog() {
             members={data.members}
             value={activeMember.id}
             onChange={setActiveMemberId}
-            label="マイボールに追加するメンバー（管理者のみ・クラウドへ保存）"
+            label="マイボールに追加するメンバー（クラウドへ保存）"
           />
         </div>
       ) : null}

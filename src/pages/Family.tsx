@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useStore } from "../lib/store";
 import {
   avg,
@@ -23,17 +23,7 @@ export function Family() {
 
   if (!data) return null;
   if (!isAdmin) {
-    return (
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>管理者のみ</h2>
-        <p style={{ color: "var(--sub)" }}>
-          全員の登録状況の管理は、管理者（淳司）だけができます。
-        </p>
-        <button className="btn" type="button" onClick={() => navigate("/")}>
-          ダッシュボードへ
-        </button>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   const rows: MemberStats[] = data.members.map((member) => {
@@ -71,7 +61,7 @@ export function Family() {
         <div>
           <h1>全員の登録状況</h1>
           <p>
-            管理者画面（/admin）からのみ、各メンバーのボール・スコア・プロフィールをクラウド上で追記・変更できます。
+            各メンバーのボール・スコア・プロフィールをクラウド上で追記・変更できます。
           </p>
         </div>
         <Link className="btn secondary" to="/admin/settings">

@@ -1,6 +1,5 @@
 import {
   APP_PUBLIC_URL,
-  appAdminUrl,
   appEntryUrl,
 } from "../lib/appUrl";
 import { createFreshDataKeepingGroup } from "../lib/storage";
@@ -110,10 +109,9 @@ export function Settings() {
   );
   const [prefs, setPrefs] = useState<UserPrefs>(() => loadUserPrefs());
   const [adminPinDraft, setAdminPinDraft] = useState("");
+  const thisDeviceUrl = appEntryUrl();
   const sharedLlm = hasSharedLlmKey();
   const publicUrl = APP_PUBLIC_URL;
-  const thisDeviceUrl = appEntryUrl();
-  const adminUrl = appAdminUrl();
 
   if (!data) return null;
 
@@ -218,9 +216,7 @@ export function Settings() {
       <div className="page-title">
         <div>
           <h1>設定</h1>
-          <p>
-            ログインIDとパスワードで端末をまたいで同じアカウントを使えます。管理者は淳司（/admin）です。
-          </p>
+          <p>ログインIDとパスワードで端末をまたいで同じアカウントを使えます。</p>
         </div>
       </div>
 
@@ -231,7 +227,6 @@ export function Settings() {
           {isSupabaseConfigured() ? " · クラウド接続中" : " · クラウド未設定（端末内のみ）"}
           {" · "}ログイン中: {deviceMember?.displayName ?? "—"}
           {deviceMember?.loginId ? `（ID: ${deviceMember.loginId}）` : ""}
-          {isAdmin ? "（管理者）" : ""}
           {isAdmin ? ` · 編集中: ${activeMember?.displayName ?? "—"}` : ""}
         </p>
       </div>
@@ -241,16 +236,8 @@ export function Settings() {
         {isAdmin ? (
           <>
             <p style={{ marginTop: 0 }}>
-              <strong>管理者画面</strong>
-              {" · "}編集中: {activeMember?.displayName ?? "—"}
+              編集中: {activeMember?.displayName ?? "—"}
             </p>
-            <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>
-              全員の変更はこのアドレスからのみ可能です。
-            </p>
-            <div className="field">
-              <label>管理画面URL</label>
-              <input readOnly value={adminUrl} onFocus={(e) => e.currentTarget.select()} />
-            </div>
             <div className="field">
               <label>ロック番号（4桁）の変更</label>
               <input
@@ -287,16 +274,10 @@ export function Settings() {
               <strong>{deviceMember?.displayName ?? "—"}</strong>
               （自分のデータのみ）
             </p>
-            <p style={{ color: "var(--sub)", fontSize: "0.88rem" }}>
-              全員の管理は管理者画面から行います。
-            </p>
             <div className="form-actions" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
               <button className="btn secondary" type="button" onClick={() => logout()}>
                 ログアウト
               </button>
-              <a className="btn secondary" href={adminUrl}>
-                管理者画面を開く
-              </a>
             </div>
           </>
         )}
@@ -733,8 +714,8 @@ export function Settings() {
                       style={{ flex: "1 1 120px", minWidth: 0 }}
                       aria-label={`${m.displayName}の表示名`}
                     />
-                    {m.isSelf ? (
-                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>管理者</span>
+                    {m.isSelf && isAdmin ? (
+                      <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>自分</span>
                     ) : null}
                     {m.id === activeMember?.id ? (
                       <span style={{ color: "var(--sub)", fontSize: "0.85rem" }}>表示中</span>

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
-import { APP_PUBLIC_URL, appAdminUrl, appEntryUrl } from "../lib/appUrl";
+import { Link, NavLink, Navigate, Outlet } from "react-router-dom";
+import { APP_PUBLIC_URL, appEntryUrl } from "../lib/appUrl";
 import { useStore } from "../lib/store";
 
 const adminLinks = [
@@ -19,12 +19,7 @@ function AdminPinGate() {
 
   return (
     <div className="card" style={{ maxWidth: 420, margin: "40px auto" }}>
-      <h2 style={{ marginTop: 0 }}>管理者画面</h2>
-      <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
-        淳司専用です。全員の登録をクラウド上で追記・変更できます。このアドレス（
-        <code style={{ fontSize: "0.85em" }}>/admin</code>
-        ）からのみ管理できます。
-      </p>
+      <h2 style={{ marginTop: 0 }}>確認</h2>
       <div className="field">
         <label>ロック番号（4桁）</label>
         <input
@@ -58,10 +53,10 @@ function AdminPinGate() {
             if (!res.ok) setPinError(res.error || "違います");
           }}
         >
-          {hasAdminPin ? "管理画面を開く" : "番号を設定して開く"}
+          {hasAdminPin ? "開く" : "番号を設定して開く"}
         </button>
         <Link className="btn secondary" to="/">
-          通常画面へ
+          戻る
         </Link>
       </div>
     </div>
@@ -72,6 +67,7 @@ export function AdminLayout() {
   const {
     data,
     activeMember,
+    deviceMember,
     setActiveMemberId,
     adminUnlocked,
     lockAdmin,
@@ -82,28 +78,20 @@ export function AdminLayout() {
 
   if (loading) return <div className="card empty">読み込み中…</div>;
   if (error) return <div className="card empty">エラー: {error}</div>;
-  if (needsSetup) {
-    return (
-      <div className="card" style={{ maxWidth: 420, margin: "40px auto" }}>
-        <h2 style={{ marginTop: 0 }}>データがありません</h2>
-        <p style={{ color: "var(--sub)" }}>先に通常画面で管理者アカウントを作成してください。</p>
-        <Link className="btn" to="/">
-          通常画面へ
-        </Link>
-      </div>
-    );
+  // 淳司（isSelf）以外には存在しないように見せる
+  if (needsSetup || !deviceMember?.isSelf) {
+    return <Navigate to="/" replace />;
   }
   if (!adminUnlocked) return <AdminPinGate />;
 
-  const adminUrl = appAdminUrl();
   const entryUrl = appEntryUrl();
 
   return (
     <div className="app-shell">
       <aside className="sidebar" style={{ background: "#1a1028" }}>
         <div className="brand">
-          管理画面
-          <small>淳司専用 · アカウント管理</small>
+          管理
+          <small>淳司</small>
         </div>
         <div className="nav-row">
           <nav className="nav">
@@ -127,7 +115,7 @@ export function AdminLayout() {
               {data?.members.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.displayName}
-                  {m.isSelf ? "（管理者）" : ""}
+                  {m.isSelf ? "（自分）" : ""}
                 </option>
               ))}
             </select>
@@ -137,17 +125,13 @@ export function AdminLayout() {
           </div>
         </div>
 
-        <p style={{ margin: "8px", fontSize: "0.72rem", opacity: 0.65, wordBreak: "break-all" }}>
-          {adminUrl}
-        </p>
-
         <button
           type="button"
           className="btn secondary"
           style={{ margin: "0 8px" }}
           onClick={() => lockAdmin()}
         >
-          管理を終了（ロック）
+          終了（ロック）
         </button>
         <a className="ext-link" href={entryUrl}>
           通常画面へ ↗
@@ -166,9 +150,9 @@ export function AdminLayout() {
             padding: "10px 14px",
           }}
         >
-          <strong>管理者モード</strong>
+          <strong>編集中</strong>
           <span style={{ color: "var(--sub)", fontSize: "0.88rem", marginLeft: 8 }}>
-            いま編集中: {activeMember?.displayName ?? "—"}（クラウドを直接更新）
+            {activeMember?.displayName ?? "—"}
           </span>
         </div>
         <Outlet />

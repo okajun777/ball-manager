@@ -408,7 +408,7 @@ export function MyBalls() {
             members={data.members}
             value={activeMember.id}
             onChange={setActiveMemberId}
-            label="管理するメンバー（管理者のみ・クラウドへ保存）"
+            label="管理するメンバー（クラウドへ保存）"
           />
         </div>
       ) : null}
