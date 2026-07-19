@@ -17,10 +17,10 @@ const mainLinks = [
 ];
 
 export function Layout() {
-  const { deviceMember, needsSetup, needsIdentity, loading, error, logout } = useStore();
+  const { deviceMember, needsIdentity, loading, error, logout } = useStore();
   const navigate = useNavigate();
   const location = useLocation();
-  const blocked = needsSetup || needsIdentity;
+  const blocked = needsIdentity;
 
   useEffect(() => {
     stripLegacyInviteFromLocation();

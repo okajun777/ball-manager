@@ -9,7 +9,7 @@ import type {
 } from "./types";
 import { normalizeMember, normalizeBall, today, uid } from "./types";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
-import { suggestLoginId } from "./authCrypto";
+import { hashPassword, normalizeLoginId, suggestLoginId, verifyPassword } from "./authCrypto";
 
 const LOCAL_KEY = "ball-manager-data-v1";
 const TOMBSTONE_KEY = "ball-manager-tombstones-v1";
@@ -1133,4 +1133,110 @@ async function loadAppDataFromGroupId(groupId: string, activeMemberId: string): 
         ? preferredActive
         : (mappedMembers.find((m) => m.isSelf)?.id ?? mappedMembers[0]?.id ?? ""),
   };
+}
+
+export type CloudLoginResult =
+  | { ok: true; data: AppData; memberId: string }
+  | { ok: false; error: string; needFirstPassword?: boolean };
+
+/** ログインIDでクラウド上の会員を探し、グループ一式を端末に取り込む */
+export async function loginWithCloudCredentials(
+  loginId: string,
+  password: string,
+): Promise<CloudLoginResult> {
+  const id = normalizeLoginId(loginId);
+  if (!id) return { ok: false, error: "ログインIDを入力してください" };
+  if (!password) return { ok: false, error: "パスワードを入力してください" };
+
+  if (!isSupabaseConfigured()) {
+    return {
+      ok: false,
+      error: "クラウド未設定のため、この端末のアカウント作成か、設定のクラウド接続が必要です",
+    };
+  }
+  const supabase = getSupabase();
+  if (!supabase) {
+    return { ok: false, error: "クラウドに接続できません" };
+  }
+
+  const { data: rows, error } = await supabase
+    .from("members")
+    .select("*")
+    .eq("login_id", id)
+    .limit(10);
+  if (error) return { ok: false, error: error.message };
+  if (!rows?.length) {
+    return { ok: false, error: "ログインIDまたはパスワードが違います" };
+  }
+
+  const withoutPw = rows.filter((r) => !String(r.password_hash ?? "").trim());
+  const withPw = rows.filter((r) => String(r.password_hash ?? "").trim());
+
+  for (const row of withPw) {
+    const hash = String(row.password_hash);
+    const ok = await verifyPassword(password, hash);
+    if (!ok) continue;
+    const groupId = String(row.group_id);
+    const memberId = String(row.id);
+    const loaded = await loadAppDataFromGroupId(groupId, memberId);
+    const consolidated = consolidateDuplicateMembers(applyTombstones(loaded));
+    saveLocal(consolidated);
+    return { ok: true, data: consolidated, memberId };
+  }
+
+  if (withoutPw.length && !withPw.length) {
+    return {
+      ok: false,
+      error: "初回パスワード未設定です。「初回パスワード設定」から登録してください",
+      needFirstPassword: true,
+    };
+  }
+  return { ok: false, error: "ログインIDまたはパスワードが違います" };
+}
+
+/** クラウド上でパスワード未設定の会員に初回パスワードを付けて入る */
+export async function setCloudPasswordAndLogin(
+  loginId: string,
+  password: string,
+): Promise<CloudLoginResult> {
+  const id = normalizeLoginId(loginId);
+  if (!id) return { ok: false, error: "ログインIDを入力してください" };
+  if (password.length < 4) return { ok: false, error: "パスワードは4文字以上にしてください" };
+
+  if (!isSupabaseConfigured()) {
+    return { ok: false, error: "クラウド未設定です" };
+  }
+  const supabase = getSupabase();
+  if (!supabase) return { ok: false, error: "クラウドに接続できません" };
+
+  const { data: rows, error } = await supabase
+    .from("members")
+    .select("*")
+    .eq("login_id", id)
+    .limit(10);
+  if (error) return { ok: false, error: error.message };
+  if (!rows?.length) return { ok: false, error: "そのログインIDは見つかりません" };
+
+  const hit = rows.find((r) => !String(r.password_hash ?? "").trim()) ?? rows[0];
+  if (String(hit.password_hash ?? "").trim()) {
+    return { ok: false, error: "すでにパスワード設定済みです。通常ログインしてください" };
+  }
+
+  const passwordHash = await hashPassword(password);
+  const { error: upErr } = await supabase
+    .from("members")
+    .update({ password_hash: passwordHash, login_id: id })
+    .eq("id", hit.id);
+  if (upErr) return { ok: false, error: upErr.message };
+
+  const loaded = await loadAppDataFromGroupId(String(hit.group_id), String(hit.id));
+  const next = {
+    ...loaded,
+    members: loaded.members.map((m) =>
+      m.id === hit.id ? normalizeMember({ ...m, loginId: id, passwordHash }) : m,
+    ),
+  };
+  const consolidated = consolidateDuplicateMembers(applyTombstones(next));
+  await saveAppData(consolidated);
+  return { ok: true, data: consolidated, memberId: String(hit.id) };
 }

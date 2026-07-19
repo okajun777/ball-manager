@@ -22,7 +22,7 @@ import {
   saveViewMemberId,
   verifyAdminPin,
 } from "./identity";
-import { loadAppData, saveAppData, createPersonalGroup, ensureMemberLoginIds } from "./storage";
+import { loadAppData, saveAppData, createPersonalGroup, ensureMemberLoginIds, loginWithCloudCredentials, setCloudPasswordAndLogin } from "./storage";
 import {
   hashPassword,
   normalizeLoginId,
@@ -202,10 +202,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [onAdminRoute, data, deviceMemberId]);
 
   const isAdmin = Boolean(adminUnlocked && onAdminRoute);
+  /** 未ログインならゲート。空データでもログイン（クラウド検索）を先に出す */
   const needsSetup = Boolean(data && !loading && data.members.length === 0);
-  const needsIdentity = Boolean(
-    data && !loading && data.members.length > 0 && !deviceMemberId && !onAdminRoute,
-  );
+  const needsIdentity = Boolean(data && !loading && !deviceMemberId && !onAdminRoute);
 
   const activeMember = useMemo(
     () => data?.members.find((m) => m.id === viewMemberId) ?? null,
@@ -276,19 +275,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const id = normalizeLoginId(loginId);
       if (!id) return { ok: false, error: "ログインIDを入力してください" };
       if (!password) return { ok: false, error: "パスワードを入力してください" };
-      const hit = data.members.find((m) => normalizeLoginId(m.loginId || "") === id);
-      if (!hit) return { ok: false, error: "ログインIDまたはパスワードが違います" };
-      if (!hit.passwordHash) {
-        return {
-          ok: false,
-          error: "初回パスワード未設定です。「初回パスワード設定」から登録してください",
-        };
+
+      const localHit = data.members.find((m) => normalizeLoginId(m.loginId || "") === id);
+      if (localHit) {
+        if (!localHit.passwordHash) {
+          return {
+            ok: false,
+            error: "初回パスワード未設定です。「初回パスワード設定」から登録してください",
+          };
+        }
+        const ok = await verifyPassword(password, localHit.passwordHash);
+        if (!ok) return { ok: false, error: "ログインIDまたはパスワードが違います" };
+        saveDeviceMemberId(localHit.id);
+        setDeviceMemberIdState(localHit.id);
+        setViewMemberId(localHit.id);
+        return { ok: true };
       }
-      const ok = await verifyPassword(password, hit.passwordHash);
-      if (!ok) return { ok: false, error: "ログインIDまたはパスワードが違います" };
-      saveDeviceMemberId(hit.id);
-      setDeviceMemberIdState(hit.id);
-      setViewMemberId(hit.id);
+
+      // 別端末・空データのときはクラウドから探す
+      const cloud = await loginWithCloudCredentials(id, password);
+      if (!cloud.ok) return { ok: false, error: cloud.error };
+      setData(cloud.data);
+      saveDeviceMemberId(cloud.memberId);
+      setDeviceMemberIdState(cloud.memberId);
+      setViewMemberId(cloud.memberId);
       return { ok: true };
     },
     setPasswordAndLogin: async (loginId, password) => {
@@ -296,22 +306,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const id = normalizeLoginId(loginId);
       if (!id) return { ok: false, error: "ログインIDを入力してください" };
       if (password.length < 4) return { ok: false, error: "パスワードは4文字以上にしてください" };
-      const hit = data.members.find((m) => normalizeLoginId(m.loginId || "") === id);
-      if (!hit) return { ok: false, error: "そのログインIDは見つかりません" };
-      if (hit.passwordHash) {
-        return { ok: false, error: "すでにパスワード設定済みです。通常ログインしてください" };
+
+      const localHit = data.members.find((m) => normalizeLoginId(m.loginId || "") === id);
+      if (localHit) {
+        if (localHit.passwordHash) {
+          return { ok: false, error: "すでにパスワード設定済みです。通常ログインしてください" };
+        }
+        const passwordHash = await hashPassword(password);
+        const next = {
+          ...data,
+          members: data.members.map((m) =>
+            m.id === localHit.id ? normalizeMember({ ...m, loginId: id, passwordHash }) : m,
+          ),
+        };
+        await persist(next);
+        saveDeviceMemberId(localHit.id);
+        setDeviceMemberIdState(localHit.id);
+        setViewMemberId(localHit.id);
+        return { ok: true };
       }
-      const passwordHash = await hashPassword(password);
-      const next = {
-        ...data,
-        members: data.members.map((m) =>
-          m.id === hit.id ? normalizeMember({ ...m, loginId: id, passwordHash }) : m,
-        ),
-      };
-      await persist(next);
-      saveDeviceMemberId(hit.id);
-      setDeviceMemberIdState(hit.id);
-      setViewMemberId(hit.id);
+
+      const cloud = await setCloudPasswordAndLogin(id, password);
+      if (!cloud.ok) return { ok: false, error: cloud.error };
+      setData(cloud.data);
+      saveDeviceMemberId(cloud.memberId);
+      setDeviceMemberIdState(cloud.memberId);
+      setViewMemberId(cloud.memberId);
       return { ok: true };
     },
     logout: () => {
