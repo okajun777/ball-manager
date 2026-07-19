@@ -58,7 +58,11 @@ type Store = {
   memberSessions: ScoreSession[];
   memberMaintenances: SurfaceMaintenance[];
   setActiveMemberId: (id: string) => void;
-  login: (loginId: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (loginId: string, password: string) => Promise<{
+    ok: boolean;
+    error?: string;
+    needFirstPassword?: boolean;
+  }>;
   /** 初回（パスワード未設定）用。ログインID一致でパスワードを設定して入る */
   setPasswordAndLogin: (
     loginId: string,
@@ -294,7 +298,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       // 別端末・空データのときはクラウドから探す
       const cloud = await loginWithCloudCredentials(id, password);
-      if (!cloud.ok) return { ok: false, error: cloud.error };
+      if (!cloud.ok) {
+        return {
+          ok: false,
+          error: cloud.error,
+          needFirstPassword: cloud.needFirstPassword,
+        };
+      }
       setData(cloud.data);
       saveDeviceMemberId(cloud.memberId);
       setDeviceMemberIdState(cloud.memberId);

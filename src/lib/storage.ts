@@ -1139,6 +1139,73 @@ export type CloudLoginResult =
   | { ok: true; data: AppData; memberId: string }
   | { ok: false; error: string; needFirstPassword?: boolean };
 
+const LOGIN_ALIASES: Record<string, string[]> = {
+  junji: ["淳司"],
+  harumi: ["はるみ"],
+  chieko: ["ちえこ"],
+};
+
+function isMissingLoginColumnError(message: string): boolean {
+  const m = message.toLowerCase();
+  return m.includes("login_id") && (m.includes("does not exist") || m.includes("42703"));
+}
+
+async function findCloudMemberRows(loginId: string): Promise<
+  | { ok: true; rows: Record<string, unknown>[] }
+  | { ok: false; error: string }
+> {
+  const supabase = getSupabase();
+  if (!supabase) return { ok: false, error: "クラウドに接続できません" };
+
+  const { data: byLogin, error } = await supabase
+    .from("members")
+    .select("*")
+    .eq("login_id", loginId)
+    .limit(10);
+
+  if (error) {
+    if (isMissingLoginColumnError(error.message)) {
+      return {
+        ok: false,
+        error:
+          "クラウドDBにログイン列がありません。SupabaseのSQL Editorで supabase/migration-login.sql を実行してください",
+      };
+    }
+    return { ok: false, error: error.message };
+  }
+  if (byLogin?.length) return { ok: true, rows: byLogin as Record<string, unknown>[] };
+
+  // login_id 未設定の既存会員（表示名エイリアス）
+  const names = LOGIN_ALIASES[loginId];
+  if (!names?.length) return { ok: true, rows: [] };
+
+  const { data: byName, error: nameErr } = await supabase
+    .from("members")
+    .select("*")
+    .in("display_name", names)
+    .limit(20);
+  if (nameErr) return { ok: false, error: nameErr.message };
+  if (!byName?.length) return { ok: true, rows: [] };
+
+  // 同じ表示名が複数グループにある場合、グループ人数が多い方を優先
+  const groupIds = [...new Set(byName.map((r) => String(r.group_id)))];
+  const sizes = new Map<string, number>();
+  for (const gid of groupIds) {
+    const { count } = await supabase
+      .from("members")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", gid);
+    sizes.set(gid, count ?? 0);
+  }
+  const sorted = [...byName].sort((a, b) => {
+    const sa = sizes.get(String(a.group_id)) ?? 0;
+    const sb = sizes.get(String(b.group_id)) ?? 0;
+    if (sb !== sa) return sb - sa;
+    return Number(b.is_self) - Number(a.is_self);
+  });
+  return { ok: true, rows: sorted as Record<string, unknown>[] };
+}
+
 /** ログインIDでクラウド上の会員を探し、グループ一式を端末に取り込む */
 export async function loginWithCloudCredentials(
   loginId: string,
@@ -1154,18 +1221,11 @@ export async function loginWithCloudCredentials(
       error: "クラウド未設定のため、この端末のアカウント作成か、設定のクラウド接続が必要です",
     };
   }
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, error: "クラウドに接続できません" };
-  }
 
-  const { data: rows, error } = await supabase
-    .from("members")
-    .select("*")
-    .eq("login_id", id)
-    .limit(10);
-  if (error) return { ok: false, error: error.message };
-  if (!rows?.length) {
+  const found = await findCloudMemberRows(id);
+  if (!found.ok) return found;
+  const rows = found.rows;
+  if (!rows.length) {
     return { ok: false, error: "ログインIDまたはパスワードが違います" };
   }
 
@@ -1184,10 +1244,10 @@ export async function loginWithCloudCredentials(
     return { ok: true, data: consolidated, memberId };
   }
 
-  if (withoutPw.length && !withPw.length) {
+  if (withoutPw.length) {
     return {
       ok: false,
-      error: "初回パスワード未設定です。「初回パスワード設定」から登録してください",
+      error: "パスワード未設定です。下の「初回パスワード設定」で junji と新しいパスワードを登録してください",
       needFirstPassword: true,
     };
   }
@@ -1209,15 +1269,12 @@ export async function setCloudPasswordAndLogin(
   const supabase = getSupabase();
   if (!supabase) return { ok: false, error: "クラウドに接続できません" };
 
-  const { data: rows, error } = await supabase
-    .from("members")
-    .select("*")
-    .eq("login_id", id)
-    .limit(10);
-  if (error) return { ok: false, error: error.message };
-  if (!rows?.length) return { ok: false, error: "そのログインIDは見つかりません" };
+  const found = await findCloudMemberRows(id);
+  if (!found.ok) return found;
+  if (!found.rows.length) return { ok: false, error: "そのログインIDは見つかりません" };
 
-  const hit = rows.find((r) => !String(r.password_hash ?? "").trim()) ?? rows[0];
+  const hit =
+    found.rows.find((r) => !String(r.password_hash ?? "").trim()) ?? found.rows[0];
   if (String(hit.password_hash ?? "").trim()) {
     return { ok: false, error: "すでにパスワード設定済みです。通常ログインしてください" };
   }
@@ -1227,7 +1284,16 @@ export async function setCloudPasswordAndLogin(
     .from("members")
     .update({ password_hash: passwordHash, login_id: id })
     .eq("id", hit.id);
-  if (upErr) return { ok: false, error: upErr.message };
+  if (upErr) {
+    if (isMissingLoginColumnError(upErr.message)) {
+      return {
+        ok: false,
+        error:
+          "クラウドDBにログイン列がありません。SupabaseのSQL Editorで supabase/migration-login.sql を実行してください",
+      };
+    }
+    return { ok: false, error: upErr.message };
+  }
 
   const loaded = await loadAppDataFromGroupId(String(hit.group_id), String(hit.id));
   const next = {

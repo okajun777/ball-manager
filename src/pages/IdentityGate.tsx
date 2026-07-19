@@ -15,12 +15,15 @@ export function IdentityGate() {
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
 
-  async function run(action: () => Promise<{ ok: boolean; error?: string } | void>) {
+  async function run(action: () => Promise<{ ok: boolean; error?: string; needFirstPassword?: boolean } | void>) {
     setBusy(true);
     setFormError("");
     try {
       const res = await action();
-      if (res && !res.ok) setFormError(res.error || "失敗しました");
+      if (res && !res.ok) {
+        setFormError(res.error || "失敗しました");
+        if (res.needFirstPassword) setMode("firstPassword");
+      }
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "失敗しました");
     } finally {
@@ -183,6 +186,10 @@ export function IdentityGate() {
       <h2 style={{ marginTop: 0 }}>ログイン</h2>
       <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
         ログインID（英数字）とパスワードで入ります。別のスマホでも同じIDで入れます。
+      </p>
+      <p style={{ color: "var(--warn)", fontSize: "0.82rem", marginTop: 0 }}>
+        まだパスワードを一度も登録していない場合は、先に「初回パスワード設定」を使ってください。
+        （管理画面のロック番号 9191 とは別です）
       </p>
       {needsSetup ? (
         <p style={{ color: "var(--sub)", fontSize: "0.82rem", marginTop: 0 }}>
