@@ -76,14 +76,6 @@ export function Layout() {
               <p style={{ margin: "6px 0 0", fontSize: "0.72rem", opacity: 0.7 }}>
                 {deviceMember?.loginId ? `ID: ${deviceMember.loginId}` : "アカウント"}
               </p>
-              <button
-                type="button"
-                className="btn secondary"
-                style={{ marginTop: 8, width: "100%", fontSize: "0.8rem" }}
-                onClick={() => logout()}
-              >
-                ログアウト
-              </button>
             </div>
           </div>
         ) : null}
@@ -97,6 +89,26 @@ export function Layout() {
         <a className="ext-link" href={appAdminUrl()} style={{ opacity: 0.55 }}>
           管理者画面
         </a>
+        {!blocked ? (
+          <button
+            type="button"
+            onClick={() => logout()}
+            style={{
+              marginTop: "auto",
+              alignSelf: "flex-end",
+              background: "none",
+              border: "none",
+              padding: "4px 2px",
+              fontSize: "0.68rem",
+              color: "inherit",
+              opacity: 0.4,
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            ログアウト
+          </button>
+        ) : null}
       </aside>
       <main className="main">
         {loading && <div className="card empty">読み込み中…</div>}
