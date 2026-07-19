@@ -713,6 +713,7 @@ export function Compare() {
                 ))}
               </div>
               {pinnedPoints.length >= 2 ? (
+                <div className="compare-table-wrap">
                 <table className="compare-table">
                   <thead>
                     <tr>
@@ -741,6 +742,7 @@ export function Compare() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               ) : null}
             </div>
           ) : null}

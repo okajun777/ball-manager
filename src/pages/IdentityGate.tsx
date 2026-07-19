@@ -36,7 +36,7 @@ export function IdentityGate() {
 
   if (mode === "bootstrap" || needsSetup) {
     return (
-      <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
+      <div className="card" style={{ maxWidth: 420, width: "100%", margin: "16px auto" }}>
         <h2 style={{ marginTop: 0 }}>最初のアカウント作成</h2>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
           表示名とログインID・パスワードを設定します。どの端末からも同じIDで入れます。
@@ -50,7 +50,7 @@ export function IdentityGate() {
           />
         </div>
         <div className="field">
-          <label>ログインID</label>
+          <label>ログインID（英数字）</label>
           <input
             value={loginId}
             onChange={(e) => setLoginId(e.target.value)}
@@ -106,13 +106,13 @@ export function IdentityGate() {
 
   if (mode === "firstPassword") {
     return (
-      <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
+      <div className="card" style={{ maxWidth: 420, width: "100%", margin: "16px auto" }}>
         <h2 style={{ marginTop: 0 }}>初回パスワード設定</h2>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
           既存アカウントでまだパスワードがない場合に一度だけ設定します（表示名から自動採番されたログインID）。
         </p>
         <div className="field">
-          <label>ログインID</label>
+          <label>ログインID（英数字）</label>
           <input
             value={loginId}
             onChange={(e) => setLoginId(e.target.value)}
@@ -175,7 +175,7 @@ export function IdentityGate() {
 
   if (mode === "register") {
     return (
-      <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
+      <div className="card" style={{ maxWidth: 420, width: "100%", margin: "16px auto" }}>
         <h2 style={{ marginTop: 0 }}>新規登録</h2>
         <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
           自分用のログインIDとパスワードを作ります。どの端末からでも同じIDで入れます。
@@ -251,13 +251,13 @@ export function IdentityGate() {
   }
 
   return (
-    <div className="card" style={{ maxWidth: 420, margin: "24px auto" }}>
+    <div className="card" style={{ maxWidth: 420, width: "100%", margin: "16px auto" }}>
       <h2 style={{ marginTop: 0 }}>ログイン</h2>
       <p style={{ color: "var(--sub)", fontSize: "0.9rem" }}>
         ログインIDとパスワードで入ります。招待コードは使いません。端末が変わっても同じアカウントを使えます。
       </p>
       <div className="field">
-        <label>ログインID</label>
+        <label>ログインID（英数字）</label>
         <input
           value={loginId}
           onChange={(e) => {
